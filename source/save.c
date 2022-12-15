@@ -81,23 +81,3 @@ int is_flash_correct(u8* data, int size, int has_banks) {
         return 0;
     return 1;
 }
-
-void rom_write(u8* data, int size) {
-    vu8* free_section_ptr = (vu8*)free_section;
-    for(int i = 0; i < size; i++)
-        *(free_section_ptr+i) = data[i];
-}
-
-unsigned int get_rom_address() {
-    return (unsigned int)free_section;
-}
-
-int is_rom_correct(u8* data, int size) {
-    vu8* free_section_ptr = (vu8*)free_section;
-    for(int i = 0; i < size; i++)
-        if (*(free_section_ptr+i) != data[i])
-            return 0;
-    if(size > (2*BANK_SIZE))
-        return 0;
-    return 1;
-}
