@@ -144,6 +144,12 @@ void start_gen2_slave(void)
     u8 received;
     init_sio_normal(SIO_SLAVE, SIO_8);
     
+    sio_normal_prepare_irq_slave(0x02, SIO_8);
+    
+    while(3) {
+        iprintf("0x%X\n", REG_SIODATA8 & 0xFF);
+    }
+    
     while(2) {
         received = sio_normal(gen2_start_trade_slave_states[index], SIO_SLAVE, SIO_8);
         iprintf("0x%X\n", received);
@@ -160,6 +166,8 @@ int main(void)
     
     irqInit();
     irqEnable(IRQ_VBLANK);
+    irqSet(IRQ_SERIAL, sio_handle_irq_slave);
+    irqEnable(IRQ_SERIAL);
 
     consoleDemoInit();
     

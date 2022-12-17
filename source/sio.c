@@ -48,6 +48,49 @@ void sio_normal_inner_slave() {
     REG_SIOCNT |= SIO_SO_HIGH;
 }
 
+void sio_handle_irq_slave() {
+	
+	REG_IF |= IRQ_SERIAL;
+
+    REG_SIOCNT &= ~SIO_SO_HIGH;
+	
+	REG_SIODATA32 = SIO_DEFAULT_VALUE;
+	REG_SIODATA8 = SIO_DEFAULT_VALUE;
+	
+	REG_SIOCNT &= ~(SIO_START | SIO_SO_HIGH);
+    // - Set Start=1 and SO=1 (SO=HIGH indicates not ready, applied after transfer).
+    //   (Expl. Old SO=LOW kept output until 1st clock bit received).
+    //   (Expl. New SO=HIGH is automatically output at transfer completion).
+    REG_SIOCNT |= SIO_START | SIO_SO_HIGH;
+    // - Set SO to LOW to indicate that master may start now.
+    REG_SIOCNT &= ~SIO_SO_HIGH;
+	
+}
+
+void sio_stop_irq_slave() {
+    REG_SIOCNT &= ~SIO_SO_HIGH;
+    REG_SIOCNT &= ~SIO_IRQ;
+}
+
+void sio_normal_prepare_irq_slave(int data, int is_32) {
+    // - Initialize data which is to be sent to master.
+    if(is_32)
+        REG_SIODATA32 = data;
+    else
+        REG_SIODATA8 = (data & 0xFF);
+    
+    REG_SIOCNT |= SIO_IRQ;
+
+    // - Set Start=0 and SO=0 (SO=LOW indicates that slave is (almost) ready).
+    REG_SIOCNT &= ~(SIO_START | SIO_SO_HIGH);
+    // - Set Start=1 and SO=1 (SO=HIGH indicates not ready, applied after transfer).
+    //   (Expl. Old SO=LOW kept output until 1st clock bit received).
+    //   (Expl. New SO=HIGH is automatically output at transfer completion).
+    REG_SIOCNT |= SIO_START | SIO_SO_HIGH;
+    // - Set SO to LOW to indicate that master may start now.
+    REG_SIOCNT &= ~SIO_SO_HIGH;
+}
+
 void sio_normal_inner_master() {
     // - Wait for SI to become LOW (slave ready). (Check timeout here!)
     while (REG_SIOCNT & SIO_RDY);
