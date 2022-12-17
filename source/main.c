@@ -158,6 +158,68 @@ void start_gen2_slave(void)
     }
 }
 
+#define SAVE_SLOT_SIZE 0xE000
+#define SAVE_SLOT_INDEX_POS 0xDFFC
+#define SECTION_ID_POS 0xFF4
+#define SECTION_SIZE 0x1000
+#define SECTION_TOTAL 14
+#define SECTION_TRAINER_INFO_ID 0
+#define SECTION_GAME_CODE 0xAC
+
+u32 read_int(u32 address){
+    return (*(vu8*)address) + ((*(vu8*)(address+1)) << 8) + ((*(vu8*)(address+2)) << 16) + ((*(vu8*)(address+3)) << 24);
+}
+
+u16 read_short(u32 address){
+    return (*(vu8*)address) + ((*(vu8*)(address+1)) << 8);
+}
+
+u32 read_slot_index(int slot) {
+    if(slot != 0)
+        slot = 1;
+    
+    return read_int(SRAM + (slot * SAVE_SLOT_SIZE) + SAVE_SLOT_INDEX_POS);
+}
+
+u32 read_section_id(int slot, int section_pos) {
+    if(slot != 0)
+        slot = 1;
+    if(section_pos < 0)
+        section_pos = 0;
+    if(section_pos >= SECTION_TOTAL)
+        section_pos = SECTION_TOTAL - 1;
+    
+    return read_short(SRAM + (slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + SECTION_ID_POS);
+}
+
+u32 read_game_code(int slot) {
+    if(slot != 0)
+        slot = 1;
+    
+    u32 game_code = -1;
+
+    for(int i = 0; i < SECTION_TOTAL; i++)
+        if(read_section_id(slot, i) == SECTION_TRAINER_INFO_ID) {
+            game_code = read_int(SRAM + (slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SECTION_GAME_CODE);
+            break;
+        }
+    
+    return game_code;
+}
+
+void read_gen_3_data(){
+    REG_WAITCNT |= 3;
+    
+    u32 game_code = -1;
+    u8 slot = 0;
+    if(read_slot_index(1) >= read_slot_index(0))
+        slot = 1;
+    
+    game_code = read_game_code(slot);
+    
+    iprintf("Game code: 0x%X\n", game_code);
+}
+
 int main(void)
 {
     int val = 0;
@@ -173,6 +235,9 @@ int main(void)
     
     iprintf("\x1b[2J");
     
+    read_gen_3_data();
+    
+    while(1){}
     start_gen2_slave();
     start_gen2();
     

@@ -17,7 +17,7 @@ include $(DEVKITARM)/gba_rules
 # GRAPHICS is a list of directories containing files to be processed by grit
 # INCLUDES is a list of directories containing header files
 #---------------------------------------------------------------------------------
-TARGET		:=	$(shell basename $(CURDIR))
+TARGET		:=	$(shell basename $(CURDIR))_mb
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=  data
