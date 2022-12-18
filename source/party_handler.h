@@ -87,17 +87,17 @@ struct gen1_mon {
 
 struct gen3_party {
     u32 total;
-    gen3_mon mons[6];
+    struct gen3_mon mons[6];
 };
 
 struct gen2_party {
     u8 total;
-    gen2_mon mons[6];
+    struct gen2_mon mons[6];
 };
 
 struct gen1_party {
     u8 total;
-    gen1_mon mons[6];
+    struct gen1_mon mons[6];
 };
 
 #endif

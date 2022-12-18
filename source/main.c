@@ -158,32 +158,59 @@ void start_gen2_slave(void)
     }
 }
 
+#define FLASH_BANK_CMD *(((vu8*)SRAM)+0x5555) = 0xAA;*(((vu8*)SRAM)+0x2AAA) = 0x55;*(((vu8*)SRAM)+0x5555) = 0xB0;
+#define BANK_SIZE 0x10000
+
 #define SAVE_SLOT_SIZE 0xE000
 #define SAVE_SLOT_INDEX_POS 0xDFFC
 #define SECTION_ID_POS 0xFF4
 #define SECTION_SIZE 0x1000
 #define SECTION_TOTAL 14
 #define SECTION_TRAINER_INFO_ID 0
+#define SECTION_PARTY_INFO_ID 1
 #define SECTION_GAME_CODE 0xAC
+#define FRLG_GAME_CODE 0x1
+#define RSE_PARTY 0x234
+#define FRLG_PARTY 0x34
+
+#include "party_handler.h"
+
+u8 trainer_name[8];
+u8 trainer_gender;
+u32 trainer_id;
+struct gen3_party parties_3[2];
+struct gen2_party parties_2[2];
+struct gen1_party parties_1[2];
+
+void bank_check(u32 address){
+    u8 bank = 0;
+    if(address >= BANK_SIZE)
+        bank = 1;
+    FLASH_BANK_CMD
+    *((vu8*)SRAM) = bank;
+}
 
 u32 read_int(u32 address){
-    return (*(vu8*)address) + ((*(vu8*)(address+1)) << 8) + ((*(vu8*)(address+2)) << 16) + ((*(vu8*)(address+3)) << 24);
+    bank_check(address);
+    return (*(vu8*)(SRAM+address)) + ((*(vu8*)(SRAM+address+1)) << 8) + ((*(vu8*)(SRAM+address+2)) << 16) + ((*(vu8*)(SRAM+address+3)) << 24);
 }
 
 u16 read_short(u32 address){
-    return (*(vu8*)address) + ((*(vu8*)(address+1)) << 8);
+    bank_check(address);
+    return (*(vu8*)(SRAM+address)) + ((*(vu8*)(SRAM+address+1)) << 8);
 }
 
 void copy_to_ram(u32 base_address, u8* new_address, int size){
+    bank_check(base_address);
     for(int i = 0; i < size; i++)
-        new_address[i] = (*(vu8*)(base_address+i));
+        new_address[i] = (*(vu8*)(SRAM+base_address+i));
 }
 
 u32 read_slot_index(int slot) {
     if(slot != 0)
         slot = 1;
     
-    return read_int(SRAM + (slot * SAVE_SLOT_SIZE) + SAVE_SLOT_INDEX_POS);
+    return read_int((slot * SAVE_SLOT_SIZE) + SAVE_SLOT_INDEX_POS);
 }
 
 u32 read_section_id(int slot, int section_pos) {
@@ -194,7 +221,7 @@ u32 read_section_id(int slot, int section_pos) {
     if(section_pos >= SECTION_TOTAL)
         section_pos = SECTION_TOTAL - 1;
     
-    return read_short(SRAM + (slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + SECTION_ID_POS);
+    return read_short((slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + SECTION_ID_POS);
 }
 
 u32 read_game_code(int slot) {
@@ -205,24 +232,97 @@ u32 read_game_code(int slot) {
 
     for(int i = 0; i < SECTION_TOTAL; i++)
         if(read_section_id(slot, i) == SECTION_TRAINER_INFO_ID) {
-            game_code = read_int(SRAM + (slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SECTION_GAME_CODE);
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), &trainer_name[0], 8);
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 8, &trainer_gender, 1);
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 10, (u8*)&trainer_id, 4);
+            game_code = read_int((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SECTION_GAME_CODE);
             break;
         }
     
     return game_code;
 }
 
+void read_party(int slot) {
+    if(slot != 0)
+        slot = 1;
+    
+    u32 game_code = read_game_code(slot);
+    u16 add_on = RSE_PARTY;
+    if(game_code == FRLG_GAME_CODE)
+        add_on = FRLG_PARTY;
+
+    for(int i = 0; i < SECTION_TOTAL; i++)
+        if(read_section_id(slot, i) == SECTION_PARTY_INFO_ID) {
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + add_on, (u8*)(&parties_3[0]), sizeof(struct gen3_party));
+            break;
+        }
+    iprintf("Party size: %d\n", parties_3[0].total);
+}
+
+#define MAGIC_NUMBER 0x08012025
+#define INVALID_SLOT 2
+u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
+
+u8 validate_slot(int slot) {
+    if(slot != 0)
+        slot = 1;
+    
+    u16 valid_sections = 0;
+    u32 buffer[0x400];
+    u16* buffer_16 = (u16*)buffer;
+    u32 current_save_index = read_slot_index(slot);
+    
+    for(int i = 0; i < SECTION_TOTAL; i++)
+    {
+        copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), (u8*)buffer, SECTION_SIZE);
+        if(buffer[0x3FE] != MAGIC_NUMBER)
+            return 0;
+        if(buffer[0x3FF] != current_save_index)
+            return 0;
+        u16 section_id = buffer_16[0x7FA];
+        if(section_id >= SECTION_TOTAL)
+            return 0;
+        u16 prepared_checksum = buffer_16[0x7FB];
+        u32 checksum = 0;
+        for(int j = 0; j < (summable_bytes[section_id] >> 2); j++)
+            checksum += buffer[j];
+        checksum = ((checksum & 0xFFFF) + (checksum >> 16)) & 0xFFFF;
+        if(checksum != prepared_checksum)
+            return 0;
+        valid_sections |= (1 << section_id);
+    }
+    
+    if(valid_sections != (1 << (SECTION_TOTAL))-1)
+        return 0;
+
+    return 1;
+}
+
+u8 get_slot(){
+    u32 last_valid_save_index = 0;
+    u8 slot = INVALID_SLOT;
+
+    for(int i = 0; i < 2; i++) {
+        u32 current_save_index = read_slot_index(i);
+        if((current_save_index >= last_valid_save_index) && validate_slot(i)) {
+            slot = i;
+            last_valid_save_index = current_save_index;
+        }
+    }
+    return slot;
+}
+
 void read_gen_3_data(){
     REG_WAITCNT |= 3;
     
-    u32 game_code = -1;
-    u8 slot = 0;
-    if(read_slot_index(1) >= read_slot_index(0))
-        slot = 1;
+    u8 slot = get_slot();
+    if(slot == INVALID_SLOT) {
+        iprintf("Error reading the data!\n");
+        return;
+    }
     
-    game_code = read_game_code(slot);
-    
-    iprintf("Game code: 0x%X\n", game_code);
+    read_party(slot);
+        
 }
 
 int main(void)
