@@ -174,6 +174,11 @@ u16 read_short(u32 address){
     return (*(vu8*)address) + ((*(vu8*)(address+1)) << 8);
 }
 
+void copy_to_ram(u32 base_address, u8* new_address, int size){
+    for(int i = 0; i < size; i++)
+        new_address[i] = (*(vu8*)(base_address+i));
+}
+
 u32 read_slot_index(int slot) {
     if(slot != 0)
         slot = 1;
