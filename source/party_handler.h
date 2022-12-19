@@ -105,5 +105,7 @@ struct gen1_party {
 };
 
 u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src);
+void init_sprite_counter();
+u8 get_sprite_counter();
 
 #endif

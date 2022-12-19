@@ -337,24 +337,53 @@ void read_gen_3_data(){
         
 }
 
+const u8 sprite_palettes_bin[];
+const u32 sprite_palettes_bin_size;
+
+void init_oam_palette(){
+    u16* sprite_palettes_bin_16 = (u16*)sprite_palettes_bin;
+    for(int i = 0; i < (sprite_palettes_bin_size>>1); i++)
+        SPRITE_PALETTE[i] = sprite_palettes_bin_16[i];
+}
+
+#define OAM 0x7000000
+
 int main(void)
 {
     int val = 0;
     u16 keys;
     enum MULTIBOOT_RESULTS result;
     
+    init_oam_palette();
+    init_sprite_counter();
     irqInit();
     irqEnable(IRQ_VBLANK);
     irqSet(IRQ_SERIAL, sio_handle_irq_slave);
     irqEnable(IRQ_SERIAL);
 
     consoleDemoInit();
+    REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     
     iprintf("\x1b[2J");
     
     read_gen_3_data();
     
-    while(1){}
+    u8 curr_frame = 0;
+    while(1){
+        VBlankIntrWait();
+        curr_frame++;
+        if(curr_frame == 8) {
+            for(int i = 0; i < get_sprite_counter(); i++) {
+                u16 obj_data_2 = *((u16*)(OAM+4+(i*8)));
+                if(obj_data_2 & 0x10)
+                    obj_data_2 &= ~0x10;
+                else
+                    obj_data_2 |= 0x10;
+                *((u16*)(OAM+4+(i*8))) = obj_data_2;
+            }
+            curr_frame = 0;
+        }
+    }
     start_gen2_slave();
     start_gen2();
     
