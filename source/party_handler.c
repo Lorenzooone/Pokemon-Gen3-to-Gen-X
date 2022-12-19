@@ -13,6 +13,7 @@ u8 positions[] = {0b11100100, 0b10110100, 0b11011000, 0b10011100, 0b01111000, 0b
 #define UNOWN_NUMBER 201
 #define UNOWN_B_START 415
 const u8 pokemon_names_bin[];
+const u8 sprites_cmp_bin[];
 
 const u8* get_pokemon_name(int index, u32 pid){
     if(index != UNOWN_NUMBER)
@@ -23,6 +24,19 @@ const u8* get_pokemon_name(int index, u32 pid){
         return &(pokemon_names_bin[index*NAME_SIZE]);
     else
         return &(pokemon_names_bin[(UNOWN_B_START+letter-1)*NAME_SIZE]);
+}
+
+const u8* get_pokemon_sprite_pointer(int index, u32 pid){
+    u16* sprites_cmp_bin_16 = (u16*)sprites_cmp_bin;
+    u32 position = sprites_cmp_bin_16[0];
+    if(index != UNOWN_NUMBER)
+        return &(sprites_cmp_bin[(sprites_cmp_bin_16[1+index]<<2)+position]);
+
+    u8 letter = get_unown_letter_gen3(pid);
+    if(letter == 0)
+        return &(sprites_cmp_bin[(sprites_cmp_bin_16[1+index]<<2)+position]);
+    else
+        return &(sprites_cmp_bin[(sprites_cmp_bin_16[UNOWN_B_START+letter]<<2)+position]);
 }
 
 u8 get_unown_letter_gen3(u32 pid){
@@ -54,15 +68,19 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
         return 0;
     
     // Interpret the decrypted data
-    s32 index = DivMod(src->pid, 24);
-    if(index < 0)
-        index += 24;
+    u32 index_key = src->pid;
+    // Make use of modulo properties to get this to positives
+    while(index_key >= 0x80000000)
+        index_key -= 0x7FFFFFF8;
+    s32 index = DivMod(index_key, 24);
+    
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
     struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
     struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
     
     iprintf("Species: %s\n", get_pokemon_name(growth->species, src->pid));
+    iprintf("Sprite address: 0x%X\n", get_pokemon_sprite_pointer(growth->species, src->pid));
     
     return 1;
 }
