@@ -182,12 +182,21 @@ struct gen3_party parties_3[2];
 struct gen2_party parties_2[2];
 struct gen1_party parties_1[2];
 
+u8 current_bank;
+
+void init_bank(){
+    current_bank = 2;
+}
+
 void bank_check(u32 address){
     u8 bank = 0;
     if(address >= BANK_SIZE)
         bank = 1;
-    FLASH_BANK_CMD
-    *((vu8*)SRAM) = bank;
+    if(bank != current_bank) {
+        FLASH_BANK_CMD
+        *((vu8*)SRAM) = bank;
+        current_bank = bank;
+    }
 }
 
 u32 read_int(u32 address){
@@ -257,6 +266,8 @@ void read_party(int slot) {
             break;
         }
     iprintf("Party size: %d\n", parties_3[0].total);
+    for(int i = 0; i < parties_3[0].total; i++)
+        gen3_to_gen2(&parties_2[0].mons[0], &parties_3[0].mons[i]);
 }
 
 #define MAGIC_NUMBER 0x08012025
@@ -314,6 +325,7 @@ u8 get_slot(){
 
 void read_gen_3_data(){
     REG_WAITCNT |= 3;
+    init_bank();
     
     u8 slot = get_slot();
     if(slot == INVALID_SLOT) {

@@ -1,6 +1,10 @@
 #ifndef PARTY_HANDLER__
 #define PARTY_HANDLER__
 
+#define LAST_VALID_GEN_2 251
+#define LAST_VALID_GEN_1 151
+#define ENC_DATA_SIZE 48
+
 struct gen3_mon_growth {
     u16 species;
     u16 item;
@@ -38,7 +42,7 @@ struct gen3_mon {
     u8 marks;
     u16 checksum;
     u16 unk;
-    u32 enc_data[12];
+    u32 enc_data[ENC_DATA_SIZE>>2];
     u32 status;
     u8 level;
     u8 pokerus_rem;
@@ -99,5 +103,7 @@ struct gen1_party {
     u8 total;
     struct gen1_mon mons[6];
 };
+
+u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src);
 
 #endif
