@@ -1,11 +1,33 @@
 #include <gba.h>
 #include "party_handler.h"
 
+u8 get_unown_letter_gen3(u32);
+
 // Order is G A E M, or M E A G reversed. These are their indexes.
 u8 positions[] = {0b11100100, 0b10110100, 0b11011000, 0b10011100, 0b01111000, 0b01101100,
                   0b11100001, 0b10110001, 0b11010010, 0b10010011, 0b01110010, 0b01100011,
                   0b11001001, 0b10001101, 0b11000110, 0b10000111, 0b01001110, 0b01001011,
                   0b00111001, 0b00101101, 0b00110110, 0b00100111, 0b00011110, 0b00011011};
+
+#define NAME_SIZE 11
+#define UNOWN_NUMBER 201
+#define UNOWN_B_START 415
+const u8 pokemon_names_bin[];
+
+const u8* get_pokemon_name(int index, u32 pid){
+    if(index != UNOWN_NUMBER)
+        return &(pokemon_names_bin[index*NAME_SIZE]);
+
+    u8 letter = get_unown_letter_gen3(pid);
+    if(letter == 0)
+        return &(pokemon_names_bin[index*NAME_SIZE]);
+    else
+        return &(pokemon_names_bin[(UNOWN_B_START+letter-1)*NAME_SIZE]);
+}
+
+u8 get_unown_letter_gen3(u32 pid){
+    return DivMod((pid & 3) + (((pid >> 8) & 3) << 2) + (((pid >> 16) & 3) << 4) + (((pid >> 24) & 3) << 6), 28);
+}
 
 u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
     // Decrypt the data
@@ -40,7 +62,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
     
-    iprintf("Species: %d\n", growth->species);
+    iprintf("Species: %s\n", get_pokemon_name(growth->species, src->pid));
     
     return 1;
 }
