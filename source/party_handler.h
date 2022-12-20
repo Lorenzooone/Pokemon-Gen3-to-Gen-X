@@ -1,8 +1,10 @@
 #ifndef PARTY_HANDLER__
 #define PARTY_HANDLER__
 
-#define LAST_VALID_GEN_2 251
-#define LAST_VALID_GEN_1 151
+#define LAST_VALID_GEN_2_MON 251
+#define LAST_VALID_GEN_1_MON 151
+#define LAST_VALID_GEN_2_MOVE 251
+#define LAST_VALID_GEN_1_MOVE 165
 #define ENC_DATA_SIZE 48
 
 struct gen3_mon_growth {

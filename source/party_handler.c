@@ -30,6 +30,8 @@ u8 sprite_counter;
 #define UNOWN_EX_LETTER 26
 #define UNOWN_I_LETTER 8
 #define UNOWN_V_LETTER 21
+const u8 pokemon_moves_pp_gen1_bin[];
+const u8 pokemon_moves_pp_gen2_bin[];
 const u8 pokemon_gender_bin[];
 const u8 pokemon_names_bin[];
 const u8 sprites_cmp_bin[];
@@ -143,7 +145,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
     
     // Validity checks
-    if(growth->species > LAST_VALID_GEN_2)
+    if(growth->species > LAST_VALID_GEN_2_MON)
         return 0;
     
     // Get shinyness for checks
@@ -169,6 +171,30 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
         if(is_shiny && (letter != UNOWN_I_LETTER) && (letter != UNOWN_V_LETTER))
             return 0;
     }
+    
+    // Start converting moves
+    u8 used_slots = 0;
+    for(int i = 0; i < 4; i++)
+    {
+        dst->moves[i] = 0;
+        dst->pps[i] = 0;
+    }
+    for(int i = 0; i < 4; i++)
+        if(attacks->moves[i] > 0 && attacks->moves[i] <= LAST_VALID_GEN_2_MOVE) {
+            u8 base_pp = pokemon_moves_pp_gen2_bin[attacks->moves[i]];
+            u8 bonus_pp = (growth->pp_bonuses >> (2*i)) & 3;
+            u8 base_increase_pp = Div(base_pp, 5);
+            base_pp += (base_increase_pp * bonus_pp);
+            if(base_pp >= 61)
+                base_pp = 61;
+            base_pp |= (bonus_pp << 6);
+            dst->pps[used_slots] = base_pp;
+            dst->moves[used_slots++] = attacks->moves[i];
+        }
+    
+    // No valid moves were found
+    if(used_slots == 0)
+        return 0;
     
     iprintf("Species: %s\n", get_pokemon_name(growth->species, src->pid, misc->ivs & EGG_FLAG));
     load_pokemon_sprite(growth->species, src->pid, misc->ivs & EGG_FLAG);
