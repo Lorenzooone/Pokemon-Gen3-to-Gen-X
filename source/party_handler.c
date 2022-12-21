@@ -31,7 +31,7 @@ u8 sprite_counter;
 #define UNOWN_I_LETTER 8
 #define UNOWN_V_LETTER 21
 const u8 pokemon_moves_pp_gen1_bin[];
-const u8 pokemon_moves_pp_gen2_bin[];
+const u8 pokemon_moves_pp_bin[];
 const u8 pokemon_gender_bin[];
 const u8 pokemon_names_bin[];
 const u8 sprites_cmp_bin[];
@@ -181,7 +181,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     }
     for(int i = 0; i < 4; i++)
         if(attacks->moves[i] > 0 && attacks->moves[i] <= LAST_VALID_GEN_2_MOVE) {
-            u8 base_pp = pokemon_moves_pp_gen2_bin[attacks->moves[i]];
+            u8 base_pp = pokemon_moves_pp_bin[attacks->moves[i]];
             u8 bonus_pp = (growth->pp_bonuses >> (2*i)) & 3;
             u8 base_increase_pp = Div(base_pp, 5);
             base_pp += (base_increase_pp * bonus_pp);
