@@ -1,11 +1,25 @@
 #ifndef PARTY_HANDLER__
 #define PARTY_HANDLER__
 
+#define LAST_VALID_GEN_3_MON 411
 #define LAST_VALID_GEN_2_MON 251
 #define LAST_VALID_GEN_1_MON 151
+#define LAST_VALID_GEN_3_MOVE 354
 #define LAST_VALID_GEN_2_MOVE 251
 #define LAST_VALID_GEN_1_MOVE 165
+#define LAST_VALID_GEN_3_ITEM 376
+#define MAX_LEVEL 100
+#define MIN_LEVEL 1
+#define BASE_FRIENDSHIP 70
 #define ENC_DATA_SIZE 48
+
+struct exp_level {
+    u32 exp_kind[6];
+};
+
+struct stats_gen_23 {
+    u8 stats[6];
+};
 
 struct gen3_mon_growth {
     u16 species;
@@ -30,7 +44,14 @@ struct gen3_mon_misc {
     u8 pokerus;
     u8 met_location;
     u16 origins_info;
-    u32 ivs;
+    u8 hp_ivs : 5;
+    u8 atk_ivs : 5;
+    u8 def_ivs : 5;
+    u8 spe_ivs : 5;
+    u8 spa_ivs : 5;
+    u8 spd_ivs : 5;
+    u8 is_egg : 1;
+    u8 ability : 1;
     u32 ribbons;
 };
 
