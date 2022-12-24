@@ -92,8 +92,10 @@ struct gen2_mon {
     u8 unused;
     u16 stats[7];
     u8 is_egg; // Extra byte of data we keep
-    u8 ot_name[10];
-    u8 nickname[10];
+    u8 ot_name[11]; // The last byte of all of these must be set to 0x50
+    u8 ot_name_jp[6];
+    u8 nickname[11];
+    u8 nickname_jp[6];
 };
 
 struct gen1_mon {
@@ -111,8 +113,10 @@ struct gen1_mon {
     u8 pps[4];
     u8 level;
     u16 stats[5];
-    u8 ot_name[10];
-    u8 nickname[10];
+    u8 ot_name[11]; // The last byte of all of these must be set to 0x50
+    u8 ot_name_jp[6];
+    u8 nickname[11];
+    u8 nickname_jp[6];
 };
 
 struct gen3_party {
