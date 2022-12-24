@@ -29,6 +29,8 @@ u8 sprite_counter;
 #define UNOWN_EX_LETTER 26
 #define UNOWN_I_LETTER 8
 #define UNOWN_V_LETTER 21
+#define INITIAL_MAIL_GEN3 121
+#define LAST_MAIL_GEN3 132
 const u8 pokemon_moves_pp_gen1_bin[];
 const u8 pokemon_moves_pp_bin[];
 const u8 pokemon_gender_bin[];
@@ -147,8 +149,15 @@ u16 swap_endian_short(u16 shrt) {
     return ((shrt & 0xFF00) >> 8) | ((shrt & 0xFF) << 8);
 }
 
+u32 swap_endian_int(u32 integer) {
+    return ((integer & 0xFF000000) >> 24) | ((integer & 0xFF) << 24) | ((integer & 0xFF0000) >> 8) | ((integer & 0xFF00) << 8);
+}
+
 u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     u32 decryption[ENC_DATA_SIZE>>2];
+    
+    if(src->is_bad_egg)
+        return 0;
     
     // Initial data decryption
     if(!decrypt_data(src, decryption))
@@ -165,6 +174,10 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
     struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
+    
+    // Item checks
+    if(growth->item >= INITIAL_MAIL_GEN3 && growth->item <= LAST_MAIL_GEN3)
+        return 0;
     
     // Validity checks
     if(growth->species > LAST_VALID_GEN_2_MON)

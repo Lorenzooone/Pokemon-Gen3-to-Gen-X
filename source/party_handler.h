@@ -60,7 +60,10 @@ struct gen3_mon {
     u32 ot_id;
     u8 nickname[10];
     u8 language;
-    u8 egg_name;
+    u8 is_bad_egg : 1;
+    u8 has_species : 1;
+    u8 use_egg_name : 1;
+    u8 unused : 5;
     u8 ot_name[7];
     u8 marks;
     u16 checksum;
