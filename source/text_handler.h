@@ -9,6 +9,12 @@
 #define GEN2_QUESTION 0xE6
 #define GENERIC_QUESTION 0x3F
 
+void text_generic_to_upper(u8*, u8*, u8, u8);
+
+u8 text_generic_is_same(u8*, u8*, u8, u8);
+u8 text_gen3_is_same(u8*, u8*, u8, u8);
+u8 text_gen2_is_same(u8*, u8*, u8, u8);
+
 u8 text_generic_count_question(u8*, u8);
 u8 text_gen3_count_question(u8*, u8);
 u8 text_gen2_count_question(u8*, u8);
