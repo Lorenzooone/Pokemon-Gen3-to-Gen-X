@@ -1,5 +1,6 @@
 #include <gba.h>
 #include "party_handler.h"
+#include "text_handler.h"
 
 u8 get_unown_letter_gen3(u32);
 u8 get_pokemon_gender_kind_gen3(int, u32, u32);
