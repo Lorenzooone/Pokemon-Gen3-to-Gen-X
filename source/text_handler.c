@@ -79,6 +79,48 @@ u8 text_general_is_same(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 terminato
     
 }
 
+void text_general_copy(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 terminator) {
+    for(int i = 0; (i < src_size) && (i < dst_size); i++) {
+        if(src[i] == terminator) {
+            dst[i] = terminator;
+            break;
+        }
+        dst[i] = src[i];
+    }
+}
+
+void text_general_terminator_fill(u8* src, u8 src_size, u8 terminator) {
+    for(int i = 0; i < src_size; i++)
+        src[i] = terminator;    
+}
+
+void text_generic_terminator_fill(u8* src, u8 src_size) {
+    text_general_terminator_fill(src, src_size, GENERIC_EOL);
+}
+
+void text_gen3_terminator_fill(u8* src, u8 src_size) {
+    text_general_terminator_fill(src, src_size, GEN3_EOL);
+}
+
+void text_gen2_terminator_fill(u8* src, u8 src_size) {
+    text_general_terminator_fill(src, src_size, GEN2_EOL);
+}
+
+void text_generic_copy(u8* src, u8* dst, u8 src_size, u8 dst_size) {
+    text_general_terminator_fill(dst, dst_size, GENERIC_EOL);
+    text_general_copy(src, dst, src_size, dst_size, GENERIC_EOL);
+}
+
+void text_gen3_copy(u8* src, u8* dst, u8 src_size, u8 dst_size) {
+    text_general_terminator_fill(dst, dst_size, GEN3_EOL);
+    text_general_copy(src, dst, src_size, dst_size, GEN3_EOL);
+}
+
+void text_gen2_copy(u8* src, u8* dst, u8 src_size, u8 dst_size) {
+    text_general_terminator_fill(dst, dst_size, GEN2_EOL);
+    text_general_copy(src, dst, src_size, dst_size, GEN2_EOL);
+}
+
 u8 text_generic_is_same(u8* src, u8* dst, u8 src_size, u8 dst_size) {
     return text_general_is_same(src, dst, src_size, dst_size, GENERIC_EOL);
 }

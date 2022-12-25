@@ -11,6 +11,14 @@
 
 void text_generic_to_upper(u8*, u8*, u8, u8);
 
+void text_generic_terminator_fill(u8*, u8);
+void text_gen3_terminator_fill(u8*, u8);
+void text_gen2_terminator_fill(u8*, u8);
+
+void text_generic_copy(u8*, u8*, u8, u8);
+void text_gen3_copy(u8*, u8*, u8, u8);
+void text_gen2_copy(u8*, u8*, u8, u8);
+
 u8 text_generic_is_same(u8*, u8*, u8, u8);
 u8 text_gen3_is_same(u8*, u8*, u8, u8);
 u8 text_gen2_is_same(u8*, u8*, u8, u8);
