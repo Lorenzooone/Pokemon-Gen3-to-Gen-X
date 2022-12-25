@@ -61,14 +61,14 @@ struct gen3_mon_misc {
     u8 pokerus;
     u8 met_location;
     u16 origins_info;
-    u8 hp_ivs : 5;
-    u8 atk_ivs : 5;
-    u8 def_ivs : 5;
-    u8 spe_ivs : 5;
-    u8 spa_ivs : 5;
-    u8 spd_ivs : 5;
-    u8 is_egg : 1;
-    u8 ability : 1;
+    u32 hp_ivs : 5;
+    u32 atk_ivs : 5;
+    u32 def_ivs : 5;
+    u32 spe_ivs : 5;
+    u32 spa_ivs : 5;
+    u32 spd_ivs : 5;
+    u32 is_egg : 1;
+    u32 ability : 1;
     u32 ribbons;
 };
 
