@@ -90,7 +90,7 @@ struct gen3_mon {
     u8 level;
     u8 pokerus_rem;
     u16 stats[7];
-};
+} __attribute__ ((packed)) __attribute__ ((aligned(4)));
 
 struct gen2_mon {
     u8 species;
@@ -98,7 +98,6 @@ struct gen2_mon {
     u8 moves[MOVES_SIZE];
     u16 ot_id;
     u8 exp[3];
-    u8 extra_padding_0;   // 11
     u16 evs[5];
     u16 ivs;
     u8 pps[MOVES_SIZE];
@@ -108,39 +107,34 @@ struct gen2_mon {
     u8 level;
     u8 status;
     u8 unused;
-    u8 extra_padding_1;   // 33
     u16 stats[7];
     u8 is_egg; // Extra byte of data we keep
     u8 ot_name[STRING_GEN2_INT_SIZE]; // The last byte of all of these must be set to 0x50
     u8 ot_name_jp[STRING_GEN2_JP_SIZE];
     u8 nickname[STRING_GEN2_INT_SIZE];
     u8 nickname_jp[STRING_GEN2_JP_SIZE];
-};
+} __attribute__ ((packed)) __attribute__ ((aligned(2)));
 
 struct gen1_mon {
     u8 species;
-    u8 extra_padding_0;   // 1
     u16 curr_hp;
     u8 bad_level;
     u8 status;
     u8 type[2];
     u8 item;
     u8 moves[MOVES_SIZE];
-    u8 extra_padding_1;   // 13
     u16 ot_id;
     u8 exp[3];
-    u8 extra_padding_2;   // 19
     u16 evs[5];
     u16 ivs;
     u8 pps[MOVES_SIZE];
     u8 level;
-    u8 extra_padding_3;   // 37
     u16 stats[5];
     u8 ot_name[STRING_GEN2_INT_SIZE]; // The last byte of all of these must be set to 0x50
     u8 ot_name_jp[STRING_GEN2_JP_SIZE];
     u8 nickname[STRING_GEN2_INT_SIZE];
     u8 nickname_jp[STRING_GEN2_JP_SIZE];
-};
+} __attribute__ ((packed)) __attribute__ ((aligned(2)));
 
 struct gen3_party {
     u32 total;
