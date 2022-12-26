@@ -584,8 +584,14 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
     for(int i = 0; i < GEN2_STATS_TOTAL; i++)
         dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL ? EVS_TOTAL-1 : i])));
     
+    // Extra byte for egg data
     dst->is_egg = is_egg_gen3(src, misc);
+    
+    // Store egg cycles
+    if(dst->is_egg)
+        dst->friendship = growth->friendship;
 
+    // Text conversions
     convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, dst->is_egg, 1);
 
     load_pokemon_sprite(growth->species, src->pid, misc->is_egg);
@@ -657,6 +663,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon* src, u32 trainer_id) {
     for(int i = 0; i < GEN1_STATS_TOTAL; i++)
         dst->stats[i] = swap_endian_short(calc_stats_gen1(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i])));
 
+    // Text conversions
     convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, 0, 0);
 
     return 1;
