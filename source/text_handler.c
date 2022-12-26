@@ -89,10 +89,27 @@ void text_general_copy(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 terminator
     }
 }
 
+void text_general_concat(u8* src, u8* src2, u8* dst, u8 src_size, u8 src2_size, u8 dst_size, u8 terminator) {
+    int i = 0;
+    for(; (i < src_size) && (i < dst_size); i++) {
+        if(src[i] == terminator) {
+            break;
+        }
+        dst[i] = src[i];
+    }
+    for(int j = 0; (j < src2_size) && ((i+j) < dst_size); j++) {
+        if(src2[j] == terminator) {
+            dst[i+j] = terminator;
+            break;
+        }
+        dst[i+j] = src2[j];
+    }
+}
+
 void text_general_replace(u8* src, u8 src_size, u8 base_char, u8 new_char, u8 terminator) {
     u8 replaced_once = 0;
     for(int i = 0; i < src_size; i++) {
-        if(src[i] == terminator)
+        if((src[i] == terminator) && (base_char != terminator))
             break;
         if(src[i] == base_char) {
             src[i] = new_char;
@@ -106,6 +123,18 @@ void text_general_replace(u8* src, u8 src_size, u8 base_char, u8 new_char, u8 te
 void text_general_terminator_fill(u8* src, u8 src_size, u8 terminator) {
     for(int i = 0; i < src_size; i++)
         src[i] = terminator;    
+}
+
+void text_generic_concat(u8* src, u8* src2, u8* dst, u8 src_size, u8 src2_size, u8 dst_size) {
+    text_general_concat(src, src2, dst, src_size, src2_size, dst_size, GENERIC_EOL);
+}
+
+void text_gen3_concat(u8* src, u8* src2, u8* dst, u8 src_size, u8 src2_size, u8 dst_size) {
+    text_general_concat(src, src2, dst, src_size, src2_size, dst_size, GEN3_EOL);
+}
+
+void text_gen2_concat(u8* src, u8* src2, u8* dst, u8 src_size, u8 src2_size, u8 dst_size) {
+    text_general_concat(src, src2, dst, src_size, src2_size, dst_size, GEN2_EOL);
 }
 
 void text_generic_terminator_fill(u8* src, u8 src_size) {

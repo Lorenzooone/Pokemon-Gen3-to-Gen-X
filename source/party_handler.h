@@ -156,6 +156,7 @@ struct gen1_party {
 
 u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon*, u32);
 u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon*, u32);
-void load_pokemon_sprite_raw(struct gen3_mon*, u16* obj_attrs);
+const u8* get_pokemon_name_raw(struct gen3_mon*);
+void load_pokemon_sprite_raw(struct gen3_mon*, u16, u16);
 
 #endif

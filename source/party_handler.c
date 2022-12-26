@@ -91,39 +91,7 @@ const u8* get_pokemon_name(int index, u32 pid, u8 is_egg){
     return &(pokemon_names_bin[get_mon_index(index, pid, is_egg)*NAME_SIZE]);
 }
 
-const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp){
-    if(is_jp)
-        return &(gen2_names_jap_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_JP_CAP]);
-    return &(gen2_names_international_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_INT_CAP]);
-}
-
-const u8* get_pokemon_name_gen1(int index, u8 is_jp){
-    if(is_jp)
-        return &(gen2_names_jap_bin[get_mon_index_gen2_1(index)*STRING_GEN2_JP_CAP]);
-    return &(gen2_names_international_bin[get_mon_index_gen2_1(index)*STRING_GEN2_INT_CAP]);
-}
-
-const u8* get_pokemon_sprite_pointer(int index, u32 pid, u8 is_egg){
-    u16* sprites_cmp_bin_16 = (u16*)sprites_cmp_bin;
-    return &(sprites_cmp_bin[(sprites_cmp_bin_16[1+get_mon_index(index, pid, is_egg)]<<2)+sprites_cmp_bin_16[0]]);
-}
-
-u8 get_palette_references(int index, u32 pid, u8 is_egg){
-    return palettes_references_bin[get_mon_index(index, pid, is_egg)];
-}
-
-void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u16* obj_attrs){
-    u8 sprite_counter = get_sprite_counter();
-    u32 address = get_pokemon_sprite_pointer(index, pid, is_egg);
-    u8 palette = get_palette_references(index, pid, is_egg);
-    LZ77UnCompVram(address, get_vram_pos());
-    obj_attrs[0] = (SCREEN_HEIGHT - 32);
-    obj_attrs[1] = (32*sprite_counter)|(1<<15);
-    obj_attrs[2] = (32*sprite_counter)|(palette<<12);
-    inc_sprite_counter();
-}
-
-void load_pokemon_sprite_raw(struct gen3_mon* src, u16* obj_attrs){
+const u8* get_pokemon_name_raw(struct gen3_mon* src){
     u32 decryption[ENC_DATA_SIZE>>2];
     
     // Initial data decryption
@@ -148,7 +116,65 @@ void load_pokemon_sprite_raw(struct gen3_mon* src, u16* obj_attrs){
     if(src->is_bad_egg)
         return;
     
-    load_pokemon_sprite(growth->species, src->pid, is_egg_gen3(src, misc), obj_attrs);
+    return &(pokemon_names_bin[get_mon_index(growth->species, src->pid, is_egg_gen3(src, misc))*NAME_SIZE]);
+}
+
+const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp){
+    if(is_jp)
+        return &(gen2_names_jap_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_JP_CAP]);
+    return &(gen2_names_international_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_INT_CAP]);
+}
+
+const u8* get_pokemon_name_gen1(int index, u8 is_jp){
+    if(is_jp)
+        return &(gen2_names_jap_bin[get_mon_index_gen2_1(index)*STRING_GEN2_JP_CAP]);
+    return &(gen2_names_international_bin[get_mon_index_gen2_1(index)*STRING_GEN2_INT_CAP]);
+}
+
+const u8* get_pokemon_sprite_pointer(int index, u32 pid, u8 is_egg){
+    u16* sprites_cmp_bin_16 = (u16*)sprites_cmp_bin;
+    return &(sprites_cmp_bin[(sprites_cmp_bin_16[1+get_mon_index(index, pid, is_egg)]<<2)+sprites_cmp_bin_16[0]]);
+}
+
+u8 get_palette_references(int index, u32 pid, u8 is_egg){
+    return palettes_references_bin[get_mon_index(index, pid, is_egg)];
+}
+
+void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u16 y, u16 x){
+    u8 sprite_counter = get_sprite_counter();
+    u32 address = get_pokemon_sprite_pointer(index, pid, is_egg);
+    u8 palette = get_palette_references(index, pid, is_egg);
+    LZ77UnCompVram(address, get_vram_pos());
+    set_attributes(y, x |(1<<15), (32*sprite_counter)|(palette<<12));
+    inc_sprite_counter();
+}
+
+void load_pokemon_sprite_raw(struct gen3_mon* src, u16 y, u16 x){
+    u32 decryption[ENC_DATA_SIZE>>2];
+    
+    // Initial data decryption
+    if(!decrypt_data(src, decryption))
+        return;
+    
+    // Interpret the decrypted data
+    u32 index_key = src->pid;
+    // Make use of modulo properties to get this to positives
+    while(index_key >= 0x80000000)
+        index_key -= 0x7FFFFFF8;
+    s32 index = DivMod(index_key, 24);
+    
+    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
+    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
+    
+    // Species checks
+    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0))
+        return;
+
+    // Bad egg checks
+    if(src->is_bad_egg)
+        return;
+    
+    load_pokemon_sprite(growth->species, src->pid, is_egg_gen3(src, misc), y, x);
 }
 
 u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg){

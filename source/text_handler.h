@@ -1,6 +1,8 @@
 #ifndef TEXT_HANDLER__
 #define TEXT_HANDLER__
 
+#define GENERIC_SPACE 0x20
+
 #define GEN3_EOL 0xFF
 #define GEN2_EOL 0x50
 #define GENERIC_EOL 0
@@ -10,6 +12,10 @@
 #define GENERIC_QUESTION 0x3F
 
 void text_generic_to_upper(u8*, u8*, u8, u8);
+
+void text_generic_concat(u8*, u8*, u8*, u8, u8, u8);
+void text_gen3_concat(u8*, u8*, u8*, u8, u8, u8);
+void text_gen2_concat(u8*, u8*, u8*, u8, u8, u8);
 
 void text_generic_replace(u8*, u8, u8, u8);
 void text_gen3_replace(u8*, u8, u8, u8);

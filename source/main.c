@@ -26,6 +26,8 @@
 // --------------------------------------------------------------------
 
 const char* save_strings[] = {"SRAM 64KiB", "Flash 64 KiB", "Flash 128 KiB", "Inside ROM"};
+const char* person_strings[] = {" - You", " - Other"};
+const char* actor_strings[] = {"Master", "Slave"};
 const char* region_strings[] = {"Int", "Jap"};
 const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
 
@@ -176,11 +178,15 @@ void start_gen2_slave(void)
 #define FRLG_PARTY 0x34
 
 #include "party_handler.h"
+#include "text_handler.h"
 #include "sprite_handler.h"
 
-u8 trainer_name[8];
+u8 trainer_name[OT_NAME_GEN3_SIZE+1];
+u8 other_name[OT_NAME_GEN3_SIZE+1];
 u8 trainer_gender;
 u32 trainer_id;
+u8 is_gen2_valid;
+u8 is_gen1_valid;
 struct gen3_party parties_3[2];
 struct gen2_party parties_2[2];
 struct gen1_party parties_1[2];
@@ -244,7 +250,7 @@ u32 read_game_code(int slot) {
 
     for(int i = 0; i < SECTION_TOTAL; i++)
         if(read_section_id(slot, i) == SECTION_TRAINER_INFO_ID) {
-            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), &trainer_name[0], 8);
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), trainer_name, OT_NAME_GEN3_SIZE+1);
             copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 8, &trainer_gender, 1);
             copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 10, (u8*)&trainer_id, 4);
             game_code = read_int((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SECTION_GAME_CODE);
@@ -272,13 +278,17 @@ void read_party(int slot) {
         parties_3[0].total = PARTY_SIZE;
     u8 curr_slot = 0;
     for(int i = 0; i < parties_3[0].total; i++)
-        if(gen3_to_gen2(&parties_2[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id))
+        if(gen3_to_gen2(&parties_2[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id)) {
             curr_slot++;
+            is_gen2_valid |= (1<<i);
+        }
     parties_2[0].total = curr_slot;
     curr_slot = 0;
     for(int i = 0; i < parties_3[0].total; i++)
-        if(gen3_to_gen1(&parties_1[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id))
+        if(gen3_to_gen1(&parties_1[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id)) {
             curr_slot++;
+            is_gen1_valid |= (1<<i);
+        }
     parties_1[0].total = curr_slot;
 }
 
@@ -341,6 +351,11 @@ void read_gen_3_data(){
     parties_1[0].total = 0;
     parties_2[0].total = 0;
     parties_3[0].total = 0;
+    is_gen2_valid = 0;
+    is_gen1_valid = 0;
+    parties_1[1].total = 0;
+    parties_2[1].total = 0;
+    parties_3[1].total = 0;
     
     u8 slot = get_slot();
     if(slot == INVALID_SLOT) {
@@ -348,6 +363,11 @@ void read_gen_3_data(){
     }
     
     read_party(slot);
+    
+    // Terminate the names
+    trainer_name[OT_NAME_GEN3_SIZE] = GEN3_EOL;
+    for(int i = 0; i < (OT_NAME_GEN3_SIZE+1); i++)
+        other_name[i] = GEN3_EOL;
 }
 
 u8 get_valid_options() {
@@ -397,10 +417,75 @@ u8 get_number_of_lower_options(u8* options, u8 curr_option) {
     return curr_num;
 }
 
+void fill_trade_options(u8* options, u8 curr_gen, u8 is_own) {
+    struct gen3_party* party = &(parties_3[1]);
+    if(is_own)
+        party = &(parties_3[0]);
+    for(int i = 0; i < party->total; i++)
+        options[i] = i;
+    for(int i = party->total; i < PARTY_SIZE; i++)
+        options[i] = 0xFF;
+    if(is_own && (curr_gen == 1 || curr_gen == 2)) {
+        u8 valid_options = is_gen2_valid;
+        if(curr_gen == 1)
+            valid_options = is_gen1_valid;
+        u8 curr_slot = 0;
+        for(int i = 0; i < party->total; i++)
+            if(valid_options & (1 << i))
+                options[curr_slot++] = i;
+        for(int i = curr_slot; i < PARTY_SIZE; i++)
+            options[i] = 0xFF;
+    }
+}
+
+#define X_TILES 30
+#define BASE_Y_SPRITE_TRADE_MENU 0
+#define BASE_Y_SPRITE_INCREMENT_TRADE_MENU 24
+#define BASE_X_SPRITE_TRADE_MENU 8
+
+void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
+    if(!update)
+        return;
+    
+    iprintf("\x1b[2J");
+    
+    u8 printable_string[X_TILES+1];
+    u8 tmp_buffer[X_TILES+1];
+    
+    text_generic_terminator_fill(printable_string, X_TILES+1);
+    text_gen3_to_generic(trainer_name, tmp_buffer, OT_NAME_GEN3_SIZE+1, X_TILES, 0, 0);
+    text_generic_concat(tmp_buffer, person_strings[0], printable_string, OT_NAME_GEN3_SIZE, (X_TILES >> 1)-OT_NAME_GEN3_SIZE, X_TILES>>1);
+    text_gen3_to_generic(other_name, tmp_buffer, OT_NAME_GEN3_SIZE+1, X_TILES, 0, 0);
+    text_generic_concat(tmp_buffer, person_strings[1], printable_string + (X_TILES >> 1), OT_NAME_GEN3_SIZE, (X_TILES >> 1)-OT_NAME_GEN3_SIZE, X_TILES>>1);
+    text_generic_replace(printable_string, X_TILES, GENERIC_EOL, GENERIC_SPACE);
+    iprintf("%s", printable_string);
+
+    if(load_sprites)
+        reset_sprites_to_cursor();
+
+    u8 options[2][PARTY_SIZE];
+    fill_trade_options(options[0], curr_gen, 1);
+    fill_trade_options(options[1], curr_gen, 0);
+    for(int i = 0; i < PARTY_SIZE; i++) {
+        text_generic_terminator_fill(printable_string, X_TILES+1);
+        for(int j = 0; j < 2; j++)
+            if(options[j][i] != 0xFF) {
+                struct gen3_mon* mon = &parties_3[j].mons[options[j][i]];
+                text_generic_copy(get_pokemon_name_raw(mon), printable_string + 5 + ((X_TILES>>1)*j), NAME_SIZE, (X_TILES>>1) - 5);
+                if(load_sprites)
+                    load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (((X_TILES >> 1) << 3)*j) + BASE_X_SPRITE_TRADE_MENU);
+            }
+        text_generic_replace(printable_string, X_TILES, GENERIC_EOL, GENERIC_SPACE);
+        iprintf("\n%s\n", printable_string);
+    }
+    iprintf("  Cancel");
+    
+}
+
 #define BASE_Y_CURSOR_MAIN_MENU 8
 #define BASE_Y_CURSOR_INCREMENT_MAIN_MENU 16
 
-void print_main_menu(u8 update, u8 curr_gen, u8 is_jp) {
+void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
     if(!update)
         return;
     
@@ -410,7 +495,7 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp) {
     iprintf("\x1b[2J");
     
     if(!valid_options)
-        iprintf("\n  Error reading the data!\n\n\n\n\n");
+        iprintf("\n  Error reading the data!\n\n\n\n\n\n\n");
     else {
         fill_options_array(options);
         if(curr_gen >= 3)
@@ -432,6 +517,10 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp) {
         }
         else
             iprintf("\n\n");
+        if(!is_master)
+            iprintf("\n  Act as:  %s>\n", actor_strings[1]);
+        else
+            iprintf("\n  Act as: <%s\n", actor_strings[0]);
         iprintf("\n  Start Trade\n");
     }
     iprintf("\n  Send Multiboot");
@@ -439,7 +528,7 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp) {
 
 #define START_MULTIBOOT 0x49
 
-u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8* region) {
+u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8* region, u8* master) {
 
     u8 options[3];
     fill_options_array(options);
@@ -473,7 +562,7 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
                     (*cursor_y_pos) += 1;
             }
             else if(keys & KEY_UP) {
-                (*cursor_y_pos) = 3;
+                (*cursor_y_pos) = 4;
             }
             break;
         case 1:
@@ -503,18 +592,38 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
             }
             break;
         case 2:
-            if((keys & KEY_A) && (get_valid_options())) {
-                return curr_gen;
+            if((keys & KEY_RIGHT) && (!(*master))) {
+                (*master) = 1;
+                (*update) = 1;
             }
-            else if(keys & KEY_DOWN) {
+            else if((keys & KEY_LEFT) && ((*master))) {
+                (*master) = 0;
+                (*update) = 1;
+            }
+            else if((keys & KEY_A) && (!(*master))) {
+                (*master) = 1;
+                (*update) = 1;
+            }
+            else if((keys & KEY_A) && ((*master))) {
+                (*master) = 0;
+                (*update) = 1;
+            }
+            else if(keys & KEY_DOWN)
                 (*cursor_y_pos) += 1;
-            }
             else if(keys & KEY_UP) {
                 if(curr_gen == 3)
                     (*cursor_y_pos) -= 2;
                 else
                     (*cursor_y_pos) -= 1;
             }
+            break;
+        case 3:
+            if((keys & KEY_A) && (get_valid_options()))
+                return curr_gen;
+            else if(keys & KEY_DOWN)
+                (*cursor_y_pos) += 1;
+            else if(keys & KEY_UP)
+                (*cursor_y_pos) -= 1;
             break;
         default:
             if(keys & KEY_A) {
@@ -524,7 +633,7 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
                 (*cursor_y_pos) = 0;
             }
             else if((keys & KEY_UP) && (get_valid_options())) {
-                (*cursor_y_pos) = 2;
+                (*cursor_y_pos) = 3;
             }
             break;
     }
@@ -572,12 +681,13 @@ int main(void)
     u8 update = 1;
     u8 target = 1;
     u8 region = 0;
+    u8 master = 0;
     u8 cursor_y_pos = 0;
     
     if(!get_valid_options())
-        cursor_y_pos = 3;
+        cursor_y_pos = 4;
     
-    print_main_menu(update, target, region);
+    print_main_menu(update, target, region, master);
     
     init_cursor(cursor_y_pos);
     u8 counter = 0;
@@ -595,8 +705,8 @@ int main(void)
             scanKeys();
             keys = keysDown();
         }
-        handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region);
-        print_main_menu(update, target, region);
+        handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
+        print_main_menu(update, target, region, master);
         update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
     }
 
