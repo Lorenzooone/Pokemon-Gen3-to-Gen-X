@@ -89,6 +89,20 @@ void text_general_copy(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 terminator
     }
 }
 
+void text_general_replace(u8* src, u8 src_size, u8 base_char, u8 new_char, u8 terminator) {
+    u8 replaced_once = 0;
+    for(int i = 0; i < src_size; i++) {
+        if(src[i] == terminator)
+            break;
+        if(src[i] == base_char) {
+            src[i] = new_char;
+            replaced_once = 1;
+        }
+        if(replaced_once && (new_char == terminator))
+            src[i] = terminator;
+    }
+}
+
 void text_general_terminator_fill(u8* src, u8 src_size, u8 terminator) {
     for(int i = 0; i < src_size; i++)
         src[i] = terminator;    
@@ -104,6 +118,18 @@ void text_gen3_terminator_fill(u8* src, u8 src_size) {
 
 void text_gen2_terminator_fill(u8* src, u8 src_size) {
     text_general_terminator_fill(src, src_size, GEN2_EOL);
+}
+
+void text_generic_replace(u8* src, u8 src_size, u8 base_char, u8 new_char) {
+    text_general_replace(src, src_size, base_char, new_char, GENERIC_EOL);
+}
+
+void text_gen3_replace(u8* src, u8 src_size, u8 base_char, u8 new_char) {
+    text_general_replace(src, src_size, base_char, new_char, GEN3_EOL);
+}
+
+void text_gen2_replace(u8* src, u8 src_size, u8 base_char, u8 new_char) {
+    text_general_replace(src, src_size, base_char, new_char, GEN2_EOL);
 }
 
 void text_generic_copy(u8* src, u8* dst, u8 src_size, u8 dst_size) {

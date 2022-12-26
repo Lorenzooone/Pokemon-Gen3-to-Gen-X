@@ -11,6 +11,10 @@
 
 void text_generic_to_upper(u8*, u8*, u8, u8);
 
+void text_generic_replace(u8*, u8, u8, u8);
+void text_gen3_replace(u8*, u8, u8, u8);
+void text_gen2_replace(u8*, u8, u8, u8);
+
 void text_generic_terminator_fill(u8*, u8);
 void text_gen3_terminator_fill(u8*, u8);
 void text_gen2_terminator_fill(u8*, u8);

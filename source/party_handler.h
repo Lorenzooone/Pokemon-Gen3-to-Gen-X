@@ -10,6 +10,8 @@
 #define LAST_VALID_GEN_3_ITEM 376
 
 #define MR_MIME_SPECIES 122
+#define GEN2_DOT 0xE8
+#define GEN1_DOT 0xF2
 
 #define MAX_LEVEL 100
 #define MIN_LEVEL 1
@@ -107,7 +109,8 @@ struct gen2_mon {
     u8 level;
     u8 status;
     u8 unused;
-    u16 stats[7];
+    u16 curr_hp;
+    u16 stats[6];
     u8 is_egg; // Extra byte of data we keep
     u8 ot_name[STRING_GEN2_INT_SIZE]; // The last byte of all of these must be set to 0x50
     u8 ot_name_jp[STRING_GEN2_JP_SIZE];
@@ -151,7 +154,8 @@ struct gen1_party {
     struct gen1_mon mons[PARTY_SIZE];
 };
 
-u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src);
+u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon*, u32);
+u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon*, u32);
 void init_sprite_counter();
 u8 get_sprite_counter();
 

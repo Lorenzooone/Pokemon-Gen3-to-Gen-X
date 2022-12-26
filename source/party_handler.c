@@ -51,6 +51,7 @@ const u8 pokemon_types_gen1_bin[];
 const u8 pokemon_natures_bin[];
 const struct exp_level* exp_table = (const struct exp_level*)exp_table_bin;
 const struct stats_gen_23* stats_table = (const struct stats_gen_23*)pokemon_stats_bin;
+const struct stats_gen_1* stats_table_gen1 = (const struct stats_gen_1*)pokemon_stats_gen1_bin;
 
 u16 get_mon_index(int index, u32 pid, u8 is_egg){
     if(index > LAST_VALID_GEN_3_MON)
@@ -130,6 +131,34 @@ u8 get_palette_references(int index, u32 pid, u8 is_egg){
     return palettes_references_bin[get_mon_index(index, pid, is_egg)];
 }
 
+u8 is_egg_gen3(struct gen3_mon* src, struct gen3_mon_misc* misc){
+    // In case it ends up being more complex, for some reason
+    return misc->is_egg;
+}
+
+u8 is_shiny_gen3(u32 pid, u32 ot_id, u8 is_egg, u32 trainer_id){
+    // The one who hatches the egg influences the shinyness
+    if(is_egg)
+        ot_id = trainer_id;
+    if(((pid & 0xFFFF) ^ (pid >> 16) ^ (ot_id & 0xFFFF) ^ (ot_id >> 16)) < 8)
+        return 1;
+    return 0;
+}
+
+u8 is_shiny_gen3_raw(struct gen3_mon* src, u8 is_egg, u32 trainer_id){
+    return is_shiny_gen3(src->pid, src->ot_id, is_egg, trainer_id);
+}
+
+u8 is_shiny_gen2(u8 atk_ivs, u8 def_ivs, u8 spa_ivs, u8 spe_ivs){
+    if((atk_ivs & 2) == 2 && def_ivs == 10 && spa_ivs == 10 && spe_ivs == 10)
+        return 1;
+    return 0;
+}
+
+u8 is_shiny_gen2_raw(struct gen2_mon* src){
+    return is_shiny_gen2((src->ivs >> 4) & 0xF, src->ivs & 0xF, (src->ivs >> 8) & 0xF, (src->ivs >> 12) & 0xF);
+}
+
 void init_sprite_counter(){
     sprite_counter = 0;
 }
@@ -175,10 +204,51 @@ u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
 }
 
 #define HP_STAT_INDEX 0
+#define ATK_STAT_INDEX 1
+#define DEF_STAT_INDEX 2
+#define SPE_STAT_INDEX 3
+#define GEN2_STATS_TOTAL 6
+#define GEN1_STATS_TOTAL 5
+
+u8 index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
+
+u8 get_iv_gen2(u16 ivs, u8 stat_index) {
+    u8 atk_ivs = (ivs >> 4) & 0xF;
+    u8 def_ivs = ivs & 0xF;
+    u8 spe_ivs = (ivs >> 12) & 0xF;
+    u8 spa_ivs = (ivs >> 8) & 0xF;
+    switch(stat_index) {
+        case HP_STAT_INDEX:
+            return ((atk_ivs & 1) << 3) | ((def_ivs & 1) << 2) | ((spe_ivs & 1) << 1) | (spa_ivs & 1);
+        case ATK_STAT_INDEX:
+            return atk_ivs;
+        case DEF_STAT_INDEX:
+            return def_ivs;
+        case SPE_STAT_INDEX:
+            return spe_ivs;
+        default:
+            return spa_ivs;
+    }
+}
+
+u16 calc_stats_gen1(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
+    if(species > LAST_VALID_GEN_1_MON)
+        species = 0;
+    species =  get_mon_index_gen1(species);
+    if(stat_index >= GEN1_STATS_TOTAL)
+        stat_index = GEN1_STATS_TOTAL-1;
+    u16 base = 5;
+    if(stat_index == HP_STAT_INDEX)
+        base = level + 10;
+    return base + Div(((stats_table_gen1[species].stats[stat_index] + iv) + (Sqrt(stat_exp) >> 2)) * level, 100);
+}
 
 u16 calc_stats_gen2(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     if(species > LAST_VALID_GEN_2_MON)
         species = 0;
+    if(stat_index >= GEN2_STATS_TOTAL)
+        stat_index = GEN2_STATS_TOTAL-1;
+    stat_index = index_conversion_gen2[stat_index];
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
@@ -188,6 +258,8 @@ u16 calc_stats_gen2(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
 u16 calc_stats_gen3(u16 species, u8 stat_index, u8 level, u8 iv, u8 ev, u8 nature) {
     if(species > LAST_VALID_GEN_3_MON)
         species = 0;
+    if(stat_index >= GEN2_STATS_TOTAL)
+        stat_index = GEN2_STATS_TOTAL-1;
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
@@ -210,46 +282,22 @@ u32 swap_endian_int(u32 integer) {
     return ((integer & 0xFF000000) >> 24) | ((integer & 0xFF) << 24) | ((integer & 0xFF0000) >> 8) | ((integer & 0xFF00) << 8);
 }
 
-u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
-    u32 decryption[ENC_DATA_SIZE>>2];
-    
+u8 validate_mon_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_egg, u8 is_gen2) {
+    u8 last_valid_mon = LAST_VALID_GEN_1_MON;
+    if(is_gen2)
+        last_valid_mon = LAST_VALID_GEN_2_MON;
+
+    // Bad egg checks
     if(src->is_bad_egg)
         return 0;
-    
-    // Initial data decryption
-    if(!decrypt_data(src, decryption))
-        return 0;
-    
-    // Interpret the decrypted data
-    u32 index_key = src->pid;
-    // Make use of modulo properties to get this to positives
-    while(index_key >= 0x80000000)
-        index_key -= 0x7FFFFFF8;
-    s32 index = DivMod(index_key, 24);
-    
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
-    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
-    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
     
     // Item checks
     if(growth->item >= INITIAL_MAIL_GEN3 && growth->item <= LAST_MAIL_GEN3)
         return 0;
     
     // Validity checks
-    if(growth->species > LAST_VALID_GEN_2_MON)
+    if((growth->species > last_valid_mon) || (growth->species == 0))
         return 0;
-    
-    // Get shinyness for checks
-    u16 is_shiny = (src->pid & 0xFFFF) ^ (src->pid >> 16) ^ (src->ot_id & 0xFFFF) ^ (src->ot_id >> 16);
-    if(is_shiny < 8)
-        is_shiny = 1;
-    else
-        is_shiny = 0;
-    
-    u8 gender = get_pokemon_gender_gen3(growth->species, src->pid, 0);
-    u8 gender_kind = get_pokemon_gender_kind_gen3(growth->species, src->pid, 0);
-    u8 letter = 0;
     
     // These Pokemon cannot be both female and shiny in gen 1/2
     if(is_shiny && (gender == F_GENDER) && (gender_kind == MF_7_1_INDEX))
@@ -257,49 +305,56 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     
     // Unown ! and ? did not exist in gen 2
     // Not only that, but only Unown I and V can be shiny
-    if(growth->species == UNOWN_NUMBER) {
-        letter = get_unown_letter_gen3(src->pid);
+    if(is_gen2 && (growth->species == UNOWN_NUMBER)) {
+        u8 letter = get_unown_letter_gen3(src->pid);
         if(letter >= UNOWN_EX_LETTER)
             return 0;
         if(is_shiny && (letter != UNOWN_I_LETTER) && (letter != UNOWN_V_LETTER))
             return 0;
     }
     
-    // Start setting data
-    dst->species = growth->species;
-    
-    // Start converting moves
-    u8 used_slots = 0;
-    for(int i = 0; i < MOVES_SIZE; i++)
-    {
-        dst->moves[i] = 0;
-        dst->pps[i] = 0;
-    }
-    for(int i = 0; i < MOVES_SIZE; i++)
-        if(attacks->moves[i] > 0 && attacks->moves[i] <= LAST_VALID_GEN_2_MOVE) {
-            u8 base_pp = pokemon_moves_pp_bin[attacks->moves[i]];
-            u8 bonus_pp = (growth->pp_bonuses >> (2*i)) & 3;
-            u8 base_increase_pp = Div(base_pp, 5);
-            base_pp += (base_increase_pp * bonus_pp);
-            if(base_pp >= 61)
-                base_pp = 61;
-            base_pp |= (bonus_pp << 6);
-            dst->pps[used_slots] = base_pp;
-            dst->moves[used_slots++] = attacks->moves[i];
-        }
-    
-    // No valid moves were found
-    if(used_slots == 0)
+    // Eggs cannot be traded to gen 1
+    if((!is_gen2) && is_egg)
         return 0;
     
-    // Item handling
-    u16 item = growth->item;
-    if(item > LAST_VALID_GEN_3_ITEM)
-        item = 0;
-    dst->item = item_gen3_to_12_bin[item];
+    return 1;
+}
+
+u8 convert_moves_of_gen3(struct gen3_mon_attacks* attacks, u8 pp_bonuses, u8* moves, u8* pps, u8 is_gen2) {
+    // Start converting moves
+    u16 last_valid_move = LAST_VALID_GEN_1_MOVE;
+    if(is_gen2)
+        last_valid_move = LAST_VALID_GEN_2_MOVE;
     
-    // OT handling
-    dst->ot_id = swap_endian_short(src->ot_id & 0xFFFF);
+    u8 used_slots = 0;
+    
+    for(int i = 0; i < MOVES_SIZE; i++)
+    {
+        moves[i] = 0;
+        pps[i] = 0;
+    }
+    for(int i = 0; i < MOVES_SIZE; i++) {
+        u16 move = attacks->moves[i];
+        if((move > 0) && (move <= last_valid_move)) {
+            u8 base_pp = pokemon_moves_pp_bin[move];
+            u8 bonus_pp = (pp_bonuses >> (2*i)) & 3;
+            u8 base_increase_pp = Div(base_pp, 5);
+            base_pp += (base_increase_pp * bonus_pp);
+            // Limit the PP to its maximum of 61
+            if(base_pp > 61)
+                base_pp = 61;
+            base_pp |= (bonus_pp << 6);
+            pps[used_slots] = base_pp;
+            moves[used_slots++] = move;
+        }
+    }
+    
+    return used_slots;
+}
+
+void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8* level_ptr, u8* exp_ptr, u8 is_gen2) {
+    if(((is_gen2) && (growth->species > LAST_VALID_GEN_2_MON)) || (growth->species > LAST_VALID_GEN_1_MON))
+        return;
     
     // Level handling
     u8 level = src->level;
@@ -345,16 +400,17 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
         level--;
         exp -= 25;
     }
-    
+
     // Store exp and level
-    dst->level = level;
+    *level_ptr = level;
     for(int i = 0; i < 3; i++)
-        dst->exp[2-i] = (exp >> (8*i))&0xFF;
-    
-    // Zero all EVs, since it's an entirely different system
-    for(int i = 0; i < 5; i++)
-        dst->evs[i] = 0;
-    
+        exp_ptr[2-i] = (exp >> (8*i))&0xFF;
+}
+
+u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2) {
+    if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || (species > LAST_VALID_GEN_1_MON))
+        return 0;
+        
     // Assign IVs
     // Keep in mind: Unown letter, gender and shinyness
     // Hidden Power calculations are too restrictive
@@ -362,10 +418,10 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     u8 def_ivs = (misc->def_ivs >> 1);
     u8 spa_ivs = ((misc->spa_ivs + misc->spd_ivs) >> 2);
     u8 spe_ivs = (misc->spe_ivs >> 1);
-    u8 hp_ivs;
     
     // Unown letter
-    if(growth->species == UNOWN_NUMBER) {
+    if((is_gen2) && (species == UNOWN_NUMBER)) {
+        u8 letter = get_unown_letter_gen3(pid);
         u8 min_iv_sum = letter * 10;
         u8 max_iv_sum = ((letter+1) * 10)-1;
         if(letter == 25)
@@ -396,12 +452,118 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
         spa_ivs = 10;
         spe_ivs = 10;
     }
-    if(!is_shiny && ((atk_ivs & 2) == 2 && def_ivs == 10 && spa_ivs == 10 && spe_ivs == 10))
+    if(!is_shiny && is_shiny_gen2(atk_ivs, def_ivs, spa_ivs, spe_ivs))
         spe_ivs = 11;
     
-    // Finally, assign
-    dst->ivs = (atk_ivs << 4) | def_ivs | (spa_ivs << 8) | (spe_ivs << 12);
-    hp_ivs = ((atk_ivs & 1) << 3) | ((def_ivs & 1) << 2) | ((spe_ivs & 1) << 1) | (spa_ivs & 1);
+    return (atk_ivs << 4) | def_ivs | (spa_ivs << 8) | (spe_ivs << 12);
+}
+
+void fix_name_change_of_gen3(struct gen3_mon* src, u16 species,  u8* nickname, u8 is_egg, u8 is_gen2) {
+    u8 tmp_text_buffers[2][NAME_SIZE];
+    
+    // Get the string to compare to
+    text_generic_to_upper(get_pokemon_name(species, src->pid, is_egg), tmp_text_buffers[0], NAME_SIZE, NAME_SIZE);
+    text_generic_to_gen3(tmp_text_buffers[0], tmp_text_buffers[1], NAME_SIZE, NICKNAME_GEN3_SIZE, 0, 0);
+    
+    // If it's the same, update the nickname with the new one
+    if(text_gen3_is_same(src->nickname, tmp_text_buffers[1], NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE)) {
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+        // Gen 1 used the wrong dot symbol
+        if(!is_gen2)
+            text_gen2_replace(nickname, STRING_GEN2_INT_CAP, GEN2_DOT, GEN1_DOT);
+    }
+}
+
+void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8* ot_name_jp, u8* nickname, u8* nickname_jp, u8 is_egg, u8 is_gen2) {
+    u8 is_jp = (src->language == 0);
+    
+    // Text conversions
+    text_gen2_terminator_fill(ot_name, STRING_GEN2_INT_SIZE);
+    text_gen2_terminator_fill(ot_name_jp, STRING_GEN2_JP_SIZE);
+    text_gen2_terminator_fill(nickname, STRING_GEN2_INT_SIZE);
+    text_gen2_terminator_fill(nickname_jp, STRING_GEN2_JP_SIZE);
+    
+    text_gen3_to_gen12(src->ot_name, ot_name, OT_NAME_GEN3_SIZE, STRING_GEN2_INT_CAP, is_jp, 0);
+    text_gen3_to_gen12(src->ot_name, ot_name_jp, OT_NAME_GEN3_SIZE, STRING_GEN2_JP_CAP, is_jp, 1);
+    text_gen3_to_gen12(src->nickname, nickname, NICKNAME_GEN3_SIZE, STRING_GEN2_INT_CAP, is_jp, 0);
+    text_gen3_to_gen12(src->nickname, nickname_jp, NICKNAME_GEN3_SIZE, STRING_GEN2_JP_CAP, is_jp, 1);
+    
+    // Fix text up
+    // "MR.MIME" gen 2 == "MR. MIME" gen 3
+    // Idk if something similar happens in Jap...
+    // Maybe there are some French things with accents...
+    if((species == MR_MIME_SPECIES) && !is_egg)
+        fix_name_change_of_gen3(src, species,  nickname, is_egg, is_gen2);
+    
+    // Put the "EGG" name
+    if(is_gen2 && is_egg) {
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
+    }
+    
+    // Handle bad naming conversions and empty names
+    s32 question_marks_count = text_gen2_count_question(nickname, STRING_GEN2_INT_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
+    if((question_marks_count >= (text_gen2_size(nickname, STRING_GEN2_INT_CAP) >> 1)) || (text_gen2_size(nickname, STRING_GEN2_INT_CAP) == 0))
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+    question_marks_count = text_gen2_count_question(nickname_jp, STRING_GEN2_JP_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
+    if((question_marks_count >= (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) >> 1)) || (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) == 0))
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
+
+}
+
+u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
+    u32 decryption[ENC_DATA_SIZE>>2];
+    
+    // Initial data decryption
+    if(!decrypt_data(src, decryption))
+        return 0;
+    
+    // Interpret the decrypted data
+    u32 index_key = src->pid;
+    // Make use of modulo properties to get this to positives
+    while(index_key >= 0x80000000)
+        index_key -= 0x7FFFFFF8;
+    s32 index = DivMod(index_key, 24);
+    
+    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
+    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
+    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
+    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
+    
+    // Get shinyness and gender for checks
+    u8 is_shiny = is_shiny_gen3_raw(src, is_egg_gen3(src, misc), trainer_id);
+    u8 gender = get_pokemon_gender_gen3(growth->species, src->pid, 0);
+    u8 gender_kind = get_pokemon_gender_kind_gen3(growth->species, src->pid, 0);
+    
+    // Check that the mon can be traded
+    if(!validate_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg_gen3(src, misc), 1))
+        return 0;
+    
+    // Start setting data
+    dst->species = growth->species;
+    
+    // Convert moves, and check if no valid moves were found
+    if(convert_moves_of_gen3(attacks, growth->pp_bonuses, dst->moves, dst->pps, 1)  == 0)
+        return 0;
+    
+    // Item handling
+    u16 item = growth->item;
+    if(item > LAST_VALID_GEN_3_ITEM)
+        item = 0;
+    dst->item = item_gen3_to_12_bin[item];
+    
+    // OT handling
+    dst->ot_id = swap_endian_short(src->ot_id & 0xFFFF);
+    
+    // Assign level and experience
+    convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 1);
+    
+    // Zero all EVs, since it's an entirely different system
+    for(int i = 0; i < 5; i++)
+        dst->evs[i] = 0;
+    
+    // Assign IVs
+    dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 1);
     
     // Is this really how it works...?
     dst->pokerus = misc->pokerus;
@@ -412,62 +574,20 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src) {
     dst->status = 0;
     dst->unused = 0;
     
-    u16 stat = calc_stats_gen2(growth->species, 0, level, hp_ivs, swap_endian_short(dst->evs[0]));
-    dst->stats[0] = swap_endian_short(stat);
-    dst->stats[1] = swap_endian_short(stat);
-    stat = calc_stats_gen2(growth->species, 1, level, atk_ivs, swap_endian_short(dst->evs[1]));
-    dst->stats[2] = swap_endian_short(stat);
-    stat = calc_stats_gen2(growth->species, 2, level, def_ivs, swap_endian_short(dst->evs[2]));
-    dst->stats[3] = swap_endian_short(stat);
-    stat = calc_stats_gen2(growth->species, 5, level, spe_ivs, swap_endian_short(dst->evs[3]));
-    dst->stats[4] = swap_endian_short(stat);
-    stat = calc_stats_gen2(growth->species, 3, level, spa_ivs, swap_endian_short(dst->evs[4]));
-    dst->stats[5] = swap_endian_short(stat);
-    stat = calc_stats_gen2(growth->species, 4, level, spa_ivs, swap_endian_short(dst->evs[4]));
-    dst->stats[6] = swap_endian_short(stat);
+    // Stats calculations
+    dst->curr_hp = swap_endian_short(calc_stats_gen2(growth->species, HP_STAT_INDEX, dst->level, get_iv_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++)
+        dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i])));
     
-    dst->is_egg = misc->is_egg;
-    
-    u8 is_jp = (src->language == 0);
-    
-    // Text conversions
-    text_gen2_terminator_fill(dst->ot_name, STRING_GEN2_INT_SIZE);
-    text_gen2_terminator_fill(dst->ot_name_jp, STRING_GEN2_JP_SIZE);
-    text_gen2_terminator_fill(dst->nickname, STRING_GEN2_INT_SIZE);
-    text_gen2_terminator_fill(dst->nickname_jp, STRING_GEN2_JP_SIZE);
-    
-    text_gen3_to_gen12(src->ot_name, dst->ot_name, OT_NAME_GEN3_SIZE, STRING_GEN2_INT_CAP, is_jp, 0);
-    text_gen3_to_gen12(src->ot_name, dst->ot_name_jp, OT_NAME_GEN3_SIZE, STRING_GEN2_JP_CAP, is_jp, 1);
-    text_gen3_to_gen12(src->nickname, dst->nickname, NICKNAME_GEN3_SIZE, STRING_GEN2_INT_CAP, is_jp, 0);
-    text_gen3_to_gen12(src->nickname, dst->nickname_jp, NICKNAME_GEN3_SIZE, STRING_GEN2_JP_CAP, is_jp, 1);
-    
-    // Fix text up
-    u8 tmp_text_buffers[2][NAME_SIZE];
-    
-    // "MR.MIME" gen 2 == "MR. MIME" gen 3
-    // Idk if something similar happens in Jap...
-    if((growth->species == MR_MIME_SPECIES) && !dst->is_egg) {
-        text_generic_to_upper(get_pokemon_name(growth->species, src->pid, dst->is_egg), tmp_text_buffers[0], NAME_SIZE, NAME_SIZE);
-        text_generic_to_gen3(tmp_text_buffers[0], tmp_text_buffers[1], NAME_SIZE, NICKNAME_GEN3_SIZE, 0, 0);
-        if(text_gen3_is_same(src->nickname, tmp_text_buffers[1], NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE))
-            text_gen2_copy(get_pokemon_name_gen2(growth->species, dst->is_egg, 0), dst->nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
-    }
-    
-    // Put the "EGG" name
-    if(dst->is_egg) {
-        text_gen2_copy(get_pokemon_name_gen2(growth->species, dst->is_egg, 0), dst->nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
-        text_gen2_copy(get_pokemon_name_gen2(growth->species, dst->is_egg, 1), dst->nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
-    }
-    
-    // Handle bad naming conversions and empty names
-    s32 question_marks_count = text_gen2_count_question(dst->nickname, STRING_GEN2_INT_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
-    if((question_marks_count >= (text_gen2_size(dst->nickname, STRING_GEN2_INT_CAP) >> 1)) || (text_gen2_size(dst->nickname, STRING_GEN2_INT_CAP) == 0))
-        text_gen2_copy(get_pokemon_name_gen2(growth->species, dst->is_egg, 0), dst->nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
-    question_marks_count = text_gen2_count_question(dst->nickname_jp, STRING_GEN2_JP_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
-    if((question_marks_count >= (text_gen2_size(dst->nickname_jp, STRING_GEN2_JP_CAP) >> 1)) || (text_gen2_size(dst->nickname_jp, STRING_GEN2_JP_CAP) == 0))
-        text_gen2_copy(get_pokemon_name_gen2(growth->species, dst->is_egg, 1), dst->nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
+    dst->is_egg = is_egg_gen3(src, misc);
+
+    convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, dst->is_egg, 1);
 
     load_pokemon_sprite(growth->species, src->pid, misc->is_egg);
 
     return 1;
+}
+
+u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon* src, u32 trainer_id) {
+    
 }
