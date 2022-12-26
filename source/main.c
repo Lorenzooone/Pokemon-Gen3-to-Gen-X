@@ -26,6 +26,8 @@
 // --------------------------------------------------------------------
 
 const char* save_strings[] = {"SRAM 64KiB", "Flash 64 KiB", "Flash 128 KiB", "Inside ROM"};
+const char* region_strings[] = {"Int", "Jap"};
+const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
 
 // void save_to_memory(int size) {
     // int chosen_save_type = 0;
@@ -174,6 +176,7 @@ void start_gen2_slave(void)
 #define FRLG_PARTY 0x34
 
 #include "party_handler.h"
+#include "sprite_handler.h"
 
 u8 trainer_name[8];
 u8 trainer_gender;
@@ -267,22 +270,16 @@ void read_party(int slot) {
         }
     if(parties_3[0].total > PARTY_SIZE)
         parties_3[0].total = PARTY_SIZE;
-    iprintf("Party size: %d\n", parties_3[0].total);
     u8 curr_slot = 0;
     for(int i = 0; i < parties_3[0].total; i++)
         if(gen3_to_gen2(&parties_2[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id))
             curr_slot++;
     parties_2[0].total = curr_slot;
-    iprintf("Converted: %d\n", curr_slot);
-    iprintf("Address: 0x%X\n", &parties_2[0].mons[0]);
     curr_slot = 0;
     for(int i = 0; i < parties_3[0].total; i++)
         if(gen3_to_gen1(&parties_1[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id))
             curr_slot++;
     parties_1[0].total = curr_slot;
-    iprintf("Converted: %d\n", curr_slot);
-    iprintf("Address: 0x%X\n", &parties_1[0].mons[0]);
-    curr_slot = 0;
 }
 
 #define MAGIC_NUMBER 0x08012025
@@ -341,27 +338,198 @@ u8 get_slot(){
 void read_gen_3_data(){
     REG_WAITCNT |= 3;
     init_bank();
+    parties_1[0].total = 0;
+    parties_2[0].total = 0;
+    parties_3[0].total = 0;
     
     u8 slot = get_slot();
     if(slot == INVALID_SLOT) {
-        iprintf("Error reading the data!\n");
         return;
     }
     
     read_party(slot);
-        
 }
 
-const u8 sprite_palettes_bin[];
-const u32 sprite_palettes_bin_size;
-
-void init_oam_palette(){
-    u16* sprite_palettes_bin_16 = (u16*)sprite_palettes_bin;
-    for(int i = 0; i < (sprite_palettes_bin_size>>1); i++)
-        SPRITE_PALETTE[i] = sprite_palettes_bin_16[i];
+u8 get_valid_options() {
+    return (parties_1[0].total > 0 ? 1: 0) | (parties_2[0].total > 0 ? 2: 0) | (parties_3[0].total > 0 ? 4: 0);
 }
 
-#define OAM 0x7000000
+void fill_options_array(u8* options) {
+    u8 curr_slot = 0;
+    for(int i = 0; i < 3; i++)
+        options[i] = 0;
+    if(parties_1[0].total > 0) {
+        options[curr_slot++] = 1;
+        for(int i = curr_slot; i < 3; i++)
+            options[i] = 1;
+    }
+    if(parties_2[0].total > 0) {
+        options[curr_slot++] = 2;
+        for(int i = curr_slot; i < 3; i++)
+            options[i] = 2;
+    }
+    if(parties_3[0].total > 0) {
+        options[curr_slot++] = 3;
+        for(int i = curr_slot; i < 3; i++)
+            options[i] = 3;
+    }
+}
+
+u8 get_number_of_higher_options(u8* options, u8 curr_option) {
+    u8 curr_num = 0;
+    u8 highest_found = curr_option;
+    for(int i = 0; i < 3; i++)
+        if(options[i] > highest_found) {
+            curr_num++;
+            highest_found = options[i];
+        }
+    return curr_num;
+}
+
+u8 get_number_of_lower_options(u8* options, u8 curr_option) {
+    u8 curr_num = 0;
+    u8 highest_found = curr_option;
+    for(int i = 2; i >= 0; i--)
+        if(options[i] < highest_found) {
+            curr_num++;
+            highest_found = options[i];
+        }
+    return curr_num;
+}
+
+#define BASE_Y_CURSOR_MAIN_MENU 8
+#define BASE_Y_CURSOR_INCREMENT_MAIN_MENU 16
+
+void print_main_menu(u8 update, u8 curr_gen, u8 is_jp) {
+    if(!update)
+        return;
+    
+    u8 valid_options = get_valid_options();
+    u8 options[3];
+
+    iprintf("\x1b[2J");
+    
+    if(!valid_options)
+        iprintf("\n  Error reading the data!\n\n\n\n\n");
+    else {
+        fill_options_array(options);
+        if(curr_gen >= 3)
+            curr_gen = 2;
+        curr_gen = options[curr_gen];
+        if(get_number_of_higher_options(options, curr_gen) > 0 && get_number_of_lower_options(options, curr_gen) > 0)
+            iprintf("\n  Target: <%s>\n", target_strings[curr_gen-1]);
+        else if(get_number_of_higher_options(options, curr_gen) > 0)
+            iprintf("\n  Target:  %s>\n", target_strings[curr_gen-1]);
+        else if(get_number_of_lower_options(options, curr_gen) > 0)
+            iprintf("\n  Target: <%s\n", target_strings[curr_gen-1]);
+        else
+            iprintf("\n  Target:  %s\n", target_strings[curr_gen-1]);
+        if(curr_gen < 3) {
+            if(!is_jp)
+                iprintf("\n  Target Region:  %s>\n", region_strings[0]);
+            else
+            iprintf("\n  Target Region: <%s\n", region_strings[1]);
+        }
+        else
+            iprintf("\n\n");
+        iprintf("\n  Start Trade\n");
+    }
+    iprintf("\n  Send Multiboot");
+}
+
+#define START_MULTIBOOT 0x49
+
+u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8* region) {
+
+    u8 options[3];
+    fill_options_array(options);
+    u8 curr_gen = *target;
+    if(curr_gen >= 3)
+        curr_gen = 2;
+    curr_gen = options[curr_gen];
+    
+    switch(*cursor_y_pos) {
+        case 0:
+            if((keys & KEY_RIGHT) && (get_number_of_higher_options(options, curr_gen) > 0)) {
+                (*target) += 1;
+                (*update) = 1;
+            }
+            else if((keys & KEY_LEFT) && (get_number_of_lower_options(options, curr_gen) > 0)) {
+                (*target) -= 1;
+                (*update) = 1;
+            }
+            else if((keys & KEY_A) && (get_number_of_higher_options(options, curr_gen) > 0)) {
+                (*target) += 1;
+                (*update) = 1;
+            }
+            else if((keys & KEY_A) && (get_number_of_lower_options(options, curr_gen) > 0)) {
+                (*target) -= 1;
+                (*update) = 1;
+            }
+            else if(keys & KEY_DOWN) {
+                if(curr_gen == 3)
+                    (*cursor_y_pos) += 2;
+                else
+                    (*cursor_y_pos) += 1;
+            }
+            else if(keys & KEY_UP) {
+                (*cursor_y_pos) = 3;
+            }
+            break;
+        case 1:
+            if(curr_gen == 3)
+                (*cursor_y_pos) += 1;
+            else if((keys & KEY_RIGHT) && (!(*region))) {
+                (*region) = 1;
+                (*update) = 1;
+            }
+            else if((keys & KEY_LEFT) && ((*region))) {
+                (*region) = 0;
+                (*update) = 1;
+            }
+            else if((keys & KEY_A) && (!(*region))) {
+                (*region) = 1;
+                (*update) = 1;
+            }
+            else if((keys & KEY_A) && ((*region))) {
+                (*region) = 0;
+                (*update) = 1;
+            }
+            else if(keys & KEY_DOWN) {
+                (*cursor_y_pos) += 1;
+            }
+            else if(keys & KEY_UP) {
+                (*cursor_y_pos) -= 1;
+            }
+            break;
+        case 2:
+            if((keys & KEY_A) && (get_valid_options())) {
+                return curr_gen;
+            }
+            else if(keys & KEY_DOWN) {
+                (*cursor_y_pos) += 1;
+            }
+            else if(keys & KEY_UP) {
+                if(curr_gen == 3)
+                    (*cursor_y_pos) -= 2;
+                else
+                    (*cursor_y_pos) -= 1;
+            }
+            break;
+        default:
+            if(keys & KEY_A) {
+                return START_MULTIBOOT;
+            }
+            else if((keys & KEY_DOWN) && (get_valid_options())) {
+                (*cursor_y_pos) = 0;
+            }
+            else if((keys & KEY_UP) && (get_valid_options())) {
+                (*cursor_y_pos) = 2;
+            }
+            break;
+    }
+    return 0;
+}
 
 int main(void)
 {
@@ -383,7 +551,7 @@ int main(void)
     
     read_gen_3_data();
     
-    u8 curr_frame = 0;
+    /*u8 curr_frame = 0;
     while(1){
         VBlankIntrWait();
         curr_frame++;
@@ -399,12 +567,40 @@ int main(void)
             curr_frame = 0;
         }
     }
-    start_gen2_slave();
-    start_gen2();
+    */
     
+    u8 update = 1;
+    u8 target = 1;
+    u8 region = 0;
+    u8 cursor_y_pos = 0;
+    
+    if(!get_valid_options())
+        cursor_y_pos = 3;
+    
+    print_main_menu(update, target, region);
+    
+    init_cursor(cursor_y_pos);
+    u8 counter = 0;
+    
+    update = 0;
+    
+    while(1) {
+        scanKeys();
+        keys = keysDown();
+        
+        while ((!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT)) && (!(keys & KEY_A)) && (!(keys & KEY_UP)) && (!(keys & KEY_DOWN))) {
+            VBlankIntrWait();
+            move_cursor_x(counter);
+            counter++;
+            scanKeys();
+            keys = keysDown();
+        }
+        handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region);
+        print_main_menu(update, target, region);
+        update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+    }
+
     // while (1) {
-        // iprintf("START: Send the dumper\n\n");
-        // iprintf("SELECT: Dump\n\n");
     
         // scanKeys();
         // keys = keysDown();
@@ -441,6 +637,9 @@ int main(void)
             // }
         // }
     // }
+
+    //start_gen2_slave();
+    //start_gen2();
 
     return 0;
 }

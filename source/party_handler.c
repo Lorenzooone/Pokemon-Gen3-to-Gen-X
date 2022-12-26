@@ -1,7 +1,10 @@
 #include <gba.h>
 #include "party_handler.h"
 #include "text_handler.h"
+#include "sprite_handler.h"
 
+u8 decrypt_data(struct gen3_mon*, u32*);
+u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
 u8 get_unown_letter_gen3(u32);
 u8 get_pokemon_gender_kind_gen3(int, u32, u8);
 
@@ -13,8 +16,6 @@ u8 positions[] = {0b11100100, 0b10110100, 0b11011000, 0b10011100, 0b01111000, 0b
 
 u8 gender_thresholds_gen3[] = {127, 0, 31, 63, 191, 225, 254, 255};
 u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17};
-
-u8 sprite_counter;
 
 #define MF_7_1_INDEX 2
 #define M_INDEX 1
@@ -107,6 +108,49 @@ const u8* get_pokemon_sprite_pointer(int index, u32 pid, u8 is_egg){
     return &(sprites_cmp_bin[(sprites_cmp_bin_16[1+get_mon_index(index, pid, is_egg)]<<2)+sprites_cmp_bin_16[0]]);
 }
 
+u8 get_palette_references(int index, u32 pid, u8 is_egg){
+    return palettes_references_bin[get_mon_index(index, pid, is_egg)];
+}
+
+void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u16* obj_attrs){
+    u8 sprite_counter = get_sprite_counter();
+    u32 address = get_pokemon_sprite_pointer(index, pid, is_egg);
+    u8 palette = get_palette_references(index, pid, is_egg);
+    LZ77UnCompVram(address, get_vram_pos());
+    obj_attrs[0] = (SCREEN_HEIGHT - 32);
+    obj_attrs[1] = (32*sprite_counter)|(1<<15);
+    obj_attrs[2] = (32*sprite_counter)|(palette<<12);
+    inc_sprite_counter();
+}
+
+void load_pokemon_sprite_raw(struct gen3_mon* src, u16* obj_attrs){
+    u32 decryption[ENC_DATA_SIZE>>2];
+    
+    // Initial data decryption
+    if(!decrypt_data(src, decryption))
+        return;
+    
+    // Interpret the decrypted data
+    u32 index_key = src->pid;
+    // Make use of modulo properties to get this to positives
+    while(index_key >= 0x80000000)
+        index_key -= 0x7FFFFFF8;
+    s32 index = DivMod(index_key, 24);
+    
+    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
+    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
+    
+    // Species checks
+    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0))
+        return;
+
+    // Bad egg checks
+    if(src->is_bad_egg)
+        return;
+    
+    load_pokemon_sprite(growth->species, src->pid, is_egg_gen3(src, misc), obj_attrs);
+}
+
 u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg){
     u8 gender_kind = get_pokemon_gender_kind_gen3(index, pid, is_egg);
     switch(gender_kind){
@@ -125,10 +169,6 @@ u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg){
 
 u8 get_pokemon_gender_kind_gen3(int index, u32 pid, u8 is_egg){
     return pokemon_gender_bin[get_mon_index(index, pid, is_egg)];
-}
-
-u8 get_palette_references(int index, u32 pid, u8 is_egg){
-    return palettes_references_bin[get_mon_index(index, pid, is_egg)];
 }
 
 u8 is_egg_gen3(struct gen3_mon* src, struct gen3_mon_misc* misc){
@@ -157,29 +197,6 @@ u8 is_shiny_gen2(u8 atk_ivs, u8 def_ivs, u8 spa_ivs, u8 spe_ivs){
 
 u8 is_shiny_gen2_raw(struct gen2_mon* src){
     return is_shiny_gen2((src->ivs >> 4) & 0xF, src->ivs & 0xF, (src->ivs >> 8) & 0xF, (src->ivs >> 12) & 0xF);
-}
-
-void init_sprite_counter(){
-    sprite_counter = 0;
-}
-
-u8 get_sprite_counter(){
-    return sprite_counter;
-}
-
-#define OAM 0x7000000
-
-void load_pokemon_sprite(int index, u32 pid, u8 is_egg){
-    u32 address = get_pokemon_sprite_pointer(index, pid, is_egg);
-    u8 palette = get_palette_references(index, pid, is_egg);
-    LZ77UnCompVram(address, VRAM+0x10000+(sprite_counter*0x400));
-    u16 obj_attr_0 = (SCREEN_HEIGHT - 32);
-    u16 obj_attr_1 = (32*sprite_counter)|(1<<15);
-    u16 obj_attr_2 = (32*sprite_counter)|(palette<<12);
-    *((u16*)(OAM + (8*sprite_counter) + 0)) = obj_attr_0;
-    *((u16*)(OAM + (8*sprite_counter) + 2)) = obj_attr_1;
-    *((u16*)(OAM + (8*sprite_counter) + 4)) = obj_attr_2;
-    sprite_counter++;
 }
 
 u8 get_unown_letter_gen3(u32 pid){
@@ -593,8 +610,6 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
 
     // Text conversions
     convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, dst->is_egg, 1);
-
-    load_pokemon_sprite(growth->species, src->pid, misc->is_egg);
 
     return 1;
 }
