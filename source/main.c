@@ -272,8 +272,16 @@ void read_party(int slot) {
     for(int i = 0; i < parties_3[0].total; i++)
         if(gen3_to_gen2(&parties_2[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id))
             curr_slot++;
+    parties_2[0].total = curr_slot;
     iprintf("Converted: %d\n", curr_slot);
     iprintf("Address: 0x%X\n", &parties_2[0].mons[0]);
+    curr_slot = 0;
+    for(int i = 0; i < parties_3[0].total; i++)
+        if(gen3_to_gen1(&parties_1[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id))
+            curr_slot++;
+    parties_1[0].total = curr_slot;
+    iprintf("Converted: %d\n", curr_slot);
+    iprintf("Address: 0x%X\n", &parties_1[0].mons[0]);
     curr_slot = 0;
 }
 

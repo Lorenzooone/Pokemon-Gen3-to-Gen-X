@@ -209,6 +209,7 @@ u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
 #define SPE_STAT_INDEX 3
 #define GEN2_STATS_TOTAL 6
 #define GEN1_STATS_TOTAL 5
+#define EVS_TOTAL 5
 
 u8 index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
 
@@ -350,6 +351,12 @@ u8 convert_moves_of_gen3(struct gen3_mon_attacks* attacks, u8 pp_bonuses, u8* mo
     }
     
     return used_slots;
+}
+
+u8 convert_item_of_gen3(u16 item) {
+    if(item > LAST_VALID_GEN_3_ITEM)
+        item = 0;
+    return item_gen3_to_12_bin[item];
 }
 
 void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8* level_ptr, u8* exp_ptr, u8 is_gen2) {
@@ -501,10 +508,11 @@ void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8*
         text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
     }
     
-    // Handle bad naming conversions and empty names
+    // Handle bad naming conversions (? >= half the name) and empty names
     s32 question_marks_count = text_gen2_count_question(nickname, STRING_GEN2_INT_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
     if((question_marks_count >= (text_gen2_size(nickname, STRING_GEN2_INT_CAP) >> 1)) || (text_gen2_size(nickname, STRING_GEN2_INT_CAP) == 0))
         text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+    // For the japanese nickname too
     question_marks_count = text_gen2_count_question(nickname_jp, STRING_GEN2_JP_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
     if((question_marks_count >= (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) >> 1)) || (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) == 0))
         text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
@@ -547,10 +555,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
         return 0;
     
     // Item handling
-    u16 item = growth->item;
-    if(item > LAST_VALID_GEN_3_ITEM)
-        item = 0;
-    dst->item = item_gen3_to_12_bin[item];
+    dst->item = convert_item_of_gen3(growth->item);
     
     // OT handling
     dst->ot_id = swap_endian_short(src->ot_id & 0xFFFF);
@@ -559,7 +564,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
     convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 1);
     
     // Zero all EVs, since it's an entirely different system
-    for(int i = 0; i < 5; i++)
+    for(int i = 0; i < EVS_TOTAL; i++)
         dst->evs[i] = 0;
     
     // Assign IVs
@@ -577,7 +582,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
     // Stats calculations
     dst->curr_hp = swap_endian_short(calc_stats_gen2(growth->species, HP_STAT_INDEX, dst->level, get_iv_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
     for(int i = 0; i < GEN2_STATS_TOTAL; i++)
-        dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i])));
+        dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL ? EVS_TOTAL-1 : i])));
     
     dst->is_egg = is_egg_gen3(src, misc);
 
@@ -589,5 +594,70 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
 }
 
 u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon* src, u32 trainer_id) {
+    u32 decryption[ENC_DATA_SIZE>>2];
     
+    // Initial data decryption
+    if(!decrypt_data(src, decryption))
+        return 0;
+    
+    // Interpret the decrypted data
+    u32 index_key = src->pid;
+    // Make use of modulo properties to get this to positives
+    while(index_key >= 0x80000000)
+        index_key -= 0x7FFFFFF8;
+    s32 index = DivMod(index_key, 24);
+    
+    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
+    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
+    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
+    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
+    
+    // Get shinyness and gender for checks
+    u8 is_shiny = is_shiny_gen3_raw(src, is_egg_gen3(src, misc), trainer_id);
+    u8 gender = get_pokemon_gender_gen3(growth->species, src->pid, 0);
+    u8 gender_kind = get_pokemon_gender_kind_gen3(growth->species, src->pid, 0);
+    
+    // Check that the mon can be traded
+    if(!validate_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg_gen3(src, misc), 0))
+        return 0;
+    
+    // Start setting data
+    dst->species = get_mon_index_gen1(growth->species);
+    
+    // Convert moves, and check if no valid moves were found
+    if(convert_moves_of_gen3(attacks, growth->pp_bonuses, dst->moves, dst->pps, 0)  == 0)
+        return 0;
+    
+    // Item handling
+    dst->item = convert_item_of_gen3(growth->item);
+    
+    // Types handling
+    dst->type[0] = pokemon_types_gen1_bin[(2*dst->species)];
+    dst->type[1] = pokemon_types_gen1_bin[(2*dst->species) + 1];
+    
+    // OT handling
+    dst->ot_id = swap_endian_short(src->ot_id & 0xFFFF);
+    
+    // Assign level and experience
+    convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 0);
+    
+    // Zero all EVs, since it's an entirely different system
+    for(int i = 0; i < EVS_TOTAL; i++)
+        dst->evs[i] = 0;
+    
+    // Assign IVs
+    dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 0);
+    
+    // Defaults
+    dst->bad_level = 0;
+    dst->status = 0;
+    
+    // Stats calculations
+    dst->curr_hp = swap_endian_short(calc_stats_gen1(growth->species, HP_STAT_INDEX, dst->level, get_iv_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
+    for(int i = 0; i < GEN1_STATS_TOTAL; i++)
+        dst->stats[i] = swap_endian_short(calc_stats_gen1(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i])));
+
+    convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, 0, 0);
+
+    return 1;
 }
