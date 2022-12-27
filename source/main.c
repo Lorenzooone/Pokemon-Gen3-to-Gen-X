@@ -8,7 +8,6 @@
 #include <gba.h>
 
 #include "multiboot_handler.h"
-#include "gb_dump_receiver.h"
 //#include "save.h"
 
 // --------------------------------------------------------------------
@@ -17,108 +16,16 @@
 #define ALWAYS_INLINE __attribute__((always_inline)) static inline
 #define MAX_DUMP_SIZE 0x20000
 #define REG_WAITCNT		*(vu16*)(REG_BASE + 0x204)  // Wait state Control
-#define SAVE_TYPES 4
-#define SRAM_SAVE_TYPE 0
-#define FLASH_64_SAVE_TYPE 1
-#define FLASH_128_SAVE_TYPE 2
-#define ROM_SAVE_TYPE 3
 
 // --------------------------------------------------------------------
 
-const char* save_strings[] = {"SRAM 64KiB", "Flash 64 KiB", "Flash 128 KiB", "Inside ROM"};
 const char* person_strings[] = {" - You", " - Other"};
 const char* actor_strings[] = {"Master", "Slave"};
 const char* region_strings[] = {"Int", "Jap"};
 const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
 
-// void save_to_memory(int size) {
-    // int chosen_save_type = 0;
-    // u8 copied_properly = 0;
-    // int decided = 0, completed = 0;
-    // u16 keys;
-    // REG_WAITCNT |= 3;
-    
-    // while(!completed) {
-        // while(!decided) {
-            // iprintf("\x1b[2J");
-            // iprintf("Save type: %s\n\n", save_strings[chosen_save_type]);
-            // iprintf("LEFT/RIGHT: Change save type\n\n");
-            // iprintf("START: Save\n\n");
-        
-            // scanKeys();
-            // keys = keysDown();
-            
-            // while ((!(keys & KEY_START)) && (!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT))) {
-                // VBlankIntrWait();
-                // scanKeys();
-                // keys = keysDown();
-            // }
-            
-            // if(keys & KEY_START)
-                // decided = 1;
-            // else if(keys & KEY_LEFT)
-                // chosen_save_type -= 1;
-            // else if(keys & KEY_RIGHT)
-                // chosen_save_type += 1;
-            
-            // if(chosen_save_type < 0)
-                // chosen_save_type = SAVE_TYPES - 1;
-            // if(chosen_save_type >= SAVE_TYPES)
-                // chosen_save_type = 0;
-        // }
-        
-        // iprintf("\x1b[2J");
-        
-        // switch (chosen_save_type) {
-            // case SRAM_SAVE_TYPE:
-                // sram_write((u8*)EWRAM, size);
-                // copied_properly = is_sram_correct((u8*)EWRAM, size);
-                // break;
-            // case FLASH_64_SAVE_TYPE:
-                // flash_write((u8*)EWRAM, size, 0);
-                // copied_properly = is_flash_correct((u8*)EWRAM, size, 0);
-                // break;
-            // case FLASH_128_SAVE_TYPE:
-                // flash_write((u8*)EWRAM, size, 1);
-                // copied_properly = is_flash_correct((u8*)EWRAM, size, 1);
-                // break;
-            // case ROM_SAVE_TYPE:
-                // rom_write((u8*)EWRAM, size);
-                // copied_properly = is_rom_correct((u8*)EWRAM, size);
-            // default:
-                // break;
-        // }
-        
-        // if(copied_properly) {
-            // iprintf("All went well!\n\n");
-            // completed = 1;
-        // }
-        // else {
-            // iprintf("Not everything went right!\n\n");
-            // iprintf("START: Try saving again\n\n");
-            // iprintf("SELECT: Abort\n\n");
-        
-            // scanKeys();
-            // keys = keysDown();
-            
-            // while ((!(keys & KEY_START)) && (!(keys & KEY_SELECT))) {
-                // VBlankIntrWait();
-                // scanKeys();
-                // keys = keysDown();
-            // }
-            
-            // if(keys & KEY_SELECT) {
-                // completed = 1;
-                // iprintf("\x1b[2J");
-            // }
-            // else
-                // decided = 0;
-        // }
-    // }
-    
-    // if(chosen_save_type == ROM_SAVE_TYPE)
-        // iprintf("Save location: 0x%X\n\n", get_rom_address()-0x8000000);
-// }
+enum STATE {MAIN_MENU, MULTIBOOT};
+enum STATE curr_state;
 
 #include "sio.h"
 #define VCOUNT_TIMEOUT 28 * 8
@@ -525,7 +432,32 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
     iprintf("\n  Send Multiboot");
 }
 
+void print_multiboot(enum MULTIBOOT_RESULTS result) {
+
+    iprintf("\x1b[2J");
+    
+    if(result == MB_SUCCESS)
+        iprintf("\nMultiboot successful!\n\n\n");
+    else if(result == MB_NO_INIT_SYNC)
+        iprintf("\nCouldn't sync.\n\nTry again!\n");
+    else
+        iprintf("\nThere was an error.\n\nTry again!\n");
+    iprintf("\nA: To the previous menu");
+}
+
+u8 handle_input_multiboot_menu(u16 keys) {
+    if(keys & KEY_A)
+        return 1;
+    return 0;
+}
+
 #define START_MULTIBOOT 0x49
+
+u8 init_cursor_y_pos_main_menu(){
+    if(!get_valid_options())
+        return 4;
+    return 0;
+}
 
 u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8* region, u8* master) {
 
@@ -659,22 +591,19 @@ int main(void)
     
     read_gen_3_data();
     
-    u8 update = 1;
+    u8 returned_val;
+    u8 update = 0;
     u8 target = 1;
     u8 region = 0;
     u8 master = 0;
-    u8 cursor_y_pos = 0;
+    u8 cursor_y_pos = init_cursor_y_pos_main_menu();
+    curr_state = MAIN_MENU;
     
-    if(!get_valid_options())
-        cursor_y_pos = 4;
-    
-    print_main_menu(update, target, region, master);
+    print_main_menu(1, target, region, master);
     
     init_item_icon();
     init_cursor(cursor_y_pos);
     u8 counter = 0;
-    
-    update = 0;
     
     while(1) {
         scanKeys();
@@ -688,50 +617,36 @@ int main(void)
             scanKeys();
             keys = keysDown();
         }
-        handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
-        print_main_menu(update, target, region, master);
-        //print_trade_menu(update, 2, 1);
-        update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+        switch(curr_state) {
+            case MAIN_MENU:
+                returned_val = handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
+                print_main_menu(update, target, region, master);
+                update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+                if(returned_val == START_MULTIBOOT) {
+                    curr_state = MULTIBOOT;
+                    irqDisable(IRQ_SERIAL);
+                    disable_cursor();
+                    result = multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + 0x3FF40));
+                    print_multiboot(result);
+                }
+                break;
+            case MULTIBOOT:
+                if(handle_input_multiboot_menu(keys)) {
+                    curr_state = MAIN_MENU;
+                    print_main_menu(1, target, region, master);
+                    cursor_y_pos = init_cursor_y_pos_main_menu();
+                    update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+                }
+                break;
+            default:
+                curr_state = MAIN_MENU;
+                print_main_menu(1, target, region, master);
+                cursor_y_pos = init_cursor_y_pos_main_menu();
+                update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+                break;
+        }
         update = 0;
     }
-
-    // while (1) {
-    
-        // scanKeys();
-        // keys = keysDown();
-        
-        // while ((!(keys & KEY_START)) && (!(keys & KEY_SELECT))) {
-            // VBlankIntrWait();
-            // scanKeys();
-            // keys = keysDown();
-        // }
-        
-        // if(keys & KEY_START) {        
-            // result = multiboot_normal((u16*)payload, (u16*)(payload + PAYLOAD_SIZE));
-            
-            // iprintf("\x1b[2J");
-            
-            // if(result == MB_SUCCESS)
-                // iprintf("Multiboot successful!\n\n");
-            // else if(result == MB_NO_INIT_SYNC)
-                // iprintf("Couldn't sync.\nTry again!\n\n");
-            // else
-                // iprintf("There was an error.\nTry again!\n\n");
-        // }
-        // else {
-            // val = read_dump(MAX_DUMP_SIZE);
-            
-            // iprintf("\x1b[2J");
-            
-            // if(val == GENERIC_DUMP_ERROR)
-                // iprintf("There was an error!\nTry again!\n\n");
-            // else if(val == SIZE_DUMP_ERROR)
-                // iprintf("Dump size is too great!\n\n");
-            // else {
-                // save_to_memory(val);
-            // }
-        // }
-    // }
 
     //start_gen2_slave();
     //start_gen2();

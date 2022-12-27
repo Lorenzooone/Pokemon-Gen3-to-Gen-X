@@ -87,8 +87,8 @@ void init_cursor(u8 cursor_y_pos){
     vram_pos = (u16*)(get_vram_pos() + 0x220);
     for(int i = 0; i < (sprite_cursor_bin_size>>1); i++)
         vram_pos[i] = sprite_cursor_gfx[i];
-    if(cursor_y_pos > 3)
-        cursor_y_pos = 3;
+    if(cursor_y_pos > 4)
+        cursor_y_pos = 4;
     set_attributes(BASE_CURSOR_Y + (cursor_y_pos*16), BASE_CURSOR_X, (32*__sprite_counter)+1);
     cursor_sprite = __sprite_counter;
     inner_cursor_sprite = __inner_sprite_counter;
