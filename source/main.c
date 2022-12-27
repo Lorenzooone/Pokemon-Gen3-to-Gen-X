@@ -479,7 +479,6 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
         iprintf("\n%s\n", printable_string);
     }
     iprintf("  Cancel");
-    
 }
 
 #define BASE_Y_CURSOR_MAIN_MENU 8
@@ -660,24 +659,6 @@ int main(void)
     
     read_gen_3_data();
     
-    /*u8 curr_frame = 0;
-    while(1){
-        VBlankIntrWait();
-        curr_frame++;
-        if(curr_frame == 8) {
-            for(int i = 0; i < get_sprite_counter(); i++) {
-                u16 obj_data_2 = *((u16*)(OAM+4+(i*8)));
-                if(obj_data_2 & 0x10)
-                    obj_data_2 &= ~0x10;
-                else
-                    obj_data_2 |= 0x10;
-                *((u16*)(OAM+4+(i*8))) = obj_data_2;
-            }
-            curr_frame = 0;
-        }
-    }
-    */
-    
     u8 update = 1;
     u8 target = 1;
     u8 region = 0;
@@ -689,6 +670,7 @@ int main(void)
     
     print_main_menu(update, target, region, master);
     
+    init_item_icon();
     init_cursor(cursor_y_pos);
     u8 counter = 0;
     
@@ -700,6 +682,7 @@ int main(void)
         
         while ((!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT)) && (!(keys & KEY_A)) && (!(keys & KEY_UP)) && (!(keys & KEY_DOWN))) {
             VBlankIntrWait();
+            move_sprites(counter);
             move_cursor_x(counter);
             counter++;
             scanKeys();
@@ -707,7 +690,9 @@ int main(void)
         }
         handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
         print_main_menu(update, target, region, master);
+        //print_trade_menu(update, 2, 1);
         update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+        update = 0;
     }
 
     // while (1) {

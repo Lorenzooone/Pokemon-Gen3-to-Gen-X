@@ -140,13 +140,15 @@ u8 get_palette_references(int index, u32 pid, u8 is_egg){
     return palettes_references_bin[get_mon_index(index, pid, is_egg)];
 }
 
-void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u16 y, u16 x){
+void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 has_item, u16 y, u16 x){
     u8 sprite_counter = get_sprite_counter();
     u32 address = get_pokemon_sprite_pointer(index, pid, is_egg);
     u8 palette = get_palette_references(index, pid, is_egg);
     LZ77UnCompVram(address, get_vram_pos());
     set_attributes(y, x |(1<<15), (32*sprite_counter)|(palette<<12));
     inc_sprite_counter();
+    if(!is_egg && has_item)
+        set_item_icon(y, x);
 }
 
 void load_pokemon_sprite_raw(struct gen3_mon* src, u16 y, u16 x){
@@ -174,7 +176,7 @@ void load_pokemon_sprite_raw(struct gen3_mon* src, u16 y, u16 x){
     if(src->is_bad_egg)
         return;
     
-    load_pokemon_sprite(growth->species, src->pid, is_egg_gen3(src, misc), y, x);
+    load_pokemon_sprite(growth->species, src->pid, is_egg_gen3(src, misc), (growth->item > 0) && (growth->item <= LAST_VALID_GEN_3_ITEM), y, x);
 }
 
 u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg){
