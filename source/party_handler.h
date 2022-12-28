@@ -20,13 +20,30 @@
 #define PARTY_SIZE 6
 #define MOVES_SIZE 4
 
+#define DEX_BYTES ((LAST_VALID_GEN_3_MON & 7) == 0 ? LAST_VALID_GEN_3_MON >> 3 : (LAST_VALID_GEN_3_MON >> 3) + 1)
+#define GIFT_RIBBONS 11
+#define MAIL_WORDS_SIZE 9
+
 #define NAME_SIZE 11
+#define ITEM_NAME_SIZE 15
 #define NICKNAME_GEN3_SIZE 10
 #define OT_NAME_GEN3_SIZE 7
+#define OT_NAME_JP_GEN3_SIZE 5
 #define STRING_GEN2_INT_SIZE 11
 #define STRING_GEN2_JP_SIZE 6
 #define STRING_GEN2_INT_CAP (STRING_GEN2_INT_SIZE-1)
 #define STRING_GEN2_JP_CAP (STRING_GEN2_JP_SIZE-1)
+
+#define JAPANESE_LANGUAGE 1
+
+struct mail_gen3 {
+    u16 words[MAIL_WORDS_SIZE];
+    u8 ot_name[OT_NAME_GEN3_SIZE+1];
+    u32 ot_id;
+    u16 species;
+    u16 item;
+    u16 unk;
+} __attribute__ ((packed)) __attribute__ ((aligned(4)));
 
 struct exp_level {
     u32 exp_kind[6];
@@ -157,6 +174,8 @@ struct gen1_party {
 u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon*, u32);
 u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon*, u32);
 const u8* get_pokemon_name_raw(struct gen3_mon*);
+const u8* get_item_name_raw(struct gen3_mon*);
+u8 is_egg_gen3_raw(struct gen3_mon*);
 void load_pokemon_sprite_raw(struct gen3_mon*, u16, u16);
 
 #endif

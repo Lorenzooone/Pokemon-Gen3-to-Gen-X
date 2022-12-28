@@ -20,8 +20,13 @@
 // --------------------------------------------------------------------
 
 const char* person_strings[] = {" - You", " - Other"};
+const char* game_strings[] = {"RS", "FRLG", "E"};
+const char* unidentified_string = "Unidentified";
+const char* subgame_rs_strings[] = {"R", "S"};
+const char* subgame_frlg_strings[] = {"FR", "LG"};
 const char* actor_strings[] = {"Master", "Slave"};
 const char* region_strings[] = {"Int", "Jap"};
+const char* slash_string = {"/"};
 const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
 
 enum STATE {MAIN_MENU, MULTIBOOT};
@@ -72,28 +77,72 @@ void start_gen2_slave(void)
 #define FLASH_BANK_CMD *(((vu8*)SRAM)+0x5555) = 0xAA;*(((vu8*)SRAM)+0x2AAA) = 0x55;*(((vu8*)SRAM)+0x5555) = 0xB0;
 #define BANK_SIZE 0x10000
 
+#define MAGIC_NUMBER 0x08012025
+#define INVALID_SLOT 2
 #define SAVE_SLOT_SIZE 0xE000
 #define SAVE_SLOT_INDEX_POS 0xDFFC
 #define SECTION_ID_POS 0xFF4
 #define SECTION_SIZE 0x1000
 #define SECTION_TOTAL 14
+
 #define SECTION_TRAINER_INFO_ID 0
 #define SECTION_PARTY_INFO_ID 1
+#define SECTION_DEX_SEEN_1_ID 1
+#define SECTION_DEX_SEEN_2_ID 4
+#define SECTION_MAIL_ID 3
+#define SECTION_GIFT_RIBBON_ID 4
+
 #define SECTION_GAME_CODE 0xAC
 #define FRLG_GAME_CODE 0x1
+#define RS_GAME_CODE 0
+#define RS_END_BATTLE_TOWER 0x890
+#define DEX_POS_0 0x28
 #define RSE_PARTY 0x234
 #define FRLG_PARTY 0x34
+
+#define ROM 0x8000000
+
+#define UNDETERMINED 0xFF
+#define NUMBER_OF_GAMES 5
+#define GAME_STRING_POS (ROM+0xA0)
+#define GAME_STRING_SIZE 0xC
+#define JAPANESE_ID_POS (ROM+0xAF)
+#define JAPANESE_ID 0x4A
+#define RS_MAIN_GAME_CODE 0x0
+#define R_SUB_GAME_CODE 0x0
+#define S_SUB_GAME_CODE 0x1
+#define FRLG_MAIN_GAME_CODE 0x1
+#define FR_SUB_GAME_CODE 0x0
+#define LG_SUB_GAME_CODE 0x1
+#define E_MAIN_GAME_CODE 0x2
+#define E_SUB_GAME_CODE 0x0
 
 #include "party_handler.h"
 #include "text_handler.h"
 #include "sprite_handler.h"
 
-u8 trainer_name[OT_NAME_GEN3_SIZE+1];
-u8 other_name[OT_NAME_GEN3_SIZE+1];
+const char* game_identifiers[NUMBER_OF_GAMES] = {"POKEMON RUBY", "POKEMON SAPP", "POKEMON FIRE", "POKEMON LEAF", "POKEMON EMER"};
+const u8 main_identifiers[NUMBER_OF_GAMES] = {RS_MAIN_GAME_CODE,RS_MAIN_GAME_CODE,FRLG_MAIN_GAME_CODE,FRLG_MAIN_GAME_CODE,E_MAIN_GAME_CODE};
+const u8 sub_identifiers[NUMBER_OF_GAMES] = {R_SUB_GAME_CODE,S_SUB_GAME_CODE,FR_SUB_GAME_CODE,LG_SUB_GAME_CODE,E_SUB_GAME_CODE};
+
+const u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
+const u16 pokedex_extra_pos_1 [] = {0x938, 0x5F8, 0x988};
+const u16 pokedex_extra_pos_2 [] = {0xC0C, 0xB98, 0xCA4};
+const u16 mail_pos [] = {0xC4C, 0xDD0, 0xCE0};
+const u16 ribbon_pos [] = {0x290, 0x21C, 0x328};
+
+u8 game_is_jp;
+u8 game_main_version;
+u8 game_sub_version;
+u8 pokedex_seen[DEX_BYTES];
+u8 pokedex_owned[DEX_BYTES];
+u8 giftRibbons[2][GIFT_RIBBONS];
+u8 trainer_name[2][OT_NAME_GEN3_SIZE+1];
 u8 trainer_gender;
 u32 trainer_id;
 u8 is_gen2_valid;
 u8 is_gen1_valid;
+struct mail_gen3 mails_3[2][PARTY_SIZE];
 struct gen3_party parties_3[2];
 struct gen2_party parties_2[2];
 struct gen1_party parties_1[2];
@@ -149,7 +198,7 @@ u32 read_section_id(int slot, int section_pos) {
     return read_short((slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + SECTION_ID_POS);
 }
 
-u32 read_game_code(int slot) {
+u32 read_game_data_trainer_info(int slot, u8 game_main_version) {
     if(slot != 0)
         slot = 1;
     
@@ -157,23 +206,58 @@ u32 read_game_code(int slot) {
 
     for(int i = 0; i < SECTION_TOTAL; i++)
         if(read_section_id(slot, i) == SECTION_TRAINER_INFO_ID) {
-            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), trainer_name, OT_NAME_GEN3_SIZE+1);
-            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 8, &trainer_gender, 1);
-            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 10, (u8*)&trainer_id, 4);
-            game_code = read_int((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SECTION_GAME_CODE);
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), trainer_name[0], OT_NAME_GEN3_SIZE+1);
+            trainer_gender = *(vu8*)((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 8);
+            trainer_id = read_int((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 10);
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_0, pokedex_owned, DEX_BYTES);
+            copy_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_0 + DEX_BYTES, pokedex_seen, DEX_BYTES);
+            
+            if(game_main_version == UNDETERMINED) {
+                game_code = read_int((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SECTION_GAME_CODE);
+                if((game_code != FRLG_GAME_CODE) && (game_code != RS_GAME_CODE)) {
+                    u8 found = 0;
+                    for(int j = RS_END_BATTLE_TOWER; i < summable_bytes[SECTION_TRAINER_INFO_ID]; i++)
+                        if((*(vu8*)((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + j))) {
+                            found = 1;
+                            break;
+                        }
+                    if(found)
+                        game_code = (FRLG_GAME_CODE+1);
+                    else
+                        game_code = RS_GAME_CODE;
+                }
+                switch(game_code) {
+                    case RS_GAME_CODE:
+                        game_main_version = RS_MAIN_GAME_CODE;
+                        break;
+                    case FRLG_GAME_CODE:
+                        game_main_version = FRLG_MAIN_GAME_CODE;
+                        break;
+                    default:
+                        game_main_version = E_MAIN_GAME_CODE;
+                        break;
+                }
+            }
+            
             break;
         }
     
-    return game_code;
+    return game_main_version;
 }
 
 void read_party(int slot) {
     if(slot != 0)
         slot = 1;
     
-    u32 game_code = read_game_code(slot);
+    game_main_version = read_game_data_trainer_info(slot, game_main_version);
+    if(game_is_jp == UNDETERMINED) {
+        if(trainer_name[OT_NAME_JP_GEN3_SIZE+1] == 0)
+            game_is_jp = 1;
+        else
+            game_is_jp = 0;
+    }
     u16 add_on = RSE_PARTY;
-    if(game_code == FRLG_GAME_CODE)
+    if(game_main_version == FRLG_MAIN_GAME_CODE)
         add_on = FRLG_PARTY;
 
     for(int i = 0; i < SECTION_TOTAL; i++)
@@ -198,10 +282,6 @@ void read_party(int slot) {
         }
     parties_1[0].total = curr_slot;
 }
-
-#define MAGIC_NUMBER 0x08012025
-#define INVALID_SLOT 2
-u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
 
 u8 validate_slot(int slot) {
     if(slot != 0)
@@ -272,9 +352,24 @@ void read_gen_3_data(){
     read_party(slot);
     
     // Terminate the names
-    trainer_name[OT_NAME_GEN3_SIZE] = GEN3_EOL;
+    trainer_name[0][OT_NAME_GEN3_SIZE] = GEN3_EOL;
     for(int i = 0; i < (OT_NAME_GEN3_SIZE+1); i++)
-        other_name[i] = GEN3_EOL;
+        trainer_name[1][i] = GEN3_EOL;
+}
+
+void get_game_id(){
+    u8 tmp_buffer[GAME_STRING_SIZE+1];
+    text_generic_copy((u8*)GAME_STRING_POS, tmp_buffer, GAME_STRING_SIZE, GAME_STRING_SIZE+1);
+    iprintf("%s\n", tmp_buffer);
+    for(int i = 0; i < NUMBER_OF_GAMES; i++)
+        if(text_generic_is_same(game_identifiers[i], (u8*)GAME_STRING_POS, GAME_STRING_SIZE, GAME_STRING_SIZE)) {
+            game_main_version = main_identifiers[i];
+            game_sub_version = sub_identifiers[i];
+            if((*(u8*)JAPANESE_ID_POS) == JAPANESE_ID)
+                game_is_jp = 1;
+            else
+                game_is_jp = 0;
+        }
 }
 
 u8 get_valid_options() {
@@ -350,6 +445,27 @@ void fill_trade_options(u8* options, u8 curr_gen, u8 is_own) {
 #define BASE_Y_SPRITE_INCREMENT_TRADE_MENU 24
 #define BASE_X_SPRITE_TRADE_MENU 8
 
+void print_game_info(){
+    iprintf("\n Game: ");
+    const char* chosen_str = game_strings[game_main_version];
+    switch(game_main_version) {
+        case RS_MAIN_GAME_CODE:
+            if(game_sub_version != UNDETERMINED)
+                chosen_str = subgame_rs_strings[game_sub_version];
+            break;
+        case FRLG_MAIN_GAME_CODE:
+            if(game_sub_version != UNDETERMINED)
+                chosen_str = subgame_frlg_strings[game_sub_version];
+            break;
+        case E_MAIN_GAME_CODE:
+            break;
+        default:
+            chosen_str = unidentified_string;
+            break;
+    }
+    iprintf("%s\n", chosen_str);
+}
+
 void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
     if(!update)
         return;
@@ -360,10 +476,10 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
     u8 tmp_buffer[X_TILES+1];
     
     text_generic_terminator_fill(printable_string, X_TILES+1);
-    text_gen3_to_generic(trainer_name, tmp_buffer, OT_NAME_GEN3_SIZE+1, X_TILES, 0, 0);
-    text_generic_concat(tmp_buffer, person_strings[0], printable_string, OT_NAME_GEN3_SIZE, (X_TILES >> 1)-OT_NAME_GEN3_SIZE, X_TILES>>1);
-    text_gen3_to_generic(other_name, tmp_buffer, OT_NAME_GEN3_SIZE+1, X_TILES, 0, 0);
-    text_generic_concat(tmp_buffer, person_strings[1], printable_string + (X_TILES >> 1), OT_NAME_GEN3_SIZE, (X_TILES >> 1)-OT_NAME_GEN3_SIZE, X_TILES>>1);
+    for(int i = 0; i < 2; i++) {
+        text_gen3_to_generic(trainer_name[i], tmp_buffer, OT_NAME_GEN3_SIZE+1, X_TILES, 0, 0);
+        text_generic_concat(tmp_buffer, person_strings[i], printable_string + (i*(X_TILES>>1)), OT_NAME_GEN3_SIZE, (X_TILES >> 1)-OT_NAME_GEN3_SIZE, X_TILES>>1);
+    }
     text_generic_replace(printable_string, X_TILES, GENERIC_EOL, GENERIC_SPACE);
     iprintf("%s", printable_string);
 
@@ -388,6 +504,46 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
     iprintf("  Cancel");
 }
 
+#define BASE_Y_SPRITE_INFO_PAGE 0
+#define BASE_X_SPRITE_INFO_PAGE 0
+#define TEXT_BORDER_DISTANCE 0
+
+void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon* mon) {
+    if(!update)
+        return;
+    
+    iprintf("\x1b[2J");
+    
+    u8 printable_string[X_TILES+1];
+    u8 tmp_buffer[2][X_TILES+1];
+    
+    u8 is_jp = (mon->language == JAPANESE_LANGUAGE);
+    u8 is_egg = is_egg_gen3_raw(mon);
+    
+    text_generic_terminator_fill(printable_string, X_TILES+1);
+    text_gen3_to_generic(mon->nickname, printable_string, NICKNAME_GEN3_SIZE, X_TILES, is_jp, 0);
+    iprintf("\n\n    %s - %s\n", printable_string, get_pokemon_name_raw(mon));
+    
+    if(is_jp)
+        iprintf("\nLanguage: Japanese\n");
+    else
+        iprintf("\nLanguage: International\n");
+    
+    text_generic_terminator_fill(printable_string, X_TILES+1);
+    text_gen3_to_generic(mon->ot_name, printable_string, OT_NAME_GEN3_SIZE, X_TILES, is_jp, 0);
+    iprintf("\nOT: %s - %05d\n", printable_string, (mon->ot_id)&0xFFFF);
+    iprintf("\nItem: %s\n", get_item_name_raw(mon));
+
+    if(load_sprites) {
+        reset_sprites_to_cursor();
+        load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE);
+    }
+    
+    print_game_info();
+
+    iprintf("  Cancel");
+}
+
 #define BASE_Y_CURSOR_MAIN_MENU 8
 #define BASE_Y_CURSOR_INCREMENT_MAIN_MENU 16
 
@@ -395,12 +551,11 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
     if(!update)
         return;
     
-    u8 valid_options = get_valid_options();
     u8 options[3];
 
     iprintf("\x1b[2J");
     
-    if(!valid_options)
+    if(!get_valid_options())
         iprintf("\n  Error reading the data!\n\n\n\n\n\n\n");
     else {
         fill_options_array(options);
@@ -577,6 +732,12 @@ int main(void)
     u16 keys;
     enum MULTIBOOT_RESULTS result;
     
+    game_main_version = UNDETERMINED;
+    game_sub_version = UNDETERMINED;
+    game_is_jp = UNDETERMINED;
+    
+    get_game_id();
+    
     init_oam_palette();
     init_sprite_counter();
     irqInit();
@@ -621,6 +782,7 @@ int main(void)
             case MAIN_MENU:
                 returned_val = handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
                 print_main_menu(update, target, region, master);
+                //print_pokemon_page1(update, 1, &parties_3[0].mons[0]);
                 update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
                 if(returned_val == START_MULTIBOOT) {
                     curr_state = MULTIBOOT;
