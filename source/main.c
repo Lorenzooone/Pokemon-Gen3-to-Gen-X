@@ -8,6 +8,7 @@
 #include <gba.h>
 
 #include "multiboot_handler.h"
+#include "graphics_handler.h"
 //#include "save.h"
 
 // --------------------------------------------------------------------
@@ -746,6 +747,7 @@ int main(void)
     irqEnable(IRQ_SERIAL);
 
     consoleDemoInit();
+    init_gender_symbols();
     REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     
     iprintf("\x1b[2J");
