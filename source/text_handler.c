@@ -16,19 +16,6 @@ const u8 text_gen12_to_gen3_jp_bin[];
 #define GENERIC_Z 0x7A
 #define GENERIC_TO_UPPER 0x20
 
-void text_generic_to_upper(u8* src, u8* dst, u8 src_size, u8 dst_size) {
-    for(int i = 0; (i < src_size) && (i < dst_size); i++) {
-        if(src[i] == GENERIC_EOL) {
-            dst[i] = GENERIC_EOL;
-            break;
-        }
-        if(src[i] >= GENERIC_A && src[i] <= GENERIC_Z)
-            dst[i] = src[i] - GENERIC_TO_UPPER;
-        else
-            dst[i] = src[i];
-    }
-}
-
 u8 text_general_count_question(u8* src, u8 src_size, u8 terminator, u8 question) {
     int counter = 0;
     for(int i = 0; i < src_size; i++) {

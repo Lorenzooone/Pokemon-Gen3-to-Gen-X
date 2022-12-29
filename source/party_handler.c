@@ -26,7 +26,6 @@ u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17};
 #define U_GENDER 2
 #define EGG_NUMBER 412
 #define EGG_NUMBER_GEN2 253
-#define UNOWN_NUMBER 201
 #define UNOWN_B_START 415
 #define UNOWN_EX_LETTER 26
 #define UNOWN_I_LETTER 8
@@ -55,16 +54,30 @@ const struct exp_level* exp_table = (const struct exp_level*)exp_table_bin;
 const struct stats_gen_23* stats_table = (const struct stats_gen_23*)pokemon_stats_bin;
 const struct stats_gen_1* stats_table_gen1 = (const struct stats_gen_1*)pokemon_stats_gen1_bin;
 
+u8 get_index_key(u32 pid){
+    // Make use of modulo properties to get this to positives
+    while(pid >= 0x80000000)
+        pid -= 0x7FFFFFF8;
+    return DivMod(pid, 24);
+}
+
+u8 get_nature(u32 pid){
+    // Make use of modulo properties to get this to positives
+    while(pid >= 0x80000000)
+        pid -= 0x7FFFFFE9;
+    return DivMod(pid, 25);
+}
+
 u16 get_mon_index(int index, u32 pid, u8 is_egg){
     if(index > LAST_VALID_GEN_3_MON)
         return 0;
     if(is_egg)
         return EGG_NUMBER;
-    if(index != UNOWN_NUMBER)
+    if(index != UNOWN_SPECIES)
         return index;
     u8 letter = get_unown_letter_gen3(pid);
     if(letter == 0)
-        return UNOWN_NUMBER;
+        return UNOWN_SPECIES;
     return UNOWN_B_START+letter-1;
 }
 
@@ -89,7 +102,16 @@ u16 get_mon_index_gen1(int index){
 }
 
 const u8* get_pokemon_name(int index, u32 pid, u8 is_egg){
-    return &(pokemon_names_bin[get_mon_index(index, pid, is_egg)*NAME_SIZE]);
+    return get_table_pointer(pokemon_names_bin, get_mon_index(index, pid, is_egg));
+}
+
+const u8* get_pokemon_name_pure(int index, u32 pid, u8 is_egg){
+    u16 mon_index = get_mon_index(index, pid, is_egg);
+    if ((index == UNOWN_SPECIES) && !is_egg)
+        mon_index = UNOWN_REAL_NAME_POS;
+    if ((index == DEOXYS_SPECIES) && !is_egg)
+        mon_index = DEOXYS_SPECIES;
+    return get_table_pointer(pokemon_names_bin, mon_index);
 }
 
 const u8* get_pokemon_name_raw(struct gen3_mon* src){
@@ -100,11 +122,7 @@ const u8* get_pokemon_name_raw(struct gen3_mon* src){
         return get_pokemon_name(0,0,0);
     
     // Interpret the decrypted data
-    u32 index_key = src->pid;
-    // Make use of modulo properties to get this to positives
-    while(index_key >= 0x80000000)
-        index_key -= 0x7FFFFFF8;
-    s32 index = DivMod(index_key, 24);
+    u8 index = get_index_key(src->pid);
     
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
@@ -120,16 +138,18 @@ const u8* get_pokemon_name_raw(struct gen3_mon* src){
     return get_pokemon_name(growth->species, src->pid, is_egg_gen3(src, misc));
 }
 
-const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp){
+const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp, u8* buffer){
     if(is_jp)
         return &(gen2_names_jap_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_JP_CAP]);
-    return &(gen2_names_international_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_INT_CAP]);
-}
-
-const u8* get_pokemon_name_gen1(int index, u8 is_jp){
-    if(is_jp)
-        return &(gen2_names_jap_bin[get_mon_index_gen2_1(index)*STRING_GEN2_JP_CAP]);
-    return &(gen2_names_international_bin[get_mon_index_gen2_1(index)*STRING_GEN2_INT_CAP]);
+    u8* buffer_two[STRING_GEN2_INT_SIZE];
+    u16 mon_index = get_mon_index_gen2(index, is_egg);
+    if (mon_index == MR_MIME_SPECIES)
+        mon_index = MR_MIME_OLD_NAME_POS;
+    if (mon_index == UNOWN_SPECIES)
+        mon_index = UNOWN_REAL_NAME_POS;
+    text_generic_to_gen3(get_table_pointer(pokemon_names_bin, mon_index), buffer_two, NAME_SIZE, STRING_GEN2_INT_CAP, 0, 0);
+    text_gen3_to_gen12(buffer_two, buffer, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP, 0, 0);
+    return buffer;
 }
 
 const u8* get_item_name(int index, u8 is_egg){
@@ -137,7 +157,7 @@ const u8* get_item_name(int index, u8 is_egg){
         index = 0;
     if(index > LAST_VALID_GEN_3_ITEM)
         index = 0;
-    return &(item_names_bin[index*ITEM_NAME_SIZE]);
+    return get_table_pointer(item_names_bin, index);
 }
 
 const u8* get_item_name_raw(struct gen3_mon* src){
@@ -148,11 +168,7 @@ const u8* get_item_name_raw(struct gen3_mon* src){
         return get_item_name(0,0);
     
     // Interpret the decrypted data
-    u32 index_key = src->pid;
-    // Make use of modulo properties to get this to positives
-    while(index_key >= 0x80000000)
-        index_key -= 0x7FFFFFF8;
-    s32 index = DivMod(index_key, 24);
+    u8 index = get_index_key(src->pid);
     
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
@@ -165,8 +181,7 @@ const u8* get_item_name_raw(struct gen3_mon* src){
 }
 
 const u8* get_pokemon_sprite_pointer(int index, u32 pid, u8 is_egg){
-    u16* sprites_cmp_bin_16 = (u16*)sprites_cmp_bin;
-    return &(sprites_cmp_bin[(sprites_cmp_bin_16[1+get_mon_index(index, pid, is_egg)]<<2)+sprites_cmp_bin_16[0]]);
+    return get_table_pointer(sprites_cmp_bin, get_mon_index(index, pid, is_egg));
 }
 
 u8 get_palette_references(int index, u32 pid, u8 is_egg){
@@ -192,11 +207,7 @@ void load_pokemon_sprite_raw(struct gen3_mon* src, u16 y, u16 x){
         return;
     
     // Interpret the decrypted data
-    u32 index_key = src->pid;
-    // Make use of modulo properties to get this to positives
-    while(index_key >= 0x80000000)
-        index_key -= 0x7FFFFFF8;
-    s32 index = DivMod(index_key, 24);
+    u8 index = get_index_key(src->pid);
     
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
@@ -232,13 +243,6 @@ u8 get_pokemon_gender_kind_gen3(int index, u32 pid, u8 is_egg){
     return pokemon_gender_bin[get_mon_index(index, pid, is_egg)];
 }
 
-u8 get_nature(struct gen3_mon* src){
-    u32 nature_pid = src->pid;
-    while(nature_pid >= 0x80000000)
-        nature_pid -= 0x7FFFFFE9;
-    return DivMod(nature_pid, 25);
-}
-
 u8 is_egg_gen3(struct gen3_mon* src, struct gen3_mon_misc* misc){
     // In case it ends up being more complex, for some reason
     return misc->is_egg;
@@ -252,11 +256,7 @@ u8 is_egg_gen3_raw(struct gen3_mon* src){
         return 1;
     
     // Interpret the decrypted data
-    u32 index_key = src->pid;
-    // Make use of modulo properties to get this to positives
-    while(index_key >= 0x80000000)
-        index_key -= 0x7FFFFFF8;
-    s32 index = DivMod(index_key, 24);
+    u8 index = get_index_key(src->pid);
     
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
 
@@ -414,7 +414,7 @@ u8 validate_mon_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8
     
     // Unown ! and ? did not exist in gen 2
     // Not only that, but only Unown I and V can be shiny
-    if(is_gen2 && (growth->species == UNOWN_NUMBER)) {
+    if(is_gen2 && (growth->species == UNOWN_SPECIES)) {
         u8 letter = get_unown_letter_gen3(src->pid);
         if(letter >= UNOWN_EX_LETTER)
             return 0;
@@ -494,7 +494,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         exp = 0;
     
     // Save nature in experience, like the Gen I-VII conversion
-    u8 nature = get_nature(src);
+    u8 nature = get_nature(src->pid);
 
     // Nature handling
     u8 exp_nature = DivMod(exp, 25);
@@ -532,7 +532,7 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     u8 spe_ivs = (misc->spe_ivs >> 1);
     
     // Unown letter
-    if((is_gen2) && (species == UNOWN_NUMBER)) {
+    if((is_gen2) && (species == UNOWN_SPECIES)) {
         u8 letter = get_unown_letter_gen3(pid);
         u8 min_iv_sum = letter * 10;
         u8 max_iv_sum = ((letter+1) * 10)-1;
@@ -571,15 +571,14 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
 }
 
 void fix_name_change_of_gen3(struct gen3_mon* src, u16 species,  u8* nickname, u8 is_egg, u8 is_gen2) {
-    u8 tmp_text_buffers[2][NAME_SIZE];
+    u8 tmp_text_buffer[NAME_SIZE];
     
     // Get the string to compare to
-    text_generic_to_upper(get_pokemon_name(species, src->pid, is_egg), tmp_text_buffers[0], NAME_SIZE, NAME_SIZE);
-    text_generic_to_gen3(tmp_text_buffers[0], tmp_text_buffers[1], NAME_SIZE, NICKNAME_GEN3_SIZE, 0, 0);
+    text_generic_to_gen3(get_pokemon_name(species, src->pid, is_egg), tmp_text_buffer, NAME_SIZE, NICKNAME_GEN3_SIZE, 0, 0);
     
     // If it's the same, update the nickname with the new one
-    if(text_gen3_is_same(src->nickname, tmp_text_buffers[1], NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE)) {
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+    if(text_gen3_is_same(src->nickname, tmp_text_buffer, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE)) {
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0, tmp_text_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
         // Gen 1 used the wrong dot symbol
         if(!is_gen2)
             text_gen2_replace(nickname, STRING_GEN2_INT_CAP, GEN2_DOT, GEN1_DOT);
@@ -587,6 +586,7 @@ void fix_name_change_of_gen3(struct gen3_mon* src, u16 species,  u8* nickname, u
 }
 
 void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8* ot_name_jp, u8* nickname, u8* nickname_jp, u8 is_egg, u8 is_gen2) {
+    u8 gen2_buffer[STRING_GEN2_INT_SIZE];
     u8 is_jp = (src->language == JAPANESE_LANGUAGE);
     
     // Text conversions
@@ -609,18 +609,18 @@ void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8*
     
     // Put the "EGG" name
     if(is_gen2 && is_egg) {
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1, gen2_buffer), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
     }
     
     // Handle bad naming conversions (? >= half the name) and empty names
     s32 question_marks_count = text_gen2_count_question(nickname, STRING_GEN2_INT_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
     if((question_marks_count >= (text_gen2_size(nickname, STRING_GEN2_INT_CAP) >> 1)) || (text_gen2_size(nickname, STRING_GEN2_INT_CAP) == 0))
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
     // For the japanese nickname too
     question_marks_count = text_gen2_count_question(nickname_jp, STRING_GEN2_JP_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
     if((question_marks_count >= (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) >> 1)) || (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) == 0))
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1, gen2_buffer), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
 
 }
 
@@ -632,11 +632,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
         return 0;
     
     // Interpret the decrypted data
-    u32 index_key = src->pid;
-    // Make use of modulo properties to get this to positives
-    while(index_key >= 0x80000000)
-        index_key -= 0x7FFFFFF8;
-    s32 index = DivMod(index_key, 24);
+    u8 index = get_index_key(src->pid);
     
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
     struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
@@ -710,11 +706,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon* src, u32 trainer_id) {
         return 0;
     
     // Interpret the decrypted data
-    u32 index_key = src->pid;
-    // Make use of modulo properties to get this to positives
-    while(index_key >= 0x80000000)
-        index_key -= 0x7FFFFFF8;
-    s32 index = DivMod(index_key, 24);
+    u8 index = get_index_key(src->pid);
     
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
     struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);

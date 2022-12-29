@@ -11,8 +11,6 @@
 #define GEN2_QUESTION 0xE6
 #define GENERIC_QUESTION 0x3F
 
-void text_generic_to_upper(u8*, u8*, u8, u8);
-
 void text_generic_concat(u8*, u8*, u8*, u8, u8, u8);
 void text_gen3_concat(u8*, u8*, u8*, u8, u8, u8);
 void text_gen2_concat(u8*, u8*, u8*, u8, u8, u8);
