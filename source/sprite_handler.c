@@ -4,6 +4,7 @@
 #define OAM 0x7000000
 #define BASE_CURSOR_X 2
 #define BASE_CURSOR_Y 8
+#define CPUFASTSET_FILL (0x1000000)
 
 const u8 sprite_cursor_bin[];
 const u32 sprite_cursor_bin_size;

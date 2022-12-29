@@ -2,6 +2,26 @@
 #include "party_handler.h"
 #include "text_handler.h"
 #include "sprite_handler.h"
+#include "graphics_handler.h"
+
+#include "pokemon_moves_pp_gen1_bin.h"
+#include "pokemon_moves_pp_bin.h"
+#include "pokemon_gender_bin.h"
+#include "pokemon_names_bin.h"
+#include "item_names_bin.h"
+#include "gen2_names_jap_bin.h"
+#include "sprites_cmp_bin.h"
+#include "sprites_info_bin.h"
+#include "palettes_references_bin.h"
+#include "item_gen3_to_12_bin.h"
+#include "gen3_to_1_conv_table_bin.h"
+#include "gen1_to_3_conv_table_bin.h"
+#include "pokemon_exp_groups_bin.h"
+#include "exp_table_bin.h"
+#include "pokemon_stats_bin.h"
+#include "pokemon_stats_gen1_bin.h"
+#include "pokemon_types_gen1_bin.h"
+#include "pokemon_natures_bin.h"
 
 u8 decrypt_data(struct gen3_mon*, u32*);
 u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
@@ -32,24 +52,7 @@ u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17};
 #define UNOWN_V_LETTER 21
 #define INITIAL_MAIL_GEN3 121
 #define LAST_MAIL_GEN3 132
-const u8 pokemon_moves_pp_gen1_bin[];
-const u8 pokemon_moves_pp_bin[];
-const u8 pokemon_gender_bin[];
-const u8 pokemon_names_bin[];
-const u8 item_names_bin[];
-const u8 gen2_names_international_bin[];
-const u8 gen2_names_jap_bin[];
-const u8 sprites_cmp_bin[];
-const u8 palettes_references_bin[];
-const u8 item_gen3_to_12_bin[];
-const u8 gen3_to_1_conv_table_bin[];
-const u8 gen1_to_3_conv_table_bin[];
-const u8 pokemon_exp_groups_bin[];
-const u8 exp_table_bin[];
-const u8 pokemon_stats_bin[];
-const u8 pokemon_stats_gen1_bin[];
-const u8 pokemon_types_gen1_bin[];
-const u8 pokemon_natures_bin[];
+
 const struct exp_level* exp_table = (const struct exp_level*)exp_table_bin;
 const struct stats_gen_23* stats_table = (const struct stats_gen_23*)pokemon_stats_bin;
 const struct stats_gen_1* stats_table_gen1 = (const struct stats_gen_1*)pokemon_stats_gen1_bin;
@@ -184,6 +187,11 @@ const u8* get_pokemon_sprite_pointer(int index, u32 pid, u8 is_egg){
     return get_table_pointer(sprites_cmp_bin, get_mon_index(index, pid, is_egg));
 }
 
+u8 get_pokemon_sprite_info(int index, u32 pid, u8 is_egg){
+    u16 mon_index = get_mon_index(index, pid, is_egg);
+    return (sprites_info_bin[mon_index>>2]>>(2*(mon_index&3)))&3;
+}
+
 u8 get_palette_references(int index, u32 pid, u8 is_egg){
     return palettes_references_bin[get_mon_index(index, pid, is_egg)];
 }
@@ -192,7 +200,7 @@ void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 has_item, u16 y, u16 
     u8 sprite_counter = get_sprite_counter();
     u32 address = get_pokemon_sprite_pointer(index, pid, is_egg);
     u8 palette = get_palette_references(index, pid, is_egg);
-    LZ77UnCompVram(address, get_vram_pos());
+    load_pokemon_sprite_gfx(address, get_vram_pos(), get_pokemon_sprite_info(index, pid, is_egg));
     set_attributes(y, x |(1<<15), (32*sprite_counter)|(palette<<12));
     inc_sprite_counter();
     if(!is_egg && has_item)

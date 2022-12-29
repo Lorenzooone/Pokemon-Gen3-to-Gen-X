@@ -118,6 +118,8 @@ void start_gen2_slave(void)
 #define E_MAIN_GAME_CODE 0x2
 #define E_SUB_GAME_CODE 0x0
 
+#define VALID_MAPS 36
+
 #include "party_handler.h"
 #include "text_handler.h"
 #include "sprite_handler.h"
@@ -131,6 +133,8 @@ const u16 pokedex_extra_pos_1 [] = {0x938, 0x5F8, 0x988};
 const u16 pokedex_extra_pos_2 [] = {0xC0C, 0xB98, 0xCA4};
 const u16 mail_pos [] = {0xC4C, 0xDD0, 0xCE0};
 const u16 ribbon_pos [] = {0x290, 0x21C, 0x328};
+const u16 special_area [] = {0, 9, 9};
+const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0x0406, 0x0503, 0x0504, 0x0603, 0x0604, 0x0700, 0x0701, 0x0804, 0x0805, 0x090a, 0x090b, 0x0a05, 0x0a06, 0x0b05, 0x0b06, 0x0c02, 0x0c03, 0x0d06, 0x0d07, 0x0e03, 0x0e04, 0x0f02, 0x0f03, 0x100c, 0x100d, 0x100a, 0x1918, 0x1919, 0x191a, 0x191b, 0x1a05};
 
 u8 game_is_jp;
 u8 game_main_version;
@@ -785,6 +789,7 @@ int main(void)
                 returned_val = handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
                 print_main_menu(update, target, region, master);
                 //print_pokemon_page1(update, 1, &parties_3[0].mons[0]);
+                //print_trade_menu(update, 2, 1);
                 update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
                 if(returned_val == START_MULTIBOOT) {
                     curr_state = MULTIBOOT;
