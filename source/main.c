@@ -637,11 +637,43 @@ void print_pokemon_page2(u8 update, u8 load_sprites, struct gen3_mon_data_unenc*
     
     print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 2, PAGES_INFO);
         
-    iprintf("\nLevel: %d\n", to_valid_level_gen3(mon->src));
+    iprintf("\nSTAT    VALUE    EV    IV\n");
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+        iprintf("\n %-3s", stat_strings[i]);
+        if(i == HP_STAT_INDEX) {
+            u16 hp = calc_stats_gen3_raw(mon, i);
+            u16 curr_hp = mon->src->stats[0];
+            if(curr_hp > hp)
+                curr_hp = hp;
+            iprintf("   % 3d/%-3d  ", curr_hp, hp);
+        }
+        else
+            iprintf("     % 3d    ", calc_stats_gen3_raw(mon,i));
+        iprintf("% 3d   % 3d\n", get_evs_gen3(&mon->evs, i), get_ivs_gen3(&mon->misc, i));
+    }
     
+    iprintf("\n   Hidden Power %s: %d", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
     //print_game_info();
 
-    iprintf("\n\nB: Go Back");
+    iprintf("\nB: Go Back");
+}
+
+void print_pokemon_page3(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
+    if(!update)
+        return;
+    
+    u8 printable_string[X_TILES+1];
+    u8 is_jp = (mon->src->language == JAPANESE_LANGUAGE);
+    u8 is_egg = is_egg_gen3_raw(mon);
+    
+    if(is_egg)
+        return;
+    
+    print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 3, PAGES_INFO);
+
+    //print_game_info();
+
+    iprintf("\nB: Go Back");
 }
 
 #define BASE_Y_CURSOR_MAIN_MENU 8

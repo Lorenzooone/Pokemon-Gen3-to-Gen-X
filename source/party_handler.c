@@ -433,12 +433,9 @@ u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
     return 1;
 }
 
-#define HP_STAT_INDEX 0
 #define ATK_STAT_INDEX 1
 #define DEF_STAT_INDEX 2
 #define SPE_STAT_INDEX 3
-#define GEN2_STATS_TOTAL 6
-#define GEN1_STATS_TOTAL 5
 #define EVS_TOTAL 5
 
 u8 index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};

@@ -8,6 +8,8 @@
 #define LAST_VALID_GEN_2_MOVE 251
 #define LAST_VALID_GEN_1_MOVE 165
 #define LAST_VALID_GEN_3_ITEM 376
+#define GEN2_STATS_TOTAL 6
+#define GEN1_STATS_TOTAL 5
 
 #define M_GENDER 0
 #define F_GENDER 1
@@ -59,6 +61,7 @@
 #define MAIL_WORDS_SIZE 9
 
 #define MAX_EVS 510
+#define HP_STAT_INDEX 0
 
 #define NAME_SIZE 11
 #define ITEM_NAME_SIZE 15
