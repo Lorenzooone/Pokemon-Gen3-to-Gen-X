@@ -13,8 +13,25 @@
 #define F_GENDER 1
 #define U_GENDER 2
 
+#define NO_POKERUS 0
+#define HAS_POKERUS 1
+#define HAD_POKERUS 2
+
+#define COLOSSEUM_CODE 15
+#define RUBY_CODE 2
+#define EMERALD_CODE 3
+#define BATTLE_FACILITY 0x3A
+#define HIDEOUT 0x42
+#define DEPT_STORE 0xC4
+#define EMPTY_LOCATION 0xD5
+#define BATTLE_FACILITY_ALT 0x101
+#define HIDEOUT_ALT 0x100
+#define DEPT_STORE_ALT 0x102
+#define COLOSSEUM_ALT 0x103
+
 #define NIDORAN_M_SPECIES 32
 #define NIDORAN_F_SPECIES 29
+
 
 #define MR_MIME_SPECIES 122
 #define MR_MIME_OLD_NAME_POS 445
@@ -100,7 +117,8 @@ struct gen3_mon_misc {
     u32 spd_ivs : 5;
     u32 is_egg : 1;
     u32 ability : 1;
-    u32 ribbons;
+    u32 ribbons : 31;
+    u32 obedience : 1;
 };
 
 struct gen3_mon_data_undec {
@@ -109,7 +127,9 @@ struct gen3_mon_data_undec {
     struct gen3_mon_attacks attacks;
     struct gen3_mon_evs evs;
     struct gen3_mon_misc misc;
-    u8 is_valid;
+    u8 is_valid_gen3 :1;
+    u8 is_valid_gen2 :1;
+    u8 is_valid_gen1 :1;
 };
 
 struct gen3_mon {
@@ -198,9 +218,16 @@ u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_undec*, u32);
 const u8* get_pokemon_name_raw(struct gen3_mon_data_undec*);
 u16 get_mon_index_raw(struct gen3_mon_data_undec*);
 const u8* get_item_name_raw(struct gen3_mon_data_undec*);
+const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_undec*);
+u8 get_met_level_gen3_raw(struct gen3_mon_data_undec*);
+const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_undec*);
+u8 get_trainer_gender_char_raw(struct gen3_mon_data_undec*);
 u8 is_egg_gen3_raw(struct gen3_mon_data_undec*);
+u8 has_pokerus_gen3_raw(struct gen3_mon_data_undec* data_src);
 void load_pokemon_sprite_raw(struct gen3_mon_data_undec*, u16, u16);
 u8 get_pokemon_gender_raw(struct gen3_mon_data_undec*);
 char get_pokemon_gender_char_raw(struct gen3_mon_data_undec*);
+u8 is_shiny_gen3_raw(struct gen3_mon_data_undec*, u32);
+u8 to_valid_level_gen3(struct gen3_mon*);
 
 #endif

@@ -49,7 +49,6 @@ void sio_normal_inner_slave() {
 }
 
 void sio_handle_irq_slave() {
-	
 	REG_IF |= IRQ_SERIAL;
 
     REG_SIOCNT &= ~SIO_SO_HIGH;
@@ -64,7 +63,6 @@ void sio_handle_irq_slave() {
     REG_SIOCNT |= SIO_START | SIO_SO_HIGH;
     // - Set SO to LOW to indicate that master may start now.
     REG_SIOCNT &= ~SIO_SO_HIGH;
-	
 }
 
 void sio_stop_irq_slave() {
