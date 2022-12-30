@@ -17,6 +17,11 @@
 #define HAS_POKERUS 1
 #define HAD_POKERUS 2
 
+#define LAST_RIBBON_CONTEST 4
+#define LAST_RIBBON 16
+#define NO_RANK_ID 1
+#define NO_RIBBON_ID 21
+
 #define COLOSSEUM_CODE 15
 #define RUBY_CODE 2
 #define EMERALD_CODE 3
@@ -31,7 +36,6 @@
 
 #define NIDORAN_M_SPECIES 32
 #define NIDORAN_F_SPECIES 29
-
 
 #define MR_MIME_SPECIES 122
 #define MR_MIME_OLD_NAME_POS 445
@@ -52,6 +56,8 @@
 #define DEX_BYTES ((LAST_VALID_GEN_3_MON & 7) == 0 ? LAST_VALID_GEN_3_MON >> 3 : (LAST_VALID_GEN_3_MON >> 3) + 1)
 #define GIFT_RIBBONS 11
 #define MAIL_WORDS_SIZE 9
+
+#define MAX_EVS 510
 
 #define NAME_SIZE 11
 #define ITEM_NAME_SIZE 15
@@ -229,5 +235,15 @@ u8 get_pokemon_gender_raw(struct gen3_mon_data_undec*);
 char get_pokemon_gender_char_raw(struct gen3_mon_data_undec*);
 u8 is_shiny_gen3_raw(struct gen3_mon_data_undec*, u32);
 u8 to_valid_level_gen3(struct gen3_mon*);
+u16 calc_stats_gen3_raw(struct gen3_mon_data_undec*, u8);
+u8 get_evs_gen3(struct gen3_mon_evs*, u8);
+u8 get_ivs_gen3(struct gen3_mon_misc*, u8);
+u8 get_hidden_power_power_gen3(struct gen3_mon_misc*);
+const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc*);
+const u8* get_nature_name(u32);
+const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
+const u8* get_ability_name_raw(struct gen3_mon_data_undec*);
+const u8* get_ribbon_name(struct gen3_mon_misc*, u8);
+const u8* get_ribbon_rank_name(struct gen3_mon_misc*, u8);
 
 #endif

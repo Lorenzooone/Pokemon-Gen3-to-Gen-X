@@ -11,6 +11,12 @@
 #include "item_names_bin.h"
 #include "location_names_bin.h"
 #include "pokeball_names_bin.h"
+#include "nature_names_bin.h"
+#include "type_names_bin.h"
+#include "move_names_bin.h"
+#include "ability_names_bin.h"
+#include "contest_rank_names_bin.h"
+#include "ribbon_names_bin.h"
 #include "gen2_names_jap_bin.h"
 #include "sprites_cmp_bin.h"
 #include "sprites_info_bin.h"
@@ -24,6 +30,7 @@
 #include "pokemon_stats_gen1_bin.h"
 #include "pokemon_types_gen1_bin.h"
 #include "pokemon_natures_bin.h"
+#include "pokemon_abilities_bin.h"
 
 u8 decrypt_data(struct gen3_mon*, u32*);
 u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
@@ -52,6 +59,7 @@ u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17};
 #define INITIAL_MAIL_GEN3 121
 #define LAST_MAIL_GEN3 132
 
+const u16* pokemon_abilities_bin_16 = (const u16*)pokemon_abilities_bin;
 const struct exp_level* exp_table = (const struct exp_level*)exp_table_bin;
 const struct stats_gen_23* stats_table = (const struct stats_gen_23*)pokemon_stats_bin;
 const struct stats_gen_1* stats_table_gen1 = (const struct stats_gen_1*)pokemon_stats_gen1_bin;
@@ -159,6 +167,45 @@ const u8* get_item_name_raw(struct gen3_mon_data_undec* data_src){
     return get_item_name(data_src->growth.item, is_egg_gen3_raw(data_src));
 }
 
+u16 get_possible_abilities_pokemon(int index, u32 pid, u8 is_egg){
+    u16 mon_index = get_mon_index(index, pid, is_egg);
+    return pokemon_abilities_bin_16[mon_index];
+}
+
+u8 get_ability_pokemon(int index, u32 pid, u8 is_egg, u8 ability_bit){
+    return (get_possible_abilities_pokemon(index, pid, is_egg) >> (8*ability_bit))&0xFF;
+}
+
+const u8* get_ability_name_raw(struct gen3_mon_data_undec* data_src){
+    if(!data_src->is_valid_gen3)
+        return get_table_pointer(ability_names_bin, get_ability_pokemon(0,0,0,0));
+    
+    return get_table_pointer(ability_names_bin, get_ability_pokemon(data_src->growth.species, data_src->src->pid, is_egg_gen3_raw(data_src), data_src->misc.ability));
+}
+
+const u8* get_ribbon_name(struct gen3_mon_misc* misc, u8 ribbon_num){
+    if(ribbon_num > LAST_RIBBON)
+        return get_table_pointer(ribbon_names_bin, NO_RIBBON_ID);
+    
+    if(ribbon_num <= LAST_RIBBON_CONTEST) {
+        if ((misc->ribbons >> (3*ribbon_num))&7)
+            return get_table_pointer(ribbon_names_bin, ribbon_num);
+        else
+            return get_table_pointer(ribbon_names_bin, NO_RIBBON_ID);
+    }
+    
+    if((misc->ribbons >> (((LAST_RIBBON_CONTEST+1)*3)+(ribbon_num-(LAST_RIBBON_CONTEST+1))))&1)
+            return get_table_pointer(ribbon_names_bin, ribbon_num);
+    return get_table_pointer(ribbon_names_bin, NO_RIBBON_ID);
+}
+
+const u8* get_ribbon_rank_name(struct gen3_mon_misc* misc, u8 ribbon_num){
+    if((ribbon_num <= LAST_RIBBON_CONTEST) && ((misc->ribbons >> (3*ribbon_num))&7))
+        return get_table_pointer(contest_rank_names_bin, ((misc->ribbons >> (3*ribbon_num))&7));
+    else
+        return get_table_pointer(contest_rank_names_bin, NO_RANK_ID);
+}
+
 const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_undec* data_src){
     if(!data_src->is_valid_gen3)
         return get_table_pointer(location_names_bin, EMPTY_LOCATION);
@@ -232,6 +279,25 @@ void load_pokemon_sprite_raw(struct gen3_mon_data_undec* data_src, u16 y, u16 x)
         return;
 
     return load_pokemon_sprite(data_src->growth.species, data_src->src->pid, is_egg_gen3_raw(data_src), (data_src->growth.item > 0) && (data_src->growth.item <= LAST_VALID_GEN_3_ITEM), y, x);
+}
+
+const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
+    if(slot >= MOVES_SIZE)
+        slot = MOVES_SIZE-1;
+    
+    u16 move = attacks->moves[slot];
+    
+    if(move > LAST_VALID_GEN_3_MOVE)
+        move = 0;
+    
+    return get_table_pointer(move_names_bin, move);
+}
+
+u8 has_legal_moves(struct gen3_mon_attacks* attacks){
+    for(int i = 0; i < MOVES_SIZE; i++)
+        if((attacks->moves[i] != 0) && (attacks->moves[i] <= LAST_VALID_GEN_3_MOVE))
+            return 1;
+    return 0;
 }
 
 u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg){
@@ -354,8 +420,9 @@ u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
 #define EVS_TOTAL 5
 
 u8 index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
+u8 index_conversion_gen3[] = {0, 1, 2, 4, 5, 3};
 
-u8 get_iv_gen2(u16 ivs, u8 stat_index) {
+u8 get_ivs_gen2(u16 ivs, u8 stat_index) {
     u8 atk_ivs = (ivs >> 4) & 0xF;
     u8 def_ivs = ivs & 0xF;
     u8 spe_ivs = (ivs >> 12) & 0xF;
@@ -374,6 +441,73 @@ u8 get_iv_gen2(u16 ivs, u8 stat_index) {
     }
 }
 
+u8 get_ivs_gen3(struct gen3_mon_misc* misc, u8 stat_index) {
+    if(stat_index >= GEN2_STATS_TOTAL)
+        stat_index = GEN2_STATS_TOTAL-1;
+    
+    u32 ivs = (*(((u32*)misc)+1));
+    u8 real_stat_index = index_conversion_gen3[stat_index];
+    
+    return (ivs >> (5*real_stat_index))&0x1F;
+}
+
+u8 get_hidden_power_type_gen3(struct gen3_mon_misc* misc) {
+    u32 type = 0;
+    u32 ivs = (*(((u32*)misc)+1));
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++)
+        type += (((ivs >> (5*i))&0x1F)&1)<<i;
+    return Div(type*15, (1<<GEN2_STATS_TOTAL)-1);
+}
+
+u8 get_hidden_power_power_gen3(struct gen3_mon_misc* misc) {
+    u32 power = 0;
+    u32 ivs = (*(((u32*)misc)+1));
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++)
+        power += ((((ivs >> (5*i))&0x1F)>>1)&1)<<i;
+    return Div(power*40, (1<<GEN2_STATS_TOTAL)-1) + 30;
+}
+
+const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc* misc) {
+    return get_table_pointer(type_names_bin, get_hidden_power_type_gen3(misc));
+}
+
+const u8* get_nature_name(u32 pid) {
+    return get_table_pointer(nature_names_bin, get_nature(pid));
+}
+
+u8 are_evs_legal_gen3(struct gen3_mon_evs* evs) {
+    u8 sum = 0;
+
+    // Are they within the cap?
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+        if(sum + evs->evs[i] > MAX_EVS)
+            return 0;
+        sum += evs->evs[i];
+    }
+    return 1;
+}
+
+u8 get_evs_gen3(struct gen3_mon_evs* evs, u8 stat_index) {
+    if(stat_index >= GEN2_STATS_TOTAL)
+        stat_index = GEN2_STATS_TOTAL-1;
+
+    u8 own_evs[] = {0,0,0,0,0,0};
+    u8 sum = 0;
+    
+    // Are they within the cap?
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+        if(sum + evs->evs[i] > MAX_EVS)
+            own_evs[i] = MAX_EVS-sum;
+        else
+            own_evs[i] = evs->evs[i];
+        sum += own_evs[i];
+    }
+    
+    u8 real_stat_index = index_conversion_gen3[stat_index];
+    
+    return own_evs[real_stat_index];
+}
+
 u16 calc_stats_gen1(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     if(species > LAST_VALID_GEN_1_MON)
         species = 0;
@@ -386,35 +520,46 @@ u16 calc_stats_gen1(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     return base + Div(((stats_table_gen1[species].stats[stat_index] + iv) + (Sqrt(stat_exp) >> 2)) * level, 100);
 }
 
-u16 calc_stats_gen2(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
+u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     if(species > LAST_VALID_GEN_2_MON)
         species = 0;
     if(stat_index >= GEN2_STATS_TOTAL)
         stat_index = GEN2_STATS_TOTAL-1;
+    
+    u16 mon_index = get_mon_index(species, pid, 0);
+    
     stat_index = index_conversion_gen2[stat_index];
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
-    return base + Div(((stats_table[species].stats[stat_index] + iv) + (Sqrt(stat_exp) >> 2)) * level, 100);
+    return base + Div(((stats_table[mon_index].stats[stat_index] + iv) + (Sqrt(stat_exp) >> 2)) * level, 100);
 }
 
-u16 calc_stats_gen3(u16 species, u8 stat_index, u8 level, u8 iv, u8 ev, u8 nature) {
+u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev) {
     if(species > LAST_VALID_GEN_3_MON)
         species = 0;
     if(stat_index >= GEN2_STATS_TOTAL)
         stat_index = GEN2_STATS_TOTAL-1;
+    
+    u8 nature = get_nature(pid);
+    u16 mon_index = get_mon_index(species, pid, 0);
+    
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
     u8 boosted_stat = pokemon_natures_bin[(2*nature)];
     u8 nerfed_stat = pokemon_natures_bin[(2*nature)+1];
-    u16 stat = base + Div(((stats_table[species].stats[stat_index] + iv) + (ev >> 2)) * level, 100);
+    u16 stat = base + Div(((stats_table[mon_index].stats[stat_index] + iv) + (ev >> 2)) * level, 100);
     if((boosted_stat == nerfed_stat) || ((boosted_stat != stat_index) && (nerfed_stat != stat_index)))
         return stat;
     if(boosted_stat == stat_index)
         return stat + Div(stat, 10);
     if(nerfed_stat == stat_index)
         return stat - Div(stat, 10);
+}
+
+u16 calc_stats_gen3_raw(struct gen3_mon_data_undec* data_src, u8 stat_index) {    
+    return calc_stats_gen3(data_src->growth.species, data_src->src->pid, stat_index, to_valid_level_gen3(data_src->src), get_ivs_gen3(&data_src->misc, stat_index), get_evs_gen3(&data_src->evs, stat_index));
 }
 
 u16 swap_endian_short(u16 shrt) {
@@ -701,6 +846,16 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_undec* dst) {
         dst->is_valid_gen3 = 0;
         return;
     }
+    
+    if(!are_evs_legal_gen3(evs)) {
+        dst->is_valid_gen3 = 0;
+        return;
+    }
+    
+    if(!has_legal_moves(attacks)) {
+        dst->is_valid_gen3 = 0;
+        return;
+    }
 
     // Bad egg checks
     if(src->is_bad_egg) {
@@ -765,9 +920,9 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon_data_undec* data_src, u32 
     dst->unused = 0;
     
     // Stats calculations
-    dst->curr_hp = swap_endian_short(calc_stats_gen2(growth->species, HP_STAT_INDEX, dst->level, get_iv_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
+    dst->curr_hp = swap_endian_short(calc_stats_gen2(growth->species, src->pid, HP_STAT_INDEX, dst->level, get_ivs_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
     for(int i = 0; i < GEN2_STATS_TOTAL; i++)
-        dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL ? EVS_TOTAL-1 : i])));
+        dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, src->pid, i, dst->level, get_ivs_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL ? EVS_TOTAL-1 : i])));
     
     // Extra byte for egg data
     dst->is_egg = is_egg_gen3(src, misc);
@@ -835,9 +990,9 @@ u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon_data_undec* data_src, u32 
     dst->status = 0;
     
     // Stats calculations
-    dst->curr_hp = swap_endian_short(calc_stats_gen1(growth->species, HP_STAT_INDEX, dst->level, get_iv_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
+    dst->curr_hp = swap_endian_short(calc_stats_gen1(growth->species, HP_STAT_INDEX, dst->level, get_ivs_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
     for(int i = 0; i < GEN1_STATS_TOTAL; i++)
-        dst->stats[i] = swap_endian_short(calc_stats_gen1(growth->species, i, dst->level, get_iv_gen2(dst->ivs, i), swap_endian_short(dst->evs[i])));
+        dst->stats[i] = swap_endian_short(calc_stats_gen1(growth->species, i, dst->level, get_ivs_gen2(dst->ivs, i), swap_endian_short(dst->evs[i])));
 
     // Text conversions
     convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, 0, 0);

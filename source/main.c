@@ -29,10 +29,13 @@ const char* actor_strings[] = {"Master", "Slave"};
 const char* region_strings[] = {"Int", "Jap"};
 const char* slash_string = {"/"};
 const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
+const char* stat_strings[] = {"Hp", "Atk", "Def", "SpA", "SpD", "Spe"};
+const char* contest_strings[] = {"Coolness", "Beauty", "Cuteness", "Smartness", "Toughness", "Feel"};
 
 enum STATE {MAIN_MENU, MULTIBOOT};
 enum STATE curr_state;
-u8 counter = 0;
+u32 counter = 0;
+u32 input_counter = 0;
 
 #include "sio.h"
 #define VCOUNT_TIMEOUT 28 * 8
@@ -515,6 +518,7 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
             u8 mon_index = i;
             if(options[party_index][mon_index] != 0xFF) {
                 struct gen3_mon_data_undec* mon = &parties_3_undec[party_index][options[party_index][mon_index]];
+                // I tried just using printf here with left padding, but it's EXTREMELY slow
                 text_generic_copy(get_pokemon_name_raw(mon), printable_string + 5 + ((X_TILES>>1)*j), NAME_SIZE, (X_TILES>>1) - 5);
                 if(load_sprites)
                     load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (((X_TILES >> 1) << 3)*j) + BASE_X_SPRITE_TRADE_MENU);
@@ -631,7 +635,7 @@ void print_pokemon_page2(u8 update, u8 load_sprites, struct gen3_mon_data_undec*
     if(is_egg)
         return;
     
-    print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 1, PAGES_INFO);
+    print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 2, PAGES_INFO);
         
     iprintf("\nLevel: %d\n", to_valid_level_gen3(mon->src));
     
@@ -834,6 +838,7 @@ int main(void)
 {
     int val = 0;
     counter = 0;
+    input_counter = 0;
     u16 keys;
     enum MULTIBOOT_RESULTS result;
     
@@ -881,6 +886,7 @@ int main(void)
             scanKeys();
             keys = keysDown();
         }
+        input_counter++;
         switch(curr_state) {
             case MAIN_MENU:
                 returned_val = handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
