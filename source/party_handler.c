@@ -41,9 +41,6 @@ u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17};
 #define M_INDEX 1
 #define F_INDEX 6
 #define U_INDEX 7
-#define M_GENDER 0
-#define F_GENDER 1
-#define U_GENDER 2
 #define EGG_NUMBER 412
 #define EGG_NUMBER_GEN2 253
 #define UNOWN_B_START 415
@@ -84,6 +81,13 @@ u16 get_mon_index(int index, u32 pid, u8 is_egg){
     return UNOWN_B_START+letter-1;
 }
 
+u16 get_mon_index_raw(struct gen3_mon_data_undec* data_src){
+    if(!data_src->is_valid)
+        return get_mon_index(0,0,0);
+    
+    return get_mon_index(data_src->growth.species, data_src->src->pid, is_egg_gen3_raw(data_src));
+}
+
 u16 get_mon_index_gen2(int index, u8 is_egg){
     if(index > LAST_VALID_GEN_2_MON)
         return 0;
@@ -117,28 +121,11 @@ const u8* get_pokemon_name_pure(int index, u32 pid, u8 is_egg){
     return get_table_pointer(pokemon_names_bin, mon_index);
 }
 
-const u8* get_pokemon_name_raw(struct gen3_mon* src){
-    u32 decryption[ENC_DATA_SIZE>>2];
-    
-    // Initial data decryption
-    if(!decrypt_data(src, decryption))
+const u8* get_pokemon_name_raw(struct gen3_mon_data_undec* data_src){
+    if(!data_src->is_valid)
         return get_pokemon_name(0,0,0);
     
-    // Interpret the decrypted data
-    u8 index = get_index_key(src->pid);
-    
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
-    
-    // Species checks
-    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0))
-        return get_pokemon_name(0,0,0);
-
-    // Bad egg checks
-    if(src->is_bad_egg)
-        return get_pokemon_name(0,0,0);
-    
-    return get_pokemon_name(growth->species, src->pid, is_egg_gen3(src, misc));
+    return get_pokemon_name(data_src->growth.species, data_src->src->pid, is_egg_gen3_raw(data_src));
 }
 
 const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp, u8* buffer){
@@ -163,24 +150,11 @@ const u8* get_item_name(int index, u8 is_egg){
     return get_table_pointer(item_names_bin, index);
 }
 
-const u8* get_item_name_raw(struct gen3_mon* src){
-    u32 decryption[ENC_DATA_SIZE>>2];
-    
-    // Initial data decryption
-    if(!decrypt_data(src, decryption))
+const u8* get_item_name_raw(struct gen3_mon_data_undec* data_src){
+    if(!data_src->is_valid)
         return get_item_name(0,0);
     
-    // Interpret the decrypted data
-    u8 index = get_index_key(src->pid);
-    
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
-
-    // Bad egg checks
-    if(src->is_bad_egg)
-        return get_item_name(0,0);
-    
-    return get_item_name(growth->item, is_egg_gen3(src, misc));
+    return get_item_name(data_src->growth.item, is_egg_gen3_raw(data_src));
 }
 
 const u8* get_pokemon_sprite_pointer(int index, u32 pid, u8 is_egg){
@@ -207,28 +181,11 @@ void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 has_item, u16 y, u16 
         set_item_icon(y, x);
 }
 
-void load_pokemon_sprite_raw(struct gen3_mon* src, u16 y, u16 x){
-    u32 decryption[ENC_DATA_SIZE>>2];
-    
-    // Initial data decryption
-    if(!decrypt_data(src, decryption))
-        return;
-    
-    // Interpret the decrypted data
-    u8 index = get_index_key(src->pid);
-    
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
-    
-    // Species checks
-    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0))
+void load_pokemon_sprite_raw(struct gen3_mon_data_undec* data_src, u16 y, u16 x){
+    if(!data_src->is_valid)
         return;
 
-    // Bad egg checks
-    if(src->is_bad_egg)
-        return;
-    
-    load_pokemon_sprite(growth->species, src->pid, is_egg_gen3(src, misc), (growth->item > 0) && (growth->item <= LAST_VALID_GEN_3_ITEM), y, x);
+    return load_pokemon_sprite(data_src->growth.species, data_src->src->pid, is_egg_gen3_raw(data_src), (data_src->growth.item > 0) && (data_src->growth.item <= LAST_VALID_GEN_3_ITEM), y, x);
 }
 
 u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg){
@@ -247,6 +204,29 @@ u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg){
     }
 }
 
+u8 get_pokemon_gender_raw(struct gen3_mon_data_undec* data_src){
+    if(!data_src->is_valid)
+        return GENERIC_U_GENDER;
+    
+    return get_pokemon_gender_gen3(data_src->growth.species, data_src->src->pid, is_egg_gen3_raw(data_src));
+}
+
+char get_pokemon_gender_char_raw(struct gen3_mon_data_undec* data_src){
+    if(!data_src->is_valid)
+        return get_pokemon_gender_gen3(0,0,0);
+
+    u16 mon_index = get_mon_index_raw(data_src);
+
+    u8 gender = get_pokemon_gender_raw(data_src);
+    char gender_char = GENERIC_M_GENDER;
+    if(gender == F_GENDER)
+        gender_char = GENERIC_F_GENDER;
+    if((gender == U_GENDER)||(mon_index == NIDORAN_M_SPECIES)||(mon_index == NIDORAN_F_SPECIES))
+        gender_char = GENERIC_U_GENDER;
+
+    return gender_char;
+}
+
 u8 get_pokemon_gender_kind_gen3(int index, u32 pid, u8 is_egg){
     return pokemon_gender_bin[get_mon_index(index, pid, is_egg)];
 }
@@ -256,23 +236,11 @@ u8 is_egg_gen3(struct gen3_mon* src, struct gen3_mon_misc* misc){
     return misc->is_egg;
 }
 
-u8 is_egg_gen3_raw(struct gen3_mon* src){
-    u32 decryption[ENC_DATA_SIZE>>2];
-    
-    // Initial data decryption
-    if(!decrypt_data(src, decryption))
+u8 is_egg_gen3_raw(struct gen3_mon_data_undec* data_src){
+    if(!data_src->is_valid)
         return 1;
     
-    // Interpret the decrypted data
-    u8 index = get_index_key(src->pid);
-    
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
-
-    // Bad egg checks
-    if(src->is_bad_egg)
-        return 1;
-    
-    return is_egg_gen3(src, misc);
+    return is_egg_gen3(data_src->src, &data_src->misc);
 }
 
 u8 is_shiny_gen3(u32 pid, u32 ot_id, u8 is_egg, u32 trainer_id){
@@ -284,8 +252,8 @@ u8 is_shiny_gen3(u32 pid, u32 ot_id, u8 is_egg, u32 trainer_id){
     return 0;
 }
 
-u8 is_shiny_gen3_raw(struct gen3_mon* src, u8 is_egg, u32 trainer_id){
-    return is_shiny_gen3(src->pid, src->ot_id, is_egg, trainer_id);
+u8 is_shiny_gen3_raw(struct gen3_mon_data_undec* data_src, u32 trainer_id){
+    return is_shiny_gen3(data_src->src->pid, data_src->src->ot_id, is_egg_gen3_raw(data_src), trainer_id);
 }
 
 u8 is_shiny_gen2(u8 atk_ivs, u8 def_ivs, u8 spa_ivs, u8 spe_ivs){
@@ -399,7 +367,7 @@ u32 swap_endian_int(u32 integer) {
     return ((integer & 0xFF000000) >> 24) | ((integer & 0xFF) << 24) | ((integer & 0xFF0000) >> 8) | ((integer & 0xFF00) << 8);
 }
 
-u8 validate_mon_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_egg, u8 is_gen2) {
+u8 validate_converting_mon_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_egg, u8 is_gen2) {
     u8 last_valid_mon = LAST_VALID_GEN_1_MON;
     if(is_gen2)
         last_valid_mon = LAST_VALID_GEN_2_MON;
@@ -632,14 +600,17 @@ void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8*
 
 }
 
-u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
+void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_undec* dst) {
+    dst->src = src;
+    
     u32 decryption[ENC_DATA_SIZE>>2];
     
     // Initial data decryption
-    if(!decrypt_data(src, decryption))
-        return 0;
+    if(!decrypt_data(src, decryption)) {
+        dst->is_valid = 0;
+        return;
+    }
     
-    // Interpret the decrypted data
     u8 index = get_index_key(src->pid);
     
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
@@ -647,13 +618,49 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
     struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
     
+    for(int i = 0; i < sizeof(struct gen3_mon_growth); i++)
+        ((u8*)(&dst->growth))[i] = ((u8*)growth)[i];
+    for(int i = 0; i < sizeof(struct gen3_mon_attacks); i++)
+        ((u8*)(&dst->attacks))[i] = ((u8*)attacks)[i];
+    for(int i = 0; i < sizeof(struct gen3_mon_evs); i++)
+        ((u8*)(&dst->evs))[i] = ((u8*)evs)[i];
+    for(int i = 0; i < sizeof(struct gen3_mon_misc); i++)
+        ((u8*)(&dst->misc))[i] = ((u8*)misc)[i];
+    
+    // Species checks
+    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0)) {
+        dst->is_valid = 0;
+        return;
+    }
+
+    // Bad egg checks
+    if(src->is_bad_egg) {
+        dst->is_valid = 0;
+        return;
+    }
+    
+    dst->is_valid = 1;
+}
+
+u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon_data_undec* data_src, u32 trainer_id) {
+    
+    struct gen3_mon* src = data_src->src;
+    
+    if(!data_src->is_valid)
+        return 0;
+    
+    struct gen3_mon_growth* growth = &data_src->growth;
+    struct gen3_mon_attacks* attacks = &data_src->attacks;
+    struct gen3_mon_evs* evs = &data_src->evs;
+    struct gen3_mon_misc* misc = &data_src->misc;
+    
     // Get shinyness and gender for checks
-    u8 is_shiny = is_shiny_gen3_raw(src, is_egg_gen3(src, misc), trainer_id);
+    u8 is_shiny = is_shiny_gen3_raw(data_src, trainer_id);
     u8 gender = get_pokemon_gender_gen3(growth->species, src->pid, 0);
     u8 gender_kind = get_pokemon_gender_kind_gen3(growth->species, src->pid, 0);
     
     // Check that the mon can be traded
-    if(!validate_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg_gen3(src, misc), 1))
+    if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg_gen3(src, misc), 1))
         return 0;
     
     // Start setting data
@@ -706,28 +713,25 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon* src, u32 trainer_id) {
     return 1;
 }
 
-u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon* src, u32 trainer_id) {
-    u32 decryption[ENC_DATA_SIZE>>2];
+u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon_data_undec* data_src, u32 trainer_id) {
     
-    // Initial data decryption
-    if(!decrypt_data(src, decryption))
+    struct gen3_mon* src = data_src->src;
+    
+    if(!data_src->is_valid)
         return 0;
     
-    // Interpret the decrypted data
-    u8 index = get_index_key(src->pid);
-    
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
-    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
-    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
+    struct gen3_mon_growth* growth = &data_src->growth;
+    struct gen3_mon_attacks* attacks = &data_src->attacks;
+    struct gen3_mon_evs* evs = &data_src->evs;
+    struct gen3_mon_misc* misc = &data_src->misc;
     
     // Get shinyness and gender for checks
-    u8 is_shiny = is_shiny_gen3_raw(src, is_egg_gen3(src, misc), trainer_id);
+    u8 is_shiny = is_shiny_gen3_raw(data_src, trainer_id);
     u8 gender = get_pokemon_gender_gen3(growth->species, src->pid, 0);
     u8 gender_kind = get_pokemon_gender_kind_gen3(growth->species, src->pid, 0);
     
     // Check that the mon can be traded
-    if(!validate_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg_gen3(src, misc), 0))
+    if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg_gen3(src, misc), 0))
         return 0;
     
     // Start setting data

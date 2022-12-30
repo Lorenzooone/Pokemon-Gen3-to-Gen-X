@@ -3,6 +3,10 @@
 
 #define GENERIC_SPACE 0x20
 
+#define GENERIC_M_GENDER 0x88
+#define GENERIC_F_GENDER 0x89
+#define GENERIC_U_GENDER GENERIC_SPACE
+
 #define GEN3_EOL 0xFF
 #define GEN2_EOL 0x50
 #define GENERIC_EOL 0

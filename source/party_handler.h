@@ -9,6 +9,13 @@
 #define LAST_VALID_GEN_1_MOVE 165
 #define LAST_VALID_GEN_3_ITEM 376
 
+#define M_GENDER 0
+#define F_GENDER 1
+#define U_GENDER 2
+
+#define NIDORAN_M_SPECIES 32
+#define NIDORAN_F_SPECIES 29
+
 #define MR_MIME_SPECIES 122
 #define MR_MIME_OLD_NAME_POS 445
 #define UNOWN_SPECIES 201
@@ -96,6 +103,15 @@ struct gen3_mon_misc {
     u32 ribbons;
 };
 
+struct gen3_mon_data_undec {
+    struct gen3_mon* src;
+    struct gen3_mon_growth growth;
+    struct gen3_mon_attacks attacks;
+    struct gen3_mon_evs evs;
+    struct gen3_mon_misc misc;
+    u8 is_valid;
+};
+
 struct gen3_mon {
     u32 pid;
     u32 ot_id;
@@ -176,11 +192,15 @@ struct gen1_party {
     struct gen1_mon mons[PARTY_SIZE];
 };
 
-u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon*, u32);
-u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon*, u32);
-const u8* get_pokemon_name_raw(struct gen3_mon*);
-const u8* get_item_name_raw(struct gen3_mon*);
-u8 is_egg_gen3_raw(struct gen3_mon*);
-void load_pokemon_sprite_raw(struct gen3_mon*, u16, u16);
+void process_gen3_data(struct gen3_mon*, struct gen3_mon_data_undec*);
+u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_undec*, u32);
+u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_undec*, u32);
+const u8* get_pokemon_name_raw(struct gen3_mon_data_undec*);
+u16 get_mon_index_raw(struct gen3_mon_data_undec*);
+const u8* get_item_name_raw(struct gen3_mon_data_undec*);
+u8 is_egg_gen3_raw(struct gen3_mon_data_undec*);
+void load_pokemon_sprite_raw(struct gen3_mon_data_undec*, u16, u16);
+u8 get_pokemon_gender_raw(struct gen3_mon_data_undec*);
+char get_pokemon_gender_char_raw(struct gen3_mon_data_undec*);
 
 #endif

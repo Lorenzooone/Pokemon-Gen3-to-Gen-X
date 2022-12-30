@@ -149,6 +149,7 @@ u8 is_gen2_valid;
 u8 is_gen1_valid;
 struct mail_gen3 mails_3[2][PARTY_SIZE];
 struct gen3_party parties_3[2];
+struct gen3_mon_data_undec parties_3_undec[2][PARTY_SIZE];
 struct gen2_party parties_2[2];
 struct gen1_party parties_1[2];
 
@@ -273,15 +274,23 @@ void read_party(int slot) {
     if(parties_3[0].total > PARTY_SIZE)
         parties_3[0].total = PARTY_SIZE;
     u8 curr_slot = 0;
+    u8 found = 0;
+    for(int i = 0; i < parties_3[0].total; i++) {
+        process_gen3_data(&parties_3[0].mons[i], &parties_3_undec[0][i]);
+        if(parties_3_undec[0][i].is_valid)
+            found = 1;
+    }
+    if (!found)
+        parties_3[0].total = 0;
     for(int i = 0; i < parties_3[0].total; i++)
-        if(gen3_to_gen2(&parties_2[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id)) {
+        if(gen3_to_gen2(&parties_2[0].mons[curr_slot], &parties_3_undec[0][i], trainer_id)) {
             curr_slot++;
             is_gen2_valid |= (1<<i);
         }
     parties_2[0].total = curr_slot;
     curr_slot = 0;
     for(int i = 0; i < parties_3[0].total; i++)
-        if(gen3_to_gen1(&parties_1[0].mons[curr_slot], &parties_3[0].mons[i], trainer_id)) {
+        if(gen3_to_gen1(&parties_1[0].mons[curr_slot], &parties_3_undec[0][i], trainer_id)) {
             curr_slot++;
             is_gen1_valid |= (1<<i);
         }
@@ -498,7 +507,7 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
         text_generic_terminator_fill(printable_string, X_TILES+1);
         for(int j = 0; j < 2; j++)
             if(options[j][i] != 0xFF) {
-                struct gen3_mon* mon = &parties_3[j].mons[options[j][i]];
+                struct gen3_mon_data_undec* mon = &parties_3_undec[j][options[j][i]];
                 text_generic_copy(get_pokemon_name_raw(mon), printable_string + 5 + ((X_TILES>>1)*j), NAME_SIZE, (X_TILES>>1) - 5);
                 if(load_sprites)
                     load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (((X_TILES >> 1) << 3)*j) + BASE_X_SPRITE_TRADE_MENU);
@@ -513,7 +522,7 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
 #define BASE_X_SPRITE_INFO_PAGE 0
 #define TEXT_BORDER_DISTANCE 0
 
-void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon* mon) {
+void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon_data_undec* mon) {
     if(!update)
         return;
     
@@ -522,12 +531,12 @@ void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon* mon) {
     u8 printable_string[X_TILES+1];
     u8 tmp_buffer[2][X_TILES+1];
     
-    u8 is_jp = (mon->language == JAPANESE_LANGUAGE);
+    u8 is_jp = (mon->src->language == JAPANESE_LANGUAGE);
     u8 is_egg = is_egg_gen3_raw(mon);
     
     text_generic_terminator_fill(printable_string, X_TILES+1);
-    text_gen3_to_generic(mon->nickname, printable_string, NICKNAME_GEN3_SIZE, X_TILES, is_jp, 0);
-    iprintf("\n\n    %s - %s\n", printable_string, get_pokemon_name_raw(mon));
+    text_gen3_to_generic(mon->src->nickname, printable_string, NICKNAME_GEN3_SIZE, X_TILES, is_jp, 0);
+    iprintf("\n\n    %s - %s %c\n", printable_string, get_pokemon_name_raw(mon), get_pokemon_gender_char_raw(mon));
     
     if(is_jp)
         iprintf("\nLanguage: Japanese\n");
@@ -535,8 +544,8 @@ void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon* mon) {
         iprintf("\nLanguage: International\n");
     
     text_generic_terminator_fill(printable_string, X_TILES+1);
-    text_gen3_to_generic(mon->ot_name, printable_string, OT_NAME_GEN3_SIZE, X_TILES, is_jp, 0);
-    iprintf("\nOT: %s - %05d\n", printable_string, (mon->ot_id)&0xFFFF);
+    text_gen3_to_generic(mon->src->ot_name, printable_string, OT_NAME_GEN3_SIZE, X_TILES, is_jp, 0);
+    iprintf("\nOT: %s - %05d\n", printable_string, (mon->src->ot_id)&0xFFFF);
     iprintf("\nItem: %s\n", get_item_name_raw(mon));
 
     if(load_sprites) {
@@ -544,7 +553,7 @@ void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon* mon) {
         load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE);
     }
     
-    print_game_info();
+    //print_game_info();
 
     iprintf("  Cancel");
 }
@@ -788,7 +797,7 @@ int main(void)
             case MAIN_MENU:
                 returned_val = handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
                 print_main_menu(update, target, region, master);
-                //print_pokemon_page1(update, 1, &parties_3[0].mons[0]);
+                //print_pokemon_page1(update, 1, &parties_3_undec[0][0]);
                 //print_trade_menu(update, 2, 1);
                 update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
                 if(returned_val == START_MULTIBOOT) {
