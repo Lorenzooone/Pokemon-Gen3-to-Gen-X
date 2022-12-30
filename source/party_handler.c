@@ -184,6 +184,11 @@ const u8* get_ability_name_raw(struct gen3_mon_data_unenc* data_src){
 }
 
 u8 is_ability_valid(u16 index, u32 pid, u8 ability_bit, u8 met_location, u8 origin_game){
+    u16 abilities = get_possible_abilities_pokemon(index, pid, 0);
+    u8 abilities_same = (abilities&0xFF) == ((abilities>>8)&0xFF);
+    
+    if(abilities_same && ability_bit)
+        return 0;
     
     if(!((pid&1) ^ ability_bit))
         return 1;
@@ -194,9 +199,7 @@ u8 is_ability_valid(u16 index, u32 pid, u8 ability_bit, u8 met_location, u8 orig
     if(origin_game == COLOSSEUM_CODE)
         return 1;
     
-    u16 abilities = get_possible_abilities_pokemon(index, pid, 0);
-    
-    if((abilities&0xFF) == ((abilities>>8)&0xFF))
+    if(abilities_same)
         return 1;
     
     return 0;

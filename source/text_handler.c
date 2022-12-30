@@ -1,20 +1,23 @@
 #include <gba.h>
 #include "text_handler.h"
+#include "bin_table_handler.h"
 
-const u8 text_gen3_to_gen12_int_bin[];
-const u8 text_gen3_to_gen12_jp_bin[];
-const u8 text_gen3_to_gen12_int_jp_bin[];
-const u8 text_gen3_to_gen12_jp_int_bin[];
-const u8 text_gen3_to_general_int_bin[];
-const u8 text_gen3_to_general_jp_bin[];
-const u8 text_general_to_gen3_int_bin[];
-const u8 text_general_to_gen3_jp_bin[];
-const u8 text_gen12_to_gen3_int_bin[];
-const u8 text_gen12_to_gen3_jp_bin[];
+#include "trainer_names_bin.h"
+#include "text_gen3_to_gen12_int_bin.h"
+#include "text_gen3_to_gen12_jp_bin.h"
+#include "text_gen3_to_gen12_int_jp_bin.h"
+#include "text_gen3_to_gen12_jp_int_bin.h"
+#include "text_gen3_to_general_int_bin.h"
+#include "text_gen3_to_general_jp_bin.h"
+#include "text_general_to_gen3_int_bin.h"
+#include "text_general_to_gen3_jp_bin.h"
+#include "text_gen12_to_gen3_int_bin.h"
+#include "text_gen12_to_gen3_jp_bin.h"
 
 #define GENERIC_A 0x61
 #define GENERIC_Z 0x7A
 #define GENERIC_TO_UPPER 0x20
+#define GEN12_TRAINER 0x5D
 
 u8 text_general_count_question(u8* src, u8 src_size, u8 terminator, u8 question) {
     int counter = 0;
@@ -225,8 +228,12 @@ void text_gen3_to_gen12(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_src, u
 }
 
 void text_gen12_to_gen3(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_src, u8 jp_dst) {
-    if(jp_src)
-        text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_jp_bin);
-    else
-        text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_int_bin);
+    if(src[0] == GEN12_TRAINER)
+        text_gen3_copy(get_table_pointer(trainer_names_bin, jp_src), dst, src_size, dst_size);
+    else {
+        if(jp_src)
+            text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_jp_bin);
+        else
+            text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_int_bin);
+    }
 }
