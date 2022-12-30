@@ -151,7 +151,7 @@ u8 trainer_gender;
 u32 trainer_id;
 struct mail_gen3 mails_3[2][PARTY_SIZE];
 struct gen3_party parties_3[2];
-struct gen3_mon_data_undec parties_3_undec[2][PARTY_SIZE];
+struct gen3_mon_data_unenc parties_3_undec[2][PARTY_SIZE];
 struct gen2_party parties_2[2];
 struct gen1_party parties_1[2];
 
@@ -441,7 +441,7 @@ void fill_trade_options(u8* options, u8 curr_gen, u8 is_own) {
     u8 index = 1;
     if(is_own)
         index = 0;
-    struct gen3_mon_data_undec* party = parties_3_undec[index];
+    struct gen3_mon_data_unenc* party = parties_3_undec[index];
     u8 real_party_size = parties_3[index].total;
     if(real_party_size > PARTY_SIZE)
         real_party_size = PARTY_SIZE;
@@ -517,7 +517,7 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
             u8 party_index = j;
             u8 mon_index = i;
             if(options[party_index][mon_index] != 0xFF) {
-                struct gen3_mon_data_undec* mon = &parties_3_undec[party_index][options[party_index][mon_index]];
+                struct gen3_mon_data_unenc* mon = &parties_3_undec[party_index][options[party_index][mon_index]];
                 // I tried just using printf here with left padding, but it's EXTREMELY slow
                 text_generic_copy(get_pokemon_name_raw(mon), printable_string + 5 + ((X_TILES>>1)*j), NAME_SIZE, (X_TILES>>1) - 5);
                 if(load_sprites)
@@ -535,7 +535,7 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
 #define TEXT_BORDER_DISTANCE 0
 #define PAGES_INFO 4
 
-void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_undec* mon, u8 is_jp, u8 is_egg, u8 page, u8 page_total) {
+void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 is_jp, u8 is_egg, u8 page, u8 page_total) {
     u8 printable_string[X_TILES+1];
     
     u8 is_shiny = is_shiny_gen3_raw(mon, 0);
@@ -585,7 +585,7 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_undec* mon, u
     
 }
 
-void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon_data_undec* mon) {
+void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
     if(!update)
         return;
     
@@ -624,7 +624,7 @@ void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon_data_undec*
     iprintf("\n\nB: Go Back");
 }
 
-void print_pokemon_page2(u8 update, u8 load_sprites, struct gen3_mon_data_undec* mon) {
+void print_pokemon_page2(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
     if(!update)
         return;
     

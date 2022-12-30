@@ -127,7 +127,7 @@ struct gen3_mon_misc {
     u32 obedience : 1;
 };
 
-struct gen3_mon_data_undec {
+struct gen3_mon_data_unenc {
     struct gen3_mon* src;
     struct gen3_mon_growth growth;
     struct gen3_mon_attacks attacks;
@@ -218,31 +218,32 @@ struct gen1_party {
     struct gen1_mon mons[PARTY_SIZE];
 };
 
-void process_gen3_data(struct gen3_mon*, struct gen3_mon_data_undec*);
-u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_undec*, u32);
-u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_undec*, u32);
-const u8* get_pokemon_name_raw(struct gen3_mon_data_undec*);
-u16 get_mon_index_raw(struct gen3_mon_data_undec*);
-const u8* get_item_name_raw(struct gen3_mon_data_undec*);
-const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_undec*);
-u8 get_met_level_gen3_raw(struct gen3_mon_data_undec*);
-const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_undec*);
-u8 get_trainer_gender_char_raw(struct gen3_mon_data_undec*);
-u8 is_egg_gen3_raw(struct gen3_mon_data_undec*);
-u8 has_pokerus_gen3_raw(struct gen3_mon_data_undec* data_src);
-void load_pokemon_sprite_raw(struct gen3_mon_data_undec*, u16, u16);
-u8 get_pokemon_gender_raw(struct gen3_mon_data_undec*);
-char get_pokemon_gender_char_raw(struct gen3_mon_data_undec*);
-u8 is_shiny_gen3_raw(struct gen3_mon_data_undec*, u32);
+void process_gen3_data(struct gen3_mon*, struct gen3_mon_data_unenc*);
+u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_unenc*, u32);
+u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_unenc*, u32);
+
+const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);
+u16 get_mon_index_raw(struct gen3_mon_data_unenc*);
+const u8* get_item_name_raw(struct gen3_mon_data_unenc*);
+const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_unenc*);
+u8 get_met_level_gen3_raw(struct gen3_mon_data_unenc*);
+const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_unenc*);
+u8 get_trainer_gender_char_raw(struct gen3_mon_data_unenc*);
+u8 is_egg_gen3_raw(struct gen3_mon_data_unenc*);
+u8 has_pokerus_gen3_raw(struct gen3_mon_data_unenc* data_src);
+void load_pokemon_sprite_raw(struct gen3_mon_data_unenc*, u16, u16);
+u8 get_pokemon_gender_raw(struct gen3_mon_data_unenc*);
+char get_pokemon_gender_char_raw(struct gen3_mon_data_unenc*);
+u8 is_shiny_gen3_raw(struct gen3_mon_data_unenc*, u32);
 u8 to_valid_level_gen3(struct gen3_mon*);
-u16 calc_stats_gen3_raw(struct gen3_mon_data_undec*, u8);
+u16 calc_stats_gen3_raw(struct gen3_mon_data_unenc*, u8);
 u8 get_evs_gen3(struct gen3_mon_evs*, u8);
 u8 get_ivs_gen3(struct gen3_mon_misc*, u8);
 u8 get_hidden_power_power_gen3(struct gen3_mon_misc*);
 const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc*);
 const u8* get_nature_name(u32);
 const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
-const u8* get_ability_name_raw(struct gen3_mon_data_undec*);
+const u8* get_ability_name_raw(struct gen3_mon_data_unenc*);
 const u8* get_ribbon_name(struct gen3_mon_misc*, u8);
 const u8* get_ribbon_rank_name(struct gen3_mon_misc*, u8);
 
