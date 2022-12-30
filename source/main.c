@@ -533,7 +533,7 @@ void print_trade_menu(u8 update, u8 curr_gen, u8 load_sprites) {
 #define BASE_Y_SPRITE_INFO_PAGE 0
 #define BASE_X_SPRITE_INFO_PAGE 0
 #define TEXT_BORDER_DISTANCE 0
-#define PAGES_INFO 4
+#define PAGES_INFO 5
 
 void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 is_jp, u8 is_egg, u8 page, u8 page_total) {
     u8 printable_string[X_TILES+1];
@@ -585,6 +585,10 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     
 }
 
+void print_bottom_info(){
+    iprintf("\nB: Go Back");
+}
+
 void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
     if(!update)
         return;
@@ -612,23 +616,22 @@ void print_pokemon_page1(u8 update, u8 load_sprites, struct gen3_mon_data_unenc*
         iprintf("\nMet in: %s\n", get_met_location_name_gen3_raw(mon));
         u8 met_level = get_met_level_gen3_raw(mon);
         if(met_level > 0)
-            iprintf("\nCaught at Level %d\n\nCaught in %s Ball\n", met_level, get_pokeball_base_name_gen3_raw(mon));
+            iprintf("\nCaught at Level %d\n\nCaught in %s Ball\n\n", met_level, get_pokeball_base_name_gen3_raw(mon));
         else
-            iprintf("\nHatched in %s Ball\n\n\n", get_pokeball_base_name_gen3_raw(mon));
+            iprintf("\nHatched in %s Ball\n\n\n\n", get_pokeball_base_name_gen3_raw(mon));
     }
     else
-        iprintf("\nHatches in : %d Egg Cycles\n\nRoughly hatches in: %d Steps\n\n\n\n\n\n\n\n\n\n\n", mon->growth.friendship, mon->growth.friendship * 0x100);
+        iprintf("\nHatches in : %d Egg Cycles\n\nRoughly hatches in: %d Steps\n\n\n\n\n\n\n\n\n\n\n\n", mon->growth.friendship, mon->growth.friendship * 0x100);
     
     //print_game_info();
 
-    iprintf("\n\nB: Go Back");
+    print_bottom_info();
 }
 
 void print_pokemon_page2(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
     if(!update)
         return;
     
-    u8 printable_string[X_TILES+1];
     u8 is_jp = (mon->src->language == JAPANESE_LANGUAGE);
     u8 is_egg = is_egg_gen3_raw(mon);
     
@@ -642,7 +645,7 @@ void print_pokemon_page2(u8 update, u8 load_sprites, struct gen3_mon_data_unenc*
         iprintf("\n %-3s", stat_strings[i]);
         if(i == HP_STAT_INDEX) {
             u16 hp = calc_stats_gen3_raw(mon, i);
-            u16 curr_hp = mon->src->stats[0];
+            u16 curr_hp = mon->src->curr_hp;
             if(curr_hp > hp)
                 curr_hp = hp;
             iprintf("   % 3d/%-3d  ", curr_hp, hp);
@@ -655,10 +658,63 @@ void print_pokemon_page2(u8 update, u8 load_sprites, struct gen3_mon_data_unenc*
     iprintf("\n   Hidden Power %s: %d", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
     //print_game_info();
 
-    iprintf("\nB: Go Back");
+    print_bottom_info();
 }
 
 void print_pokemon_page3(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
+    if(!update)
+        return;
+    
+    u8 is_jp = (mon->src->language == JAPANESE_LANGUAGE);
+    u8 is_egg = is_egg_gen3_raw(mon);
+    
+    if(is_egg)
+        return;
+    
+    print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 3, PAGES_INFO);
+
+    iprintf("\nMOVES            PP UP\n");
+    for(int i = 0; i < (MOVES_SIZE); i++){
+        iprintf("\n %-14s    %d\n", get_move_name_gen3(&mon->attacks, i), (mon->growth.pp_bonuses >> (2*i)) & 3);
+    }
+    
+    iprintf("\nAbility: %s\n", get_ability_name_raw(mon));
+    
+    iprintf("\nExperience: %d\n", get_proper_exp_raw(mon));
+    
+    if(to_valid_level_gen3(mon->src) < MAX_LEVEL)
+        iprintf("\nNext Lv. in: %d > Lv. %d", get_level_exp_mon_index(get_mon_index_raw(mon), to_valid_level_gen3(mon->src)+1) - get_proper_exp_raw(mon), to_valid_level_gen3(mon->src)+1);
+    else
+        iprintf("\n");
+
+    print_bottom_info();
+}
+
+void print_pokemon_page4(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
+    if(!update)
+        return;
+    
+    u8 is_jp = (mon->src->language == JAPANESE_LANGUAGE);
+    u8 is_egg = is_egg_gen3_raw(mon);
+    
+    if(is_egg)
+        return;
+    
+    print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 4, PAGES_INFO);
+
+    iprintf("\nCONTEST STAT     VALUE\n");
+    for(int i = 0; i < CONTEST_STATS_TOTAL; i++){
+        iprintf("\n %-17s% 3d\n", contest_strings[i], mon->evs.contest[i]);
+    }
+
+    iprintf("\n");
+    print_bottom_info();
+}
+
+#define NUM_LINES 10
+const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
+
+void print_pokemon_page5(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon) {
     if(!update)
         return;
     
@@ -669,11 +725,25 @@ void print_pokemon_page3(u8 update, u8 load_sprites, struct gen3_mon_data_unenc*
     if(is_egg)
         return;
     
-    print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 3, PAGES_INFO);
+    print_pokemon_base_info(load_sprites, mon, is_jp, is_egg, 5, PAGES_INFO);
 
-    //print_game_info();
+    iprintf("\nRIBBONS\n");
+    for(int i = 0; i < NUM_LINES; i++){
+        // CANNOT USE SNPRINTF OR SPRINTF! THEY ADD 20 KB!
+        text_generic_terminator_fill(printable_string, X_TILES);
+        text_generic_concat(get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)]), printable_string, X_TILES, X_TILES, X_TILES);
+        if(ribbon_print_pos[(i*2)+1] != 0xFF) {
+            iprintf("\n %-13s ", printable_string);
+            text_generic_terminator_fill(printable_string, X_TILES);
+            text_generic_concat(get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)+1]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)+1]), printable_string, X_TILES, X_TILES, X_TILES);
+            iprintf(" %-13s", printable_string);
+        }
+        else
+            iprintf("\n %s", printable_string);
+    }
 
-    iprintf("\nB: Go Back");
+    iprintf("\n\n\n");
+    print_bottom_info();
 }
 
 #define BASE_Y_CURSOR_MAIN_MENU 8
@@ -925,6 +995,9 @@ int main(void)
                 print_main_menu(update, target, region, master);
                 //print_pokemon_page1(update, 1, &parties_3_undec[0][0]);
                 //print_pokemon_page2(update, 1, &parties_3_undec[0][0]);
+                //print_pokemon_page3(update, 1, &parties_3_undec[0][0]);
+                //print_pokemon_page4(update, 1, &parties_3_undec[0][0]);
+                //print_pokemon_page5(update, 1, &parties_3_undec[0][0]);
                 //print_trade_menu(update, 2, 1);
                 update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
                 if(returned_val == START_MULTIBOOT) {

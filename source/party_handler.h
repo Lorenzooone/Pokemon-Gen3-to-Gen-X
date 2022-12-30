@@ -21,8 +21,10 @@
 
 #define LAST_RIBBON_CONTEST 4
 #define LAST_RIBBON 16
+#define NUM_RIBBONS (LAST_RIBBON+1)
 #define NO_RANK_ID 1
 #define NO_RIBBON_ID 21
+#define CONTEST_STATS_TOTAL 6
 
 #define COLOSSEUM_CODE 15
 #define RUBY_CODE 2
@@ -89,11 +91,11 @@ struct exp_level {
 };
 
 struct stats_gen_23 {
-    u8 stats[6];
+    u8 stats[GEN2_STATS_TOTAL];
 };
 
 struct stats_gen_1 {
-    u8 stats[5];
+    u8 stats[GEN1_STATS_TOTAL];
 };
 
 struct gen3_mon_growth {
@@ -111,8 +113,8 @@ struct gen3_mon_attacks {
 };
 
 struct gen3_mon_evs {
-    u8 evs[6];
-    u8 contest[6];
+    u8 evs[GEN2_STATS_TOTAL];
+    u8 contest[CONTEST_STATS_TOTAL];
 };
 
 struct gen3_mon_misc {
@@ -159,7 +161,8 @@ struct gen3_mon {
     u32 status;
     u8 level;
     u8 pokerus_rem;
-    u16 stats[7];
+    u16 curr_hp;
+    u16 stats[GEN2_STATS_TOTAL];
 } __attribute__ ((packed)) __attribute__ ((aligned(4)));
 
 struct gen2_mon {
@@ -168,7 +171,7 @@ struct gen2_mon {
     u8 moves[MOVES_SIZE];
     u16 ot_id;
     u8 exp[3];
-    u16 evs[5];
+    u16 evs[GEN1_STATS_TOTAL];
     u16 ivs;
     u8 pps[MOVES_SIZE];
     u8 friendship;
@@ -178,7 +181,7 @@ struct gen2_mon {
     u8 status;
     u8 unused;
     u16 curr_hp;
-    u16 stats[6];
+    u16 stats[GEN2_STATS_TOTAL];
     u8 is_egg; // Extra byte of data we keep
     u8 ot_name[STRING_GEN2_INT_SIZE]; // The last byte of all of these must be set to 0x50
     u8 ot_name_jp[STRING_GEN2_JP_SIZE];
@@ -196,11 +199,11 @@ struct gen1_mon {
     u8 moves[MOVES_SIZE];
     u16 ot_id;
     u8 exp[3];
-    u16 evs[5];
+    u16 evs[GEN1_STATS_TOTAL];
     u16 ivs;
     u8 pps[MOVES_SIZE];
     u8 level;
-    u16 stats[5];
+    u16 stats[GEN1_STATS_TOTAL];
     u8 ot_name[STRING_GEN2_INT_SIZE]; // The last byte of all of these must be set to 0x50
     u8 ot_name_jp[STRING_GEN2_JP_SIZE];
     u8 nickname[STRING_GEN2_INT_SIZE];
@@ -234,7 +237,7 @@ u8 get_met_level_gen3_raw(struct gen3_mon_data_unenc*);
 const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_unenc*);
 u8 get_trainer_gender_char_raw(struct gen3_mon_data_unenc*);
 u8 is_egg_gen3_raw(struct gen3_mon_data_unenc*);
-u8 has_pokerus_gen3_raw(struct gen3_mon_data_unenc* data_src);
+u8 has_pokerus_gen3_raw(struct gen3_mon_data_unenc*);
 void load_pokemon_sprite_raw(struct gen3_mon_data_unenc*, u16, u16);
 u8 get_pokemon_gender_raw(struct gen3_mon_data_unenc*);
 char get_pokemon_gender_char_raw(struct gen3_mon_data_unenc*);
@@ -250,5 +253,7 @@ const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
 const u8* get_ability_name_raw(struct gen3_mon_data_unenc*);
 const u8* get_ribbon_name(struct gen3_mon_misc*, u8);
 const u8* get_ribbon_rank_name(struct gen3_mon_misc*, u8);
+u32 get_proper_exp_raw(struct gen3_mon_data_unenc*);
+u32 get_level_exp_mon_index(u16, u8);
 
 #endif

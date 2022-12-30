@@ -316,9 +316,20 @@ const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
 }
 
 u8 has_legal_moves(struct gen3_mon_attacks* attacks){
-    for(int i = 0; i < MOVES_SIZE; i++)
-        if((attacks->moves[i] != 0) && (attacks->moves[i] <= LAST_VALID_GEN_3_MOVE))
-            return 1;
+    u8 previous_moves[MOVES_SIZE];
+    u8 curr_slot = 0;
+    
+    for(int i = 0; i < MOVES_SIZE; i++) {
+        if((attacks->moves[i] != 0) && (attacks->moves[i] <= LAST_VALID_GEN_3_MOVE)) {
+            for(int j = 0; j < curr_slot; j++)
+                if(attacks->moves[i] == previous_moves[j])
+                    return 0;
+            previous_moves[curr_slot++] = attacks->moves[i];
+        }
+    }
+    
+    if(curr_slot)
+        return 1;
     return 0;
 }
 
@@ -492,6 +503,36 @@ const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc* misc) {
 
 const u8* get_nature_name(u32 pid) {
     return get_table_pointer(nature_names_bin, get_nature(pid));
+}
+
+u32 get_level_exp_mon_index(u16 mon_index, u8 level) {
+    return exp_table[level].exp_kind[pokemon_exp_groups_bin[mon_index]];
+}
+
+u32 get_proper_exp(struct gen3_mon* src, struct gen3_mon_growth* growth) {
+    u8 level = to_valid_level_gen3(src);
+    
+    u16 mon_index = get_mon_index(growth->species, src->pid, 0);
+    
+    s32 exp = growth->exp;
+    s32 min_exp = get_level_exp_mon_index(mon_index, level);
+    s32 max_exp = min_exp;
+    if(level == MAX_LEVEL)
+        exp = min_exp;
+    else
+        max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
+    if(exp < min_exp)
+        exp = min_exp;
+    if(exp > max_exp)
+        exp = max_exp;
+    if(exp < 0)
+        exp = 0;
+    
+    return exp;
+}
+
+u32 get_proper_exp_raw(struct gen3_mon_data_unenc* data_src) {
+    return get_proper_exp(data_src->src, &data_src->growth);
 }
 
 u8 are_evs_legal_gen3(struct gen3_mon_evs* evs) {
@@ -681,20 +722,14 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
     // Level handling
     u8 level = to_valid_level_gen3(src);
     
+    u16 mon_index = get_mon_index(growth->species, src->pid, 0);
+    
     // Experience handling
-    s32 exp = growth->exp;
-    s32 min_exp = exp_table[level].exp_kind[pokemon_exp_groups_bin[growth->species]];
-    s32 max_exp = min_exp;
-    if(level == MAX_LEVEL)
-        exp = exp_table[MAX_LEVEL].exp_kind[pokemon_exp_groups_bin[growth->species]];
-    else
-        max_exp = exp_table[level+1].exp_kind[pokemon_exp_groups_bin[growth->species]]-1;
-    if(exp < min_exp)
-        exp = min_exp;
-    if(exp > max_exp)
-        exp = max_exp;
-    if(exp < 0)
-        exp = 0;
+    s32 exp = get_proper_exp(src, growth);
+    
+    s32 max_exp = exp;
+    if(level < MAX_LEVEL)
+        max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
     
     // Save nature in experience, like the Gen I-VII conversion
     u8 nature = get_nature(src->pid);
@@ -707,11 +742,13 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
     if (level < MAX_LEVEL)
         while (exp > max_exp) {
             level++;
-            if(level == MAX_LEVEL)
+            if(level == MAX_LEVEL) {
+                exp = max_exp+1;
                 break;
-            max_exp = exp_table[level+1].exp_kind[pokemon_exp_groups_bin[growth->species]]-1;
+            }
+            max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
         }
-    if (level == MAX_LEVEL && exp != exp_table[MAX_LEVEL].exp_kind[pokemon_exp_groups_bin[growth->species]]){
+    if (level == MAX_LEVEL && exp != get_level_exp_mon_index(mon_index, MAX_LEVEL)){
         level--;
         exp -= 25;
     }
