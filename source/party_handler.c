@@ -183,6 +183,25 @@ const u8* get_ability_name_raw(struct gen3_mon_data_unenc* data_src){
     return get_table_pointer(ability_names_bin, get_ability_pokemon(data_src->growth.species, data_src->src->pid, is_egg_gen3_raw(data_src), data_src->misc.ability));
 }
 
+u8 is_ability_valid(u16 index, u32 pid, u8 ability_bit, u8 met_location, u8 origin_game){
+    
+    if(!((pid&1) ^ ability_bit))
+        return 1;
+    
+    if(met_location == TRADE_MET)
+        return 1;
+    
+    if(origin_game == COLOSSEUM_CODE)
+        return 1;
+    
+    u16 abilities = get_possible_abilities_pokemon(index, pid, 0);
+    
+    if((abilities&0xFF) == ((abilities>>8)&0xFF))
+        return 1;
+    
+    return 0;
+}
+
 const u8* get_ribbon_name(struct gen3_mon_misc* misc, u8 ribbon_num){
     if(ribbon_num > LAST_RIBBON)
         return get_table_pointer(ribbon_names_bin, NO_RIBBON_ID);
@@ -853,6 +872,11 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst) {
     }
     
     if(!has_legal_moves(attacks)) {
+        dst->is_valid_gen3 = 0;
+        return;
+    }
+    
+    if(!is_ability_valid(growth->species, src->pid, misc->ability, misc->met_location, (misc->origins_info>>7) & 0xF)) {
         dst->is_valid_gen3 = 0;
         return;
     }
