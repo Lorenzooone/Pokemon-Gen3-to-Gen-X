@@ -512,6 +512,19 @@ const u8* get_nature_name(u32 pid) {
     return get_table_pointer(nature_names_bin, get_nature(pid));
 }
 
+char get_nature_symbol(u32 pid, u8 stat_index) {
+    u8 nature = get_nature(pid);
+    u8 boosted_stat = pokemon_natures_bin[(2*nature)];
+    u8 nerfed_stat = pokemon_natures_bin[(2*nature)+1];
+    if(boosted_stat == nerfed_stat)
+        return ' ';
+    if(boosted_stat == stat_index)
+        return '+';
+    if(nerfed_stat == stat_index)
+        return '-';
+    return ' ';
+}
+
 u32 get_level_exp_mon_index(u16 mon_index, u8 level) {
     return exp_table[level].exp_kind[pokemon_exp_groups_bin[mon_index]];
 }

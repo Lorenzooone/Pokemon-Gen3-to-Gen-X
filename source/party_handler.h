@@ -259,6 +259,7 @@ u8 get_ivs_gen3(struct gen3_mon_misc*, u8);
 u8 get_hidden_power_power_gen3(struct gen3_mon_misc*);
 const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc*);
 const u8* get_nature_name(u32);
+char get_nature_symbol(u32, u8);
 const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
 const u8* get_ability_name_raw(struct gen3_mon_data_unenc*);
 const u8* get_ribbon_name(struct gen3_mon_misc*, u8);

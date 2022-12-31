@@ -162,7 +162,7 @@ void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
     
     if(!is_egg) {
         
-        iprintf("\nLevel: %d\n", to_valid_level_gen3(mon->src));
+        iprintf("\nLevel: %-4d   Nature: %s\n", to_valid_level_gen3(mon->src), get_nature_name(mon->src->pid));
         
         if(is_jp)
             iprintf("\nLanguage: Japanese\n");
@@ -197,7 +197,7 @@ void print_pokemon_page2(struct gen3_mon_data_unenc* mon) {
             iprintf("  % 4d/%-4d", curr_hp, hp);
         }
         else
-            iprintf("    % 4d   ", calc_stats_gen3_raw(mon,i));
+            iprintf("    % 4d%c  ", calc_stats_gen3_raw(mon,i), get_nature_symbol(mon->src->pid, i));
         iprintf("% 4d   % 3d\n", get_evs_gen3(&mon->evs, i), get_ivs_gen3(&mon->misc, i));
     }
     
