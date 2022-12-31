@@ -46,6 +46,8 @@ void text_general_conversion(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 src_
         }
         dst[i] = conv_table[src[i]];
     }
+    if(src_size < dst_size)
+        dst[src_size] = dst_terminator;
 }
 
 u8 text_general_is_same(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 terminator) {
@@ -77,6 +79,8 @@ void text_general_copy(u8* src, u8* dst, u8 src_size, u8 dst_size, u8 terminator
         }
         dst[i] = src[i];
     }
+    if(src_size < dst_size)
+        dst[src_size] = terminator;
 }
 
 void text_general_concat(u8* src, u8* src2, u8* dst, u8 src_size, u8 src2_size, u8 dst_size, u8 terminator) {
@@ -94,6 +98,8 @@ void text_general_concat(u8* src, u8* src2, u8* dst, u8 src_size, u8 src2_size, 
         }
         dst[i+j] = src2[j];
     }
+    if((i+src2_size) < dst_size)
+        dst[i+src2_size] = terminator;
 }
 
 void text_general_replace(u8* src, u8 src_size, u8 base_char, u8 new_char, u8 terminator) {
@@ -152,17 +158,14 @@ void text_gen2_replace(u8* src, u8 src_size, u8 base_char, u8 new_char) {
 }
 
 void text_generic_copy(u8* src, u8* dst, u8 src_size, u8 dst_size) {
-    text_general_terminator_fill(dst, dst_size, GENERIC_EOL);
     text_general_copy(src, dst, src_size, dst_size, GENERIC_EOL);
 }
 
 void text_gen3_copy(u8* src, u8* dst, u8 src_size, u8 dst_size) {
-    text_general_terminator_fill(dst, dst_size, GEN3_EOL);
     text_general_copy(src, dst, src_size, dst_size, GEN3_EOL);
 }
 
 void text_gen2_copy(u8* src, u8* dst, u8 src_size, u8 dst_size) {
-    text_general_terminator_fill(dst, dst_size, GEN2_EOL);
     text_general_copy(src, dst, src_size, dst_size, GEN2_EOL);
 }
 
