@@ -2,8 +2,6 @@
 #include "sprite_handler.h"
 
 #define OAM 0x7000000
-#define BASE_CURSOR_X 2
-#define BASE_CURSOR_Y 8
 #define CPUFASTSET_FILL (0x1000000)
 
 const u8 sprite_cursor_bin[];
@@ -90,10 +88,10 @@ void init_cursor(u8 cursor_y_pos){
         vram_pos[i] = sprite_cursor_gfx[i];
     if(cursor_y_pos > 4)
         cursor_y_pos = 4;
-    set_attributes(BASE_CURSOR_Y + (cursor_y_pos*16), BASE_CURSOR_X, (32*__sprite_counter)+1);
+    set_attributes(BASE_Y_CURSOR_MAIN_MENU + (cursor_y_pos*BASE_Y_CURSOR_INCREMENT_MAIN_MENU), BASE_X_CURSOR_MAIN_MENU, (32*__sprite_counter)+1);
     cursor_sprite = __sprite_counter;
     inner_cursor_sprite = __inner_sprite_counter;
-    update_cursor_base_x(BASE_CURSOR_X);
+    update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, 0);
     inc_sprite_counter();
 }
 
@@ -105,8 +103,9 @@ void update_cursor_x(u16 cursor_x){
     *((u16*)(OAM + (8*inner_cursor_sprite) + 2)) = cursor_x;
 }
 
-void update_cursor_base_x(u16 cursor_x){
+void update_cursor_base_x(u16 cursor_x, u8 counter){
     cursor_base_x = cursor_x;
+    move_cursor_x(counter);
 }
 
 void disable_cursor(){

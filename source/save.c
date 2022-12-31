@@ -1,10 +1,47 @@
 #include <gba.h>
 #include "save.h"
 
+#define REG_WAITCNT		*(vu16*)(REG_BASE + 0x204)  // Wait state Control
+
 #define FLASH_WRITE_CMD *(flash_access+0x5555) = 0xAA;*(flash_access+0x2AAA) = 0x55;*(flash_access+0x5555) = 0xA0;
 #define FLASH_BANK_CMD *(flash_access+0x5555) = 0xAA;*(flash_access+0x2AAA) = 0x55;*(flash_access+0x5555) = 0xB0;
 #define timeout 0x1000
 #define BANK_SIZE 0x10000
+
+u8 current_bank;
+
+void init_bank(){
+    REG_WAITCNT |= 3;
+    current_bank = 2;
+}
+
+void bank_check(u32 address){
+    vu8* flash_access = (vu8*)SRAM;
+    u8 bank = 0;
+    if(address >= BANK_SIZE)
+        bank = 1;
+    if(bank != current_bank) {
+        FLASH_BANK_CMD
+        *((vu8*)SRAM) = bank;
+        current_bank = bank;
+    }
+}
+
+u32 read_int_save(u32 address){
+    bank_check(address);
+    return (*(vu8*)(SRAM+address)) + ((*(vu8*)(SRAM+address+1)) << 8) + ((*(vu8*)(SRAM+address+2)) << 16) + ((*(vu8*)(SRAM+address+3)) << 24);
+}
+
+u16 read_short_save(u32 address){
+    bank_check(address);
+    return (*(vu8*)(SRAM+address)) + ((*(vu8*)(SRAM+address+1)) << 8);
+}
+
+void copy_save_to_ram(u32 base_address, u8* new_address, int size){
+    bank_check(base_address);
+    for(int i = 0; i < size; i++)
+        new_address[i] = (*(vu8*)(SRAM+base_address+i));
+}
 
 IWRAM_CODE void sram_write(u8* data, int size) {
     vu8* sram_access = (vu8*)SRAM;

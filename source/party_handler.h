@@ -1,6 +1,9 @@
 #ifndef PARTY_HANDLER__
 #define PARTY_HANDLER__
 
+#define TOTAL_GENS 3
+#define FIRST_GEN 1
+
 #define LAST_VALID_GEN_3_MON 411
 #define LAST_VALID_GEN_2_MON 251
 #define LAST_VALID_GEN_1_MON 151
@@ -47,6 +50,11 @@
 #define UNOWN_SPECIES 201
 #define UNOWN_REAL_NAME_POS 446
 #define DEOXYS_SPECIES 410
+#define DEOXYS_NORMAL 0
+#define DEOXYS_ATK 1
+#define DEOXYS_DEF 2
+#define DEOXYS_SPE 3
+#define DEOXYS_FORMS_POS 442
 #define MEW_SPECIES 151
 #define GEN2_DOT 0xE8
 #define GEN1_DOT 0xF2
@@ -142,6 +150,8 @@ struct gen3_mon_data_unenc {
     u8 is_valid_gen3 :1;
     u8 is_valid_gen2 :1;
     u8 is_valid_gen1 :1;
+    u8 is_egg :1;
+    u8 deoxys_form :2;
 };
 
 struct gen3_mon {
@@ -225,7 +235,7 @@ struct gen1_party {
     struct gen1_mon mons[PARTY_SIZE];
 };
 
-void process_gen3_data(struct gen3_mon*, struct gen3_mon_data_unenc*);
+void process_gen3_data(struct gen3_mon*, struct gen3_mon_data_unenc*, u8, u8);
 u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_unenc*, u32);
 u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_unenc*, u32);
 

@@ -4,7 +4,7 @@
 u8* get_table_pointer(u8* table, u16 entry){
     u16* table_16 = (u16*)table;
     u16 initial_offset;
-    u16 offset = 0;
+    u32 offset = 0;
     u8 offset_table_pos = 2;
     u8 size_initial_offset = ((table[0] >> 0)&1)+1;
     u8 size_offsets = ((table[0] >> 1)&1)+1;
