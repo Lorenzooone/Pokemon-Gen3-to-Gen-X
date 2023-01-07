@@ -41,8 +41,27 @@ void inc_inner_sprite_counter(){
     __inner_sprite_counter++;
 }
 
+u8 get_first_variable_palette(){
+    return ((sprite_palettes_bin_size + item_icon_palette_bin_size)>>5);
+}
+
 u32 get_vram_pos(){
     return VRAM+0x10000+(__sprite_counter*0x400);
+}
+
+int set_palette_3bpp(u8* colors, int index, int palette) {
+    u8 new_palette = (index>>1) + get_first_variable_palette();
+    const u8 num_colors = 1<<3;
+    const u8 base = num_colors*(index & 1);
+    
+    for(int i = 0; i < num_colors; i++) {
+        if(i)
+            SPRITE_PALETTE[base+i+(new_palette<<4)] = SPRITE_PALETTE[colors[i]+(palette<<4)];
+        else
+            SPRITE_PALETTE[i+(new_palette<<4)] = SPRITE_PALETTE[colors[i]+(palette<<4)];
+    }
+    
+    return new_palette;
 }
 
 void init_oam_palette(){

@@ -3,6 +3,7 @@
 #include "text_handler.h"
 #include "options_handler.h"
 #include "input_handler.h"
+#include "sprite_handler.h"
 #include "version_identifier.h"
 
 #define NUM_LINES 10
@@ -45,6 +46,9 @@ void print_game_info(struct game_data_t* game_data, int index) {
 void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 load_sprites, u8 is_own) {
     if(!update)
         return;
+    
+    // This is for debug only - it should be is_own
+    is_own = is_own;
     
     if(curr_gen < 1)
         curr_gen = 3;

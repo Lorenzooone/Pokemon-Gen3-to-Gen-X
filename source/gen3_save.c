@@ -7,6 +7,9 @@
 #define INVALID_SLOT 2
 #define SAVE_SLOT_INDEX_POS 0xDFFC
 #define SECTION_ID_POS 0xFF4
+#define CHECKSUM_POS 0xFF6
+#define MAGIC_NUMBER_POS 0xFF8
+#define SAVE_NUMBER_POS 0xFFC
 #define SECTION_TOTAL 14
 
 #define SECTION_TRAINER_INFO_ID 0
@@ -131,21 +134,21 @@ u8 validate_slot(int slot) {
         slot = 1;
     
     u16 valid_sections = 0;
-    u32 buffer[0x400];
+    u32 buffer[SECTION_SIZE>>2];
     u16* buffer_16 = (u16*)buffer;
     u32 current_save_index = read_slot_index(slot);
     
     for(int i = 0; i < SECTION_TOTAL; i++)
     {
         copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), (u8*)buffer, SECTION_SIZE);
-        if(buffer[0x3FE] != MAGIC_NUMBER)
+        if(buffer[MAGIC_NUMBER_POS>>2] != MAGIC_NUMBER)
             return 0;
-        if(buffer[0x3FF] != current_save_index)
+        if(buffer[SAVE_NUMBER_POS>>2] != current_save_index)
             return 0;
-        u16 section_id = buffer_16[0x7FA];
+        u16 section_id = buffer_16[SECTION_ID_POS>>1];
         if(section_id >= SECTION_TOTAL)
             return 0;
-        u16 prepared_checksum = buffer_16[0x7FB];
+        u16 prepared_checksum = buffer_16[CHECKSUM_POS>>1];
         u32 checksum = 0;
         for(int j = 0; j < (summable_bytes[section_id] >> 2); j++)
             checksum += buffer[j];

@@ -12,6 +12,9 @@
 #include "options_handler.h"
 #include "input_handler.h"
 #include "menu_text_handler.h"
+#include "communicator.h"
+#include "rng.h"
+#include "pid_iv_tid.h"
 //#include "save.h"
 
 // --------------------------------------------------------------------
@@ -26,6 +29,7 @@ enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
+u16 sizes[NUM_SIZES];
 
 #include "sio.h"
 #define VCOUNT_TIMEOUT 28 * 8
@@ -74,6 +78,7 @@ void vblank_update_function() {
 
     move_sprites(counter);
     move_cursor_x(counter);
+    advance_rng();
     counter++;
 }
 
@@ -113,6 +118,7 @@ int main(void)
     int val = 0;
     counter = 0;
     input_counter = 0;
+    init_rng(0,0);
     u16 keys;
     enum MULTIBOOT_RESULTS result;
     struct game_data_t game_data[2];
@@ -122,6 +128,7 @@ int main(void)
     
     get_game_id(&game_data[0].game_identifier);
     
+    init_unown_tsv();
     init_oam_palette();
     init_sprite_counter();
     irqInit();
@@ -167,6 +174,9 @@ int main(void)
             scanKeys();
             keys = keysDown();
         }
+        //load_comm_buffer(&game_data[0], sizes, curr_gen, region);
+        //printf("%p %p\n", get_communication_buffer(0), sizes);
+        //worst_case_conversion_tester(&counter);
         input_counter++;
         switch(curr_state) {
             case MAIN_MENU:

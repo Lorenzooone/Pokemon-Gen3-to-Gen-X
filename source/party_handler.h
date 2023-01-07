@@ -17,6 +17,8 @@
 #define M_GENDER 0
 #define F_GENDER 1
 #define U_GENDER 2
+#define NIDORAN_M_GENDER_INDEX 8
+#define NIDORAN_F_GENDER_INDEX 9
 
 #define NO_POKERUS 0
 #define HAS_POKERUS 1
@@ -73,6 +75,10 @@
 #define MAX_EVS 510
 #define HP_STAT_INDEX 0
 
+#define NUM_UNOWN_LETTERS_GEN3 28
+#define NUM_UNOWN_LETTERS_GEN2 26
+#define NUM_NATURES 25
+
 #define NAME_SIZE 11
 #define ITEM_NAME_SIZE 15
 #define NICKNAME_GEN3_SIZE 10
@@ -83,6 +89,9 @@
 #define STRING_GEN2_INT_CAP (STRING_GEN2_INT_SIZE-1)
 #define STRING_GEN2_JP_CAP (STRING_GEN2_JP_SIZE-1)
 
+#define GEN2_EGG 253
+#define GEN2_NO_MON 255
+
 #define JAPANESE_LANGUAGE 1
 
 struct mail_gen3 {
@@ -92,7 +101,12 @@ struct mail_gen3 {
     u16 species;
     u16 item;
     u16 unk;
-} __attribute__ ((packed)) __attribute__ ((aligned(4)));
+} __attribute__ ((packed));
+
+struct special_met_data_gen2 {
+    u8 location;
+    u8 level;
+};
 
 struct exp_level {
     u32 exp_kind[6];
@@ -175,7 +189,7 @@ struct gen3_mon {
     u16 stats[GEN2_STATS_TOTAL];
 } __attribute__ ((packed)) __attribute__ ((aligned(4)));
 
-struct gen2_mon {
+struct gen2_mon_data {
     u8 species;
     u8 item;
     u8 moves[MOVES_SIZE];
@@ -186,20 +200,27 @@ struct gen2_mon {
     u8 pps[MOVES_SIZE];
     u8 friendship;
     u8 pokerus;
-    u16 data;
+    u16 met_level : 6;
+    u16 time : 2;
+    u16 location : 7;
+    u16 ot_gender : 1;
     u8 level;
     u8 status;
     u8 unused;
     u16 curr_hp;
     u16 stats[GEN2_STATS_TOTAL];
+} __attribute__ ((packed));
+
+struct gen2_mon {
+    struct gen2_mon_data data;
     u8 is_egg; // Extra byte of data we keep
     u8 ot_name[STRING_GEN2_INT_SIZE]; // The last byte of all of these must be set to 0x50
     u8 ot_name_jp[STRING_GEN2_JP_SIZE];
     u8 nickname[STRING_GEN2_INT_SIZE];
     u8 nickname_jp[STRING_GEN2_JP_SIZE];
-} __attribute__ ((packed)) __attribute__ ((aligned(2)));
+};
 
-struct gen1_mon {
+struct gen1_mon_data {
     u8 species;
     u16 curr_hp;
     u8 bad_level;
@@ -214,11 +235,15 @@ struct gen1_mon {
     u8 pps[MOVES_SIZE];
     u8 level;
     u16 stats[GEN1_STATS_TOTAL];
+} __attribute__ ((packed));
+
+struct gen1_mon {
+    struct gen1_mon_data data;
     u8 ot_name[STRING_GEN2_INT_SIZE]; // The last byte of all of these must be set to 0x50
     u8 ot_name_jp[STRING_GEN2_JP_SIZE];
     u8 nickname[STRING_GEN2_INT_SIZE];
     u8 nickname_jp[STRING_GEN2_JP_SIZE];
-} __attribute__ ((packed)) __attribute__ ((aligned(2)));
+};
 
 struct gen3_party {
     u32 total;
@@ -266,5 +291,8 @@ const u8* get_ribbon_name(struct gen3_mon_misc*, u8);
 const u8* get_ribbon_rank_name(struct gen3_mon_misc*, u8);
 u32 get_proper_exp_raw(struct gen3_mon_data_unenc*);
 u32 get_level_exp_mon_index(u16, u8);
+u8 get_pokemon_gender_gen2(u8, u8, u8, u8);
+u8 get_pokemon_gender_kind_gen3(int, u32, u8, u8);
+u8 get_pokemon_gender_kind_gen2(u8, u8, u8);
 
 #endif

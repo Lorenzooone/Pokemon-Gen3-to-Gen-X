@@ -9,14 +9,15 @@
 
 #define CPUFASTSET_FILL (0x1000000)
 
-void convert_3bpp_forward(u8* src, u32* dst, u16 src_size, u8* colors);
+void convert_3bpp_forward_odd(u8*, u32*, u16);
+void convert_3bpp_forward_even(u8*, u32*, u16);
 
 void init_gender_symbols(){
     u8 colors[] = {0,1};
     convert_1bpp(gender_symbols_bin, (u32*)(VRAM+(0x88<<5)), gender_symbols_bin_size, colors, 1);
 }
 
-__attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(u32 src, u32 dst, u8 info){
+IWRAM_CODE __attribute__ ((optimize(3))) u8 load_pokemon_sprite_gfx(u32 src, u32 dst, u8 info, u8 index, u8* colors){
     u8 is_3bpp = info&2;
     u8 zero_fill = info&1;
     u32 zero = 0;
@@ -25,17 +26,28 @@ __attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(u32 src, u32 dst, u8 
     LZ77UnCompWram(src, buffer[0]);
     
     if(is_3bpp) {
-        u8 colors[8];
         for(int i = 0; i < 8; i++)
             colors[i] = (buffer[0][0]>>(4*i))&0xF;
         if(zero_fill) {
             CpuFastSet(&zero, buffer[1], (MAX_SIZE_POKEMON_SPRITE>>2)|CPUFASTSET_FILL);
-            convert_3bpp_forward(buffer[0]+1, (u32*)(((u32)buffer[1])+0x80), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60, colors);
-            convert_3bpp_forward(buffer[0]+1+(((((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60)>>2), (u32*)(((u32)buffer[1])+0x280), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60, colors);
+            if(index&1){
+                convert_3bpp_forward_odd(buffer[0]+1, (u32*)(((u32)buffer[1])+0x80), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+                convert_3bpp_forward_odd(buffer[0]+1+(((((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60)>>2), (u32*)(((u32)buffer[1])+0x280), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+            }
+            else {
+                convert_3bpp_forward_even(buffer[0]+1, (u32*)(((u32)buffer[1])+0x80), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+                convert_3bpp_forward_even(buffer[0]+1+(((((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60)>>2), (u32*)(((u32)buffer[1])+0x280), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+            }
             CpuFastSet(buffer[1], dst, (MAX_SIZE_POKEMON_SPRITE>>2));
         }
-        else
-            convert_3bpp_forward(buffer[0]+1, dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3, colors);
+        else {
+            if(index&1){
+                convert_3bpp_forward_odd(buffer[0]+1, dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
+            }
+            else {
+                convert_3bpp_forward_even(buffer[0]+1, dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
+            }
+        }
     }
     else {
         if(zero_fill) {
@@ -47,6 +59,8 @@ __attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(u32 src, u32 dst, u8 
         else
             CpuFastSet(buffer[0], dst, MAX_SIZE_POKEMON_SPRITE>>2);
     }
+
+    return is_3bpp;
 }
 
 void convert_xbpp(u8* src, u32* dst, u16 src_size, u8* colors, u8 is_forward, u8 num_bpp) {
@@ -69,19 +83,40 @@ void convert_xbpp(u8* src, u32* dst, u16 src_size, u8* colors, u8 is_forward, u8
     }
 }
 
-__attribute__ ((optimize(3))) void convert_3bpp_forward(u8* src, u32* dst, u16 src_size, u8* colors) {
+IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_even(u8* src, u32* dst, u16 src_size) {
     // This is soooo slow, even with all of this. 50k cycles more than 4bpp
-    const u8 num_bpp = 3;
-    u16 num_rows = Div(src_size, num_bpp);
-    if(DivMod(src_size, num_bpp))
+    u16 num_rows = Div(src_size, 3);
+    if(DivMod(src_size, 3))
         num_rows += 1;
     for(int i = 0; i < num_rows; i++) {
         u32 src_data = 0;
-        for(int j = 0; j < num_bpp; j++)
-            src_data |= src[(i*num_bpp)+j]<<(8*j);
+        for(int j = 0; j < 3; j++)
+            src_data |= src[(i*3)+j]<<(8*j);
         u32 row = 0;
-        for(int j = 0; j < 8; j++)
-                row |= (colors[(src_data>>(num_bpp*j))&((1<<num_bpp)-1)]&0xF) << (4*j);
+        for(int j = 0; j < 8; j++) {
+            u8 color = ((src_data>>(3*j))&((1<<3)-1));
+            row |= color << (4*j);
+        }
+        dst[i] = row;
+    }
+}
+
+IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_odd(u8* src, u32* dst, u16 src_size) {
+    // This is soooo slow, even with all of this. 50k cycles more than 4bpp
+    u16 num_rows = Div(src_size, 3);
+    if(DivMod(src_size, 3))
+        num_rows += 1;
+    for(int i = 0; i < num_rows; i++) {
+        u32 src_data = 0;
+        for(int j = 0; j < 3; j++)
+            src_data |= src[(i*3)+j]<<(8*j);
+        u32 row = 0;
+        for(int j = 0; j < 8; j++) {
+            u8 color = ((src_data>>(3*j))&((1<<3)-1));
+            if(color)
+                color += 8;
+            row |= color << (4*j);
+        }
         dst[i] = row;
     }
 }

@@ -4,6 +4,7 @@
 #include "sprite_handler.h"
 #include "graphics_handler.h"
 #include "version_identifier.h"
+#include "bin_table_handler.h"
 
 #include "pokemon_moves_pp_gen1_bin.h"
 #include "pokemon_moves_pp_bin.h"
@@ -32,20 +33,11 @@
 #include "pokemon_types_gen1_bin.h"
 #include "pokemon_natures_bin.h"
 #include "pokemon_abilities_bin.h"
-
-u8 decrypt_data(struct gen3_mon*, u32*);
-u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
-u8 get_unown_letter_gen3(u32);
-u8 get_pokemon_gender_kind_gen3(int, u32, u8, u8);
-
-// Order is G A E M, or M E A G reversed. These are their indexes.
-u8 positions[] = {0b11100100, 0b10110100, 0b11011000, 0b10011100, 0b01111000, 0b01101100,
-                  0b11100001, 0b10110001, 0b11010010, 0b10010011, 0b01110010, 0b01100011,
-                  0b11001001, 0b10001101, 0b11000110, 0b10000111, 0b01001110, 0b01001011,
-                  0b00111001, 0b00101101, 0b00110110, 0b00100111, 0b00011110, 0b00011011};
-
-u8 gender_thresholds_gen3[] = {127, 0, 31, 63, 191, 225, 254, 255};
-u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17};
+#include "encounter_types_bin.h"
+#include "encounter_types_gen2_bin.h"
+#include "special_encounters_gen2_bin.h"
+#include "fast_pokemon_methods.h"
+#include "optimized_swi.h"
 
 #define MF_7_1_INDEX 2
 #define M_INDEX 1
@@ -60,6 +52,18 @@ u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17};
 #define INITIAL_MAIL_GEN3 121
 #define LAST_MAIL_GEN3 132
 
+u8 decrypt_data(struct gen3_mon*, u32*);
+u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
+
+// Order is G A E M, or M E A G reversed. These are their indexes.
+u8 positions[] = {0b11100100, 0b10110100, 0b11011000, 0b10011100, 0b01111000, 0b01101100,
+                  0b11100001, 0b10110001, 0b11010010, 0b10010011, 0b01110010, 0b01100011,
+                  0b11001001, 0b10001101, 0b11000110, 0b10000111, 0b01001110, 0b01001011,
+                  0b00111001, 0b00101101, 0b00110110, 0b00100111, 0b00011110, 0b00011011};
+
+u8 gender_thresholds_gen3[] = {127, 0, 31, 63, 191, 225, 254, 255, 0, 254};
+u8 gender_thresholds_gen12[] = {8, 0, 2, 4, 12, 14, 16, 17, 0, 16};
+
 const u16* pokemon_abilities_bin_16 = (const u16*)pokemon_abilities_bin;
 const struct exp_level* exp_table = (const struct exp_level*)exp_table_bin;
 const struct stats_gen_23* stats_table = (const struct stats_gen_23*)pokemon_stats_bin;
@@ -69,14 +73,19 @@ u8 get_index_key(u32 pid){
     // Make use of modulo properties to get this to positives
     while(pid >= 0x80000000)
         pid -= 0x7FFFFFF8;
-    return DivMod(pid, 24);
+    return SWI_DivMod(pid, 24);
 }
 
 u8 get_nature(u32 pid){
-    // Make use of modulo properties to get this to positives
-    while(pid >= 0x80000000)
-        pid -= 0x7FFFFFE9;
-    return DivMod(pid, 25);
+    return get_nature_fast(pid);
+}
+
+u8 get_unown_letter_gen3(u32 pid){
+    return get_unown_letter_gen3_fast(pid);
+}
+
+u8 get_unown_letter_gen2(u16 ivs){
+    return get_unown_letter_gen2_fast(ivs);
 }
 
 u16 get_mon_index(int index, u32 pid, u8 is_egg, u8 deoxys_form){
@@ -296,7 +305,10 @@ void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 has_i
     u8 sprite_counter = get_sprite_counter();
     u32 address = get_pokemon_sprite_pointer(index, pid, is_egg, deoxys_form);
     u8 palette = get_palette_references(index, pid, is_egg, deoxys_form);
-    load_pokemon_sprite_gfx(address, get_vram_pos(), get_pokemon_sprite_info(index, pid, is_egg, deoxys_form));
+    u8 colors[8];
+    u8 is_3bpp = load_pokemon_sprite_gfx(address, get_vram_pos(), get_pokemon_sprite_info(index, pid, is_egg, deoxys_form), sprite_counter-1, colors);
+    if(is_3bpp)
+        palette = set_palette_3bpp(colors, sprite_counter-1, palette);
     set_attributes(y, x |(1<<15), (32*sprite_counter)|(palette<<12));
     inc_sprite_counter();
     if(!is_egg && has_item)
@@ -340,12 +352,32 @@ u8 has_legal_moves(struct gen3_mon_attacks* attacks){
     return 0;
 }
 
+u8 get_pokemon_gender_gen2(u8 index, u8 atk_ivs, u8 is_egg, u8 curr_gen){
+    u8 gender_kind = get_pokemon_gender_kind_gen2(index, is_egg, curr_gen);
+    switch(gender_kind){
+        case M_INDEX:
+        case NIDORAN_M_GENDER_INDEX:
+            return M_GENDER;
+        case F_INDEX:
+        case NIDORAN_F_GENDER_INDEX:
+            return F_GENDER;
+        case U_INDEX:
+            return U_GENDER;
+        default:
+            if(atk_ivs >= gender_thresholds_gen12[gender_kind])
+                return M_GENDER;
+            return F_GENDER;
+    }
+}
+
 u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg, u8 deoxys_form){
     u8 gender_kind = get_pokemon_gender_kind_gen3(index, pid, is_egg, deoxys_form);
     switch(gender_kind){
         case M_INDEX:
+        case NIDORAN_M_GENDER_INDEX:
             return M_GENDER;
         case F_INDEX:
+        case NIDORAN_F_GENDER_INDEX:
             return F_GENDER;
         case U_INDEX:
             return U_GENDER;
@@ -381,6 +413,12 @@ char get_pokemon_gender_char_raw(struct gen3_mon_data_unenc* data_src){
 
 u8 get_pokemon_gender_kind_gen3(int index, u32 pid, u8 is_egg, u8 deoxys_form){
     return pokemon_gender_bin[get_mon_index(index, pid, is_egg, deoxys_form)];
+}
+
+u8 get_pokemon_gender_kind_gen2(u8 index, u8 is_egg, u8 curr_gen){
+    if(curr_gen == 1)
+        return pokemon_gender_bin[get_mon_index_gen2_1(index)];
+    return pokemon_gender_bin[get_mon_index_gen2(index, is_egg)];
 }
 
 u8 is_egg_gen3(struct gen3_mon* src, struct gen3_mon_misc* misc){
@@ -426,12 +464,8 @@ u8 is_shiny_gen2(u8 atk_ivs, u8 def_ivs, u8 spa_ivs, u8 spe_ivs){
     return 0;
 }
 
-u8 is_shiny_gen2_raw(struct gen2_mon* src){
+u8 is_shiny_gen2_raw(struct gen2_mon_data* src){
     return is_shiny_gen2((src->ivs >> 4) & 0xF, src->ivs & 0xF, (src->ivs >> 8) & 0xF, (src->ivs >> 12) & 0xF);
-}
-
-u8 get_unown_letter_gen3(u32 pid){
-    return DivMod((pid & 3) + (((pid >> 8) & 3) << 2) + (((pid >> 16) & 3) << 4) + (((pid >> 24) & 3) << 6), 28);
 }
 
 u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
@@ -612,7 +646,7 @@ u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 st
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
-    return base + Div(((stats_table[mon_index].stats[stat_index] + iv) + (Sqrt(stat_exp) >> 2)) * level, 100);
+    return base + Div((((stats_table[mon_index].stats[stat_index] + iv)*2) + (Sqrt(stat_exp) >> 2)) * level, 100);
 }
 
 u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev, u8 deoxys_form) {
@@ -629,7 +663,7 @@ u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev,
         base = level + 10;
     u8 boosted_stat = pokemon_natures_bin[(2*nature)];
     u8 nerfed_stat = pokemon_natures_bin[(2*nature)+1];
-    u16 stat = base + Div(((stats_table[mon_index].stats[stat_index] + iv) + (ev >> 2)) * level, 100);
+    u16 stat = base + Div(((2*stats_table[mon_index].stats[stat_index]) + iv + (ev >> 2)) * level, 100);
     if((boosted_stat == nerfed_stat) || ((boosted_stat != stat_index) && (nerfed_stat != stat_index)))
         return stat;
     if(boosted_stat == stat_index)
@@ -755,9 +789,9 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
     u8 nature = get_nature(src->pid);
 
     // Nature handling
-    u8 exp_nature = DivMod(exp, 25);
+    u8 exp_nature = DivMod(exp, NUM_NATURES);
     if(exp_nature > nature)
-        nature += 25;
+        nature += NUM_NATURES;
     exp += nature - exp_nature;
     if (level < MAX_LEVEL)
         while (exp > max_exp) {
@@ -770,7 +804,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         }
     if (level == MAX_LEVEL && exp != get_level_exp_mon_index(mon_index, MAX_LEVEL)){
         level--;
-        exp -= 25;
+        exp -= NUM_NATURES;
     }
 
     // Store exp and level
@@ -795,9 +829,9 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     if((is_gen2) && (species == UNOWN_SPECIES)) {
         u8 letter = get_unown_letter_gen3(pid);
         u8 min_iv_sum = letter * 10;
-        u8 max_iv_sum = ((letter+1) * 10)-1;
-        if(letter == 25)
-            max_iv_sum = 255;
+        u16 max_iv_sum = ((letter+1) * 10)-1;
+        if(max_iv_sum >= 0x100)
+            max_iv_sum = 0xFF;
         u8 iv_sum = ((spa_ivs & 0x6) >> 1) | ((spe_ivs & 0x6) << 1) | ((def_ivs & 0x6) << 3) | ((atk_ivs & 0x6) << 5);
         if(iv_sum < min_iv_sum)
             iv_sum = min_iv_sum;
@@ -961,9 +995,10 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     dst->is_valid_gen3 = 1;
 }
 
-u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon_data_unenc* data_src, u32 trainer_id) {
+u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src, u32 trainer_id) {
     
     struct gen3_mon* src = data_src->src;
+    struct gen2_mon_data* dst = &dst_data->data;
     
     if(!data_src->is_valid_gen3)
         return 0;
@@ -1010,16 +1045,37 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon_data_unenc* data_src, u32 
     
     // Defaults
     dst->friendship = BASE_FRIENDSHIP;
-    dst->data = 0;
     dst->status = 0;
     dst->unused = 0;
     
+    // Handle met location data
+    dst->time = 1;
+    dst->ot_gender = (misc->origins_info>>15)&1;
+    
+    // Handle special mons which cannot breed
+    struct special_met_data_gen2* met_data = NULL;
+    if(encounter_types_gen2_bin[dst->species>>3]&(1<<(dst->species&7))) {
+        met_data = (struct special_met_data_gen2*)search_table_for_index(special_encounters_gen2_bin, dst->species);
+        if(met_data != NULL) {
+            dst->location = met_data->location;
+            dst->met_level = met_data->level;
+            if((dst->location == 0) && (dst->location == dst->met_level)) {
+                dst->time = 0;
+                dst->ot_gender = 0;
+            }
+        }
+    }
+    if(met_data == NULL) {
+        dst->met_level = 1;
+        dst->location = 1;
+    }
+    
     // Extra byte for egg data
-    dst->is_egg = data_src->is_egg;
+    dst_data->is_egg = data_src->is_egg;
     
     // Stats calculations
     // Curr HP should be 0 for eggs, otherwise they count as party members
-    if(!dst->is_egg)
+    if(!dst_data->is_egg)
         dst->curr_hp = swap_endian_short(calc_stats_gen2(growth->species, src->pid, HP_STAT_INDEX, dst->level, get_ivs_gen2(dst->ivs, HP_STAT_INDEX), swap_endian_short(dst->evs[HP_STAT_INDEX])));
     else
         dst->curr_hp = 0;
@@ -1027,18 +1083,19 @@ u8 gen3_to_gen2(struct gen2_mon* dst, struct gen3_mon_data_unenc* data_src, u32 
         dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, src->pid, i, dst->level, get_ivs_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL ? EVS_TOTAL-1 : i])));
     
     // Store egg cycles
-    if(dst->is_egg)
+    if(dst_data->is_egg)
         dst->friendship = growth->friendship;
 
     // Text conversions
-    convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, dst->is_egg, 1);
+    convert_strings_of_gen3(src, growth->species, dst_data->ot_name, dst_data->ot_name_jp, dst_data->nickname, dst_data->nickname_jp, dst_data->is_egg, 1);
 
     return 1;
 }
 
-u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon_data_unenc* data_src, u32 trainer_id) {
+u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src, u32 trainer_id) {
     
     struct gen3_mon* src = data_src->src;
+    struct gen1_mon_data* dst = &dst_data->data;
     
     if(!data_src->is_valid_gen3)
         return 0;
@@ -1094,7 +1151,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst, struct gen3_mon_data_unenc* data_src, u32 
         dst->stats[i] = swap_endian_short(calc_stats_gen1(growth->species, i, dst->level, get_ivs_gen2(dst->ivs, i), swap_endian_short(dst->evs[i])));
 
     // Text conversions
-    convert_strings_of_gen3(src, growth->species, dst->ot_name, dst->ot_name_jp, dst->nickname, dst->nickname_jp, 0, 0);
+    convert_strings_of_gen3(src, growth->species, dst_data->ot_name, dst_data->ot_name_jp, dst_data->nickname, dst_data->nickname_jp, 0, 0);
 
     return 1;
 }

@@ -19,6 +19,8 @@ u32 get_vram_pos();
 void init_oam_palette();
 void set_attributes(u16, u16, u16);
 
+int set_palette_3bpp(u8*, int, int);
+
 void init_item_icon();
 void set_item_icon(u16, u16);
 void init_cursor(u8);
