@@ -175,7 +175,7 @@ int main(void)
             keys = keysDown();
         }
         //load_comm_buffer(&game_data[0], sizes, curr_gen, region);
-        //printf("%p %p\n", get_communication_buffer(0), sizes);
+        //iprintf("%p %p\n", get_communication_buffer(0), sizes);
         //worst_case_conversion_tester(&counter);
         input_counter++;
         switch(curr_state) {
