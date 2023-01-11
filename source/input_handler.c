@@ -1,6 +1,7 @@
 #include <gba.h>
 #include "input_handler.h"
 #include "options_handler.h"
+#include "communicator.h"
 
 u8 handle_input_multiboot_menu(u16 keys) {
     if(keys & KEY_A)
@@ -282,5 +283,20 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
             }
             break;
     }
+    return 0;
+}
+
+u8 handle_input_trade_setup(u16 keys, u8 curr_gen) {
+
+    if(keys & KEY_B) {
+        if((get_start_state_raw() != START_TRADE_PAR) || (get_transferred(0) == 0)) {
+            //if(get_start_state_raw() != START_TRADE_DON)
+                return CANCEL_TRADE_START;
+        }
+    }
+    /*if(keys & KEY_B) {
+        return CANCEL_TRADE_START;
+    }*/
+
     return 0;
 }

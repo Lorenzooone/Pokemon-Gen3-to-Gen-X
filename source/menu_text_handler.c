@@ -5,6 +5,9 @@
 #include "input_handler.h"
 #include "sprite_handler.h"
 #include "version_identifier.h"
+#include "print_system.h"
+#include "sio_buffers.h"
+#include "communicator.h"
 
 #define NUM_LINES 10
 
@@ -19,11 +22,12 @@ const char* slash_string = {"/"};
 const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
 const char* stat_strings[] = {"Hp", "Atk", "Def", "SpA", "SpD", "Spe"};
 const char* contest_strings[] = {"Coolness", "Beauty", "Cuteness", "Smartness", "Toughness", "Feel"};
+const char* trade_start_state_strings[] = {"Unknown", "Entering Room", "Starting Trade", "Ending Trade", "Waiting Trade", "Trading Party Data", "Synchronizing", "Completed"};
 
 const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
 
 void print_game_info(struct game_data_t* game_data, int index) {
-    iprintf("\n Game: ");
+    PRINT_FUNCTION("\n Game: ");
     const char* chosen_str = game_strings[game_data[index].game_identifier.game_main_version];
     switch(game_data[index].game_identifier.game_main_version) {
         case RS_MAIN_GAME_CODE:
@@ -40,7 +44,7 @@ void print_game_info(struct game_data_t* game_data, int index) {
             chosen_str = unidentified_string;
             break;
     }
-    iprintf("%s\n", chosen_str);
+    PRINT_FUNCTION("%s\n", chosen_str);
 }
 
 void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 load_sprites, u8 is_own) {
@@ -55,7 +59,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
     if(curr_gen > 3)
         curr_gen = 3;
     
-    iprintf("\x1b[2J");
+    PRINT_FUNCTION("\x1b[2J");
     
     u8 num_parties = 2;
     if(is_own)
@@ -66,7 +70,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
     
     if(is_own) {
         text_gen3_to_generic(game_data[0].trainer_name, tmp_buffer, OT_NAME_GEN3_SIZE+1, X_TILES, game_data[0].game_identifier.game_is_jp, 0);
-        iprintf("%s - Gen %d\n", tmp_buffer, curr_gen);
+        PRINT_FUNCTION("%s - Gen %d\n", tmp_buffer, curr_gen);
     }
     else {
         text_generic_terminator_fill(printable_string, X_TILES+1);
@@ -75,7 +79,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
             text_generic_concat(tmp_buffer, person_strings[i], printable_string + (i*(X_TILES>>1)), OT_NAME_GEN3_SIZE, (X_TILES >> 1)-OT_NAME_GEN3_SIZE, X_TILES>>1);
         }
         text_generic_replace(printable_string, X_TILES, GENERIC_EOL, GENERIC_SPACE);
-        iprintf("%s", printable_string);
+        PRINT_FUNCTION("%s", printable_string);
     }
 
     if(load_sprites)
@@ -99,9 +103,39 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
             }
         }
         text_generic_replace(printable_string, X_TILES, GENERIC_EOL, GENERIC_SPACE);
-        iprintf("\n%s\n", printable_string);
+        PRINT_FUNCTION("\n%s\n", printable_string);
     }
-    iprintf("  Cancel");
+    PRINT_FUNCTION("  Cancel");
+}
+
+void print_start_trade(){
+    u8 state = get_start_state();
+    u8 raw_state = get_start_state_raw();
+    if((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))
+        return;
+    //if(((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))||(raw_state == START_TRADE_DON))
+    //    return;
+    //if(state == START_TRADE_NO_UPDATE)
+    //    return;
+    
+    if(raw_state >= START_TRADE_STATES)
+        raw_state = START_TRADE_UNK;
+    
+    PRINT_FUNCTION("\x1b[2J");
+    PRINT_FUNCTION("\nState: %s\n", trade_start_state_strings[raw_state]);
+    if(raw_state != START_TRADE_PAR)
+        PRINT_FUNCTION("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nB: Go Back");
+    else {
+        for(int i = 0; i < get_number_of_buffers(); i++) {
+            PRINT_FUNCTION("\nSection %d: % 3d/%-3d\n", i+1, get_transferred(i), get_buffer_size(i));
+        }
+        if(get_transferred(0) == 0) {
+            // This NEEDS to get redone once I get the new print system up
+            for(int i = 0; i < (8-get_number_of_buffers()); i++)
+                PRINT_FUNCTION("\n\n");
+            PRINT_FUNCTION("\nB: Go Back");
+        }
+    }
 }
 
 void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 page) {
@@ -112,7 +146,7 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     u8 is_jp = mon->src->language;
     u8 is_egg = mon->is_egg;
     
-    iprintf("\x1b[2J");
+    PRINT_FUNCTION("\x1b[2J");
     
     u8 page_total = PAGES_TOTAL-FIRST_PAGE+1;
     
@@ -120,14 +154,14 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
         page_total = FIRST_PAGE;
     
     if(page == FIRST_PAGE)
-        iprintf(" ");
+        PRINT_FUNCTION(" ");
     else
-        iprintf("<");
+        PRINT_FUNCTION("<");
         
-    iprintf("%d / %d", page, page_total);
+    PRINT_FUNCTION("%d / %d", page, page_total);
     
     if(page < page_total)
-        iprintf(">");
+        PRINT_FUNCTION(">");
 
     if(load_sprites) {
         reset_sprites_to_cursor();
@@ -136,27 +170,27 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     
     if(!is_egg) {
         text_gen3_to_generic(mon->src->nickname, printable_string, NICKNAME_GEN3_SIZE, X_TILES, is_jp, 0);
-        iprintf("\n\n    %s - %s %c\n", printable_string, get_pokemon_name_raw(mon), get_pokemon_gender_char_raw(mon));
+        PRINT_FUNCTION("\n\n    %s - %s %c\n", printable_string, get_pokemon_name_raw(mon), get_pokemon_gender_char_raw(mon));
     
-        iprintf("    ");
+        PRINT_FUNCTION("    ");
         if(is_shiny)
-            iprintf("Shiny");
+            PRINT_FUNCTION("Shiny");
     
         if(is_shiny && has_pokerus)
-            iprintf(" - ");
+            PRINT_FUNCTION(" - ");
     
         if(has_pokerus == HAS_POKERUS)
-            iprintf("Has Pokerus");
+            PRINT_FUNCTION("Has Pokerus");
         else if(has_pokerus == HAD_POKERUS)
-            iprintf("Had Pokerus");
+            PRINT_FUNCTION("Had Pokerus");
     }
     else
-        iprintf("\n\n    %s\n", get_pokemon_name_raw(mon));
+        PRINT_FUNCTION("\n\n    %s\n", get_pokemon_name_raw(mon));
     
 }
 
 void print_bottom_info(){
-    iprintf("\nB: Go Back");
+    PRINT_FUNCTION("\nB: Go Back");
 }
 
 void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
@@ -166,93 +200,93 @@ void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
     
     if(!is_egg) {
         
-        iprintf("\nLevel: %-4d   Nature: %s\n", to_valid_level_gen3(mon->src), get_nature_name(mon->src->pid));
+        PRINT_FUNCTION("\nLevel: %-4d   Nature: %s\n", to_valid_level_gen3(mon->src), get_nature_name(mon->src->pid));
         
         if(is_jp)
-            iprintf("\nLanguage: Japanese\n");
+            PRINT_FUNCTION("\nLanguage: Japanese\n");
         else
-            iprintf("\nLanguage: International\n");
+            PRINT_FUNCTION("\nLanguage: International\n");
         
         text_gen3_to_generic(mon->src->ot_name, printable_string, OT_NAME_GEN3_SIZE, X_TILES, is_jp, 0);
-        iprintf("\nOT: %s - %c - %05d\n", printable_string, get_trainer_gender_char_raw(mon), (mon->src->ot_id)&0xFFFF);
-        iprintf("\nItem: %s\n", get_item_name_raw(mon));
+        PRINT_FUNCTION("\nOT: %s - %c - %05d\n", printable_string, get_trainer_gender_char_raw(mon), (mon->src->ot_id)&0xFFFF);
+        PRINT_FUNCTION("\nItem: %s\n", get_item_name_raw(mon));
         
-        iprintf("\nMet in: %s\n", get_met_location_name_gen3_raw(mon));
+        PRINT_FUNCTION("\nMet in: %s\n", get_met_location_name_gen3_raw(mon));
         u8 met_level = get_met_level_gen3_raw(mon);
         if(met_level > 0)
-            iprintf("\nCaught at Level %d\n\nCaught in %s Ball\n\n", met_level, get_pokeball_base_name_gen3_raw(mon));
+            PRINT_FUNCTION("\nCaught at Level %d\n\nCaught in %s Ball\n\n", met_level, get_pokeball_base_name_gen3_raw(mon));
         else
-            iprintf("\nHatched in %s Ball\n\n\n\n", get_pokeball_base_name_gen3_raw(mon));
+            PRINT_FUNCTION("\nHatched in %s Ball\n\n\n\n", get_pokeball_base_name_gen3_raw(mon));
     }
     else
-        iprintf("\nHatches in : %d Egg Cycles\n\nHatches in: %d Steps\n\n\n\n\n\n\n\n\n\n\n\n", mon->growth.friendship, mon->growth.friendship * 0x100);
+        PRINT_FUNCTION("\nHatches in : %d Egg Cycles\n\nHatches in: %d Steps\n\n\n\n\n\n\n\n\n\n\n\n", mon->growth.friendship, mon->growth.friendship * 0x100);
 }
 
 void print_pokemon_page2(struct gen3_mon_data_unenc* mon) {
         
-    iprintf("\nSTAT    VALUE    EV    IV\n");
+    PRINT_FUNCTION("\nSTAT    VALUE    EV    IV\n");
     for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
-        iprintf("\n %-3s", stat_strings[i]);
+        PRINT_FUNCTION("\n %-3s", stat_strings[i]);
         if(i == HP_STAT_INDEX) {
             u16 hp = calc_stats_gen3_raw(mon, i);
             u16 curr_hp = mon->src->curr_hp;
             if(curr_hp > hp)
                 curr_hp = hp;
-            iprintf("  % 4d/%-4d", curr_hp, hp);
+            PRINT_FUNCTION("  % 4d/%-4d", curr_hp, hp);
         }
         else
-            iprintf("    % 4d%c  ", calc_stats_gen3_raw(mon,i), get_nature_symbol(mon->src->pid, i));
-        iprintf("% 4d   % 3d\n", get_evs_gen3(&mon->evs, i), get_ivs_gen3(&mon->misc, i));
+            PRINT_FUNCTION("    % 4d%c  ", calc_stats_gen3_raw(mon,i), get_nature_symbol(mon->src->pid, i));
+        PRINT_FUNCTION("% 4d   % 3d\n", get_evs_gen3(&mon->evs, i), get_ivs_gen3(&mon->misc, i));
     }
     
-    iprintf("\n   Hidden Power %s: %d", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    PRINT_FUNCTION("\n   Hidden Power %s: %d", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
     //print_game_info();
 }
 
 void print_pokemon_page3(struct gen3_mon_data_unenc* mon) {
 
-    iprintf("\nMOVES            PP UP\n");
+    PRINT_FUNCTION("\nMOVES            PP UP\n");
     for(int i = 0; i < (MOVES_SIZE); i++){
-        iprintf("\n %-14s    %d\n", get_move_name_gen3(&mon->attacks, i), (mon->growth.pp_bonuses >> (2*i)) & 3);
+        PRINT_FUNCTION("\n %-14s    %d\n", get_move_name_gen3(&mon->attacks, i), (mon->growth.pp_bonuses >> (2*i)) & 3);
     }
     
-    iprintf("\nAbility: %s\n", get_ability_name_raw(mon));
+    PRINT_FUNCTION("\nAbility: %s\n", get_ability_name_raw(mon));
     
-    iprintf("\nExperience: %d\n", get_proper_exp_raw(mon));
+    PRINT_FUNCTION("\nExperience: %d\n", get_proper_exp_raw(mon));
     
     if(to_valid_level_gen3(mon->src) < MAX_LEVEL)
-        iprintf("\nNext Lv. in: %d > Lv. %d", get_level_exp_mon_index(get_mon_index_raw(mon), to_valid_level_gen3(mon->src)+1) - get_proper_exp_raw(mon), to_valid_level_gen3(mon->src)+1);
+        PRINT_FUNCTION("\nNext Lv. in: %d > Lv. %d", get_level_exp_mon_index(get_mon_index_raw(mon), to_valid_level_gen3(mon->src)+1) - get_proper_exp_raw(mon), to_valid_level_gen3(mon->src)+1);
     else
-        iprintf("\n");
+        PRINT_FUNCTION("\n");
 }
 
 void print_pokemon_page4(struct gen3_mon_data_unenc* mon) {
 
-    iprintf("\nCONTEST STAT     VALUE\n");
+    PRINT_FUNCTION("\nCONTEST STAT     VALUE\n");
     for(int i = 0; i < CONTEST_STATS_TOTAL; i++){
-        iprintf("\n %-16s% 4d\n", contest_strings[i], mon->evs.contest[i]);
+        PRINT_FUNCTION("\n %-16s% 4d\n", contest_strings[i], mon->evs.contest[i]);
     }
 
-    iprintf("\n");
+    PRINT_FUNCTION("\n");
 }
 
 void print_pokemon_page5(struct gen3_mon_data_unenc* mon) {
     u8 printable_string[X_TILES+1];
 
-    iprintf("\nRIBBONS\n");
+    PRINT_FUNCTION("\nRIBBONS\n");
     for(int i = 0; i < NUM_LINES; i++){
         // CANNOT USE SNPRINTF OR SPRINTF! THEY ADD 20 KB!
         text_generic_concat(get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)]), printable_string, X_TILES, X_TILES, X_TILES);
         if(ribbon_print_pos[(i*2)+1] != 0xFF) {
-            iprintf("\n %-13s ", printable_string);
+            PRINT_FUNCTION("\n %-13s ", printable_string);
             text_generic_concat(get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)+1]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)+1]), printable_string, X_TILES, X_TILES, X_TILES);
-            iprintf(" %-13s", printable_string);
+            PRINT_FUNCTION(" %-13s", printable_string);
         }
         else
-            iprintf("\n %s", printable_string);
+            PRINT_FUNCTION("\n %s", printable_string);
     }
 
-    iprintf("\n\n\n");
+    PRINT_FUNCTION("\n\n\n");
 }
 
 typedef void (*print_info_functions_t)(struct gen3_mon_data_unenc*);
@@ -281,51 +315,51 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
     
     u8* options = get_options_main();
 
-    iprintf("\x1b[2J");
+    PRINT_FUNCTION("\x1b[2J");
     
     if(!get_valid_options_main()) {
-        iprintf("\n  Error reading the data!\n\n\n\n\n\n\n");
-        iprintf("\n  Send Multiboot\n");
+        PRINT_FUNCTION("\n  Error reading the data!\n\n\n\n\n\n\n");
+        PRINT_FUNCTION("\n  Send Multiboot\n");
     }
     else {
         if(curr_gen >= TOTAL_GENS)
             curr_gen = 2;
         curr_gen = options[curr_gen];
         if(get_number_of_higher_ordered_options(options, curr_gen, TOTAL_GENS) > 0 && get_number_of_lower_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            iprintf("\n  Target: <%s>\n", target_strings[curr_gen-1]);
+            PRINT_FUNCTION("\n  Target: <%s>\n", target_strings[curr_gen-1]);
         else if(get_number_of_higher_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            iprintf("\n  Target:  %s>\n", target_strings[curr_gen-1]);
+            PRINT_FUNCTION("\n  Target:  %s>\n", target_strings[curr_gen-1]);
         else if(get_number_of_lower_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            iprintf("\n  Target: <%s\n", target_strings[curr_gen-1]);
+            PRINT_FUNCTION("\n  Target: <%s\n", target_strings[curr_gen-1]);
         else
-            iprintf("\n  Target:  %s\n", target_strings[curr_gen-1]);
+            PRINT_FUNCTION("\n  Target:  %s\n", target_strings[curr_gen-1]);
         if(curr_gen < 3) {
             if(!is_jp)
-                iprintf("\n  Target Region:  %s>\n", region_strings[0]);
+                PRINT_FUNCTION("\n  Target Region:  %s>\n", region_strings[0]);
             else
-            iprintf("\n  Target Region: <%s\n", region_strings[1]);
+            PRINT_FUNCTION("\n  Target Region: <%s\n", region_strings[1]);
         }
         else
-            iprintf("\n\n");
+            PRINT_FUNCTION("\n\n");
         if(!is_master)
-            iprintf("\n  Act as:  %s>\n", actor_strings[1]);
+            PRINT_FUNCTION("\n  Act as:  %s>\n", actor_strings[1]);
         else
-            iprintf("\n  Act as: <%s\n", actor_strings[0]);
-        iprintf("\n  Start Trade\n");
-        iprintf("\n  Send Multiboot\n");
-        iprintf("\n\n\n\n\n\n\n  View Party %s\n", target_strings[curr_gen-1]);
+            PRINT_FUNCTION("\n  Act as: <%s\n", actor_strings[0]);
+        PRINT_FUNCTION("\n  Start Trade\n");
+        PRINT_FUNCTION("\n  Send Multiboot\n");
+        PRINT_FUNCTION("\n\n\n\n\n\n\n  View Party %s\n", target_strings[curr_gen-1]);
     }
 }
 
 void print_multiboot(enum MULTIBOOT_RESULTS result) {
 
-    iprintf("\x1b[2J");
+    PRINT_FUNCTION("\x1b[2J");
     
     if(result == MB_SUCCESS)
-        iprintf("\nMultiboot successful!\n\n\n");
+        PRINT_FUNCTION("\nMultiboot successful!\n\n\n");
     else if(result == MB_NO_INIT_SYNC)
-        iprintf("\nCouldn't sync.\n\nTry again!\n");
+        PRINT_FUNCTION("\nCouldn't sync.\n\nTry again!\n");
     else
-        iprintf("\nThere was an error.\n\nTry again!\n");
-    iprintf("\nA: To the previous menu");
+        PRINT_FUNCTION("\nThere was an error.\n\nTry again!\n");
+    PRINT_FUNCTION("\nA: To the previous menu");
 }

@@ -1,8 +1,10 @@
 #include <gba.h>
 #include "sio.h"
 
+#define BLANK_LINES_WAIT 13
+
 void sio_normal_inner_slave(void);
-void sio_normal_inner_master(void);
+u8 sio_normal_inner_master(void);
 
 int timed_sio_normal_master(int data, int is_32, int vCountWait) {
     u8 curr_vcount, target_vcount;
@@ -12,7 +14,6 @@ int timed_sio_normal_master(int data, int is_32, int vCountWait) {
     else
         REG_SIODATA8 = (data & 0xFF);
         
-    
     // - Wait at least 36 us between sends (this is a bit more, but it works)
     curr_vcount = REG_VCOUNT;
     target_vcount = curr_vcount + vCountWait;
@@ -48,13 +49,11 @@ void sio_normal_inner_slave() {
     REG_SIOCNT |= SIO_SO_HIGH;
 }
 
-void sio_handle_irq_slave() {
-	REG_IF |= IRQ_SERIAL;
-
-    REG_SIOCNT &= ~SIO_SO_HIGH;
+IWRAM_CODE __attribute__((optimize(3))) void sio_handle_irq_slave(int next_data) {
+    REG_SIOCNT |= SIO_SO_HIGH;
 	
-	REG_SIODATA32 = SIO_DEFAULT_VALUE;
-	REG_SIODATA8 = SIO_DEFAULT_VALUE;
+	REG_SIODATA32 = next_data;
+	REG_SIODATA8 = next_data;
 	
 	REG_SIOCNT &= ~(SIO_START | SIO_SO_HIGH);
     // - Set Start=1 and SO=1 (SO=HIGH indicates not ready, applied after transfer).
@@ -65,17 +64,22 @@ void sio_handle_irq_slave() {
     REG_SIOCNT &= ~SIO_SO_HIGH;
 }
 
+IWRAM_CODE __attribute__((optimize(3))) int sio_read(u8 is_32) {
+    u32 data = REG_SIODATA8;
+    if(is_32)
+        data = REG_SIODATA32;
+    return data;
+}
+
 void sio_stop_irq_slave() {
     REG_SIOCNT &= ~SIO_SO_HIGH;
     REG_SIOCNT &= ~SIO_IRQ;
 }
 
-void sio_normal_prepare_irq_slave(int data, int is_32) {
+void sio_normal_prepare_irq_slave(int data) {
     // - Initialize data which is to be sent to master.
-    if(is_32)
-        REG_SIODATA32 = data;
-    else
-        REG_SIODATA8 = (data & 0xFF);
+    REG_SIODATA32 = data;
+    REG_SIODATA8 = (data & 0xFF);
     
     REG_SIOCNT |= SIO_IRQ;
 
@@ -89,13 +93,48 @@ void sio_normal_prepare_irq_slave(int data, int is_32) {
     REG_SIOCNT &= ~SIO_SO_HIGH;
 }
 
-void sio_normal_inner_master() {
+IWRAM_CODE __attribute__((optimize(3))) u32 sio_send_if_ready_master(u32 data, u8 is_32, u8* success) {
     // - Wait for SI to become LOW (slave ready). (Check timeout here!)
-    while (REG_SIOCNT & SIO_RDY);
+    REG_SIODATA32 = data;
+    REG_SIODATA8 = (data & 0xFF);
+    if (!(REG_SIOCNT & SIO_RDY)) {
+        // - Set Start flag.
+        REG_SIOCNT |= SIO_START;
+        // - Wait for IRQ (or for Start bit to become zero).
+        while (REG_SIOCNT & SIO_START);
+        *success = 1;
+    }
+    else
+        *success = 0;
+    return sio_read(is_32);
+}
+
+IWRAM_CODE __attribute__((optimize(3))) u32 sio_send_master(u32 data, u8 is_32) {
+    // - Wait for SI to become LOW (slave ready). (Check timeout here!)
+    REG_SIODATA32 = data;
+    REG_SIODATA8 = (data & 0xFF);
     // - Set Start flag.
     REG_SIOCNT |= SIO_START;
     // - Wait for IRQ (or for Start bit to become zero).
     while (REG_SIOCNT & SIO_START);
+    return sio_read(is_32);
+}
+
+u8 sio_normal_inner_master() {
+    // - Wait for SI to become LOW (slave ready). (Check timeout here!)
+    int curr_vcount = REG_VCOUNT;
+    int target_vcount = curr_vcount + BLANK_LINES_WAIT;
+    if(target_vcount >= 0xE4)
+        target_vcount -= 0xE4;
+    while (REG_SIOCNT & SIO_RDY) {
+        if(REG_VCOUNT == target_vcount)
+            return 0;
+    }
+    // - Set Start flag.
+    REG_SIOCNT |= SIO_START;
+    // - Wait for IRQ (or for Start bit to become zero).
+    while (REG_SIOCNT & SIO_START);
+    return 1;
 }
 
 void init_sio_normal(int is_master, int is_32) {
@@ -116,7 +155,7 @@ void init_sio_normal(int is_master, int is_32) {
     REG_SIOCNT = sio_cnt_val;
 }
 
-int sio_normal(int data, int is_master, int is_32) {
+int sio_normal(int data, int is_master, int is_32, u8* success) {
     // - Initialize data which is to be sent to master.
     if(is_32)
         REG_SIODATA32 = data;
@@ -124,7 +163,7 @@ int sio_normal(int data, int is_master, int is_32) {
         REG_SIODATA8 = (data & 0xFF);
     
     if(is_master)
-        sio_normal_inner_master();
+        *success = sio_normal_inner_master();
     else
         sio_normal_inner_slave();
     

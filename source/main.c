@@ -12,9 +12,11 @@
 #include "options_handler.h"
 #include "input_handler.h"
 #include "menu_text_handler.h"
-#include "communicator.h"
+#include "sio_buffers.h"
 #include "rng.h"
 #include "pid_iv_tid.h"
+#include "print_system.h"
+#include "communicator.h"
 //#include "save.h"
 
 // --------------------------------------------------------------------
@@ -25,53 +27,10 @@
 
 // --------------------------------------------------------------------
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
-u16 sizes[NUM_SIZES];
-
-#include "sio.h"
-#define VCOUNT_TIMEOUT 28 * 8
-
-const u8 gen2_start_trade_states[] = {0x01, 0xFE, 0x61, 0xD1, 0xFE};
-const u8 gen2_next_trade_states[] = {0xFE, 0x61, 0xD1, 0xFE, 0xFE};
-const u8 gen_2_states_max = 4;
-void start_gen2(void)
-{
-    u8 index = 0;
-    u8 received;
-    init_sio_normal(SIO_MASTER, SIO_8);
-    
-    while(2) {
-        received = timed_sio_normal_master(gen2_start_trade_states[index], SIO_8, VCOUNT_TIMEOUT);
-        if(received == gen2_next_trade_states[index] && index < gen_2_states_max)
-            index++;
-        else
-            iprintf("0x%X\n", received);
-    }
-}
-const u8 gen2_start_trade_slave_states[] = {0x02, 0x61, 0xD1, 0x00, 0xFE};
-const u8 gen2_next_trade_slave_states[] = {0x01, 0x61, 0xD1, 0x00, 0xFE};
-void start_gen2_slave(void)
-{
-    u8 index = 0;
-    u8 received;
-    init_sio_normal(SIO_SLAVE, SIO_8);
-    
-    sio_normal_prepare_irq_slave(0x02, SIO_8);
-    
-    while(3) {
-        iprintf("0x%X\n", REG_SIODATA8 & 0xFF);
-    }
-    
-    while(2) {
-        received = sio_normal(gen2_start_trade_slave_states[index], SIO_SLAVE, SIO_8);
-        iprintf("0x%X\n", received);
-        if(received == gen2_next_trade_slave_states[index] && index < gen_2_states_max)
-            index++;
-    }
-}
 
 void vblank_update_function() {
 	REG_IF |= IRQ_VBLANK;
@@ -80,6 +39,16 @@ void vblank_update_function() {
     move_cursor_x(counter);
     advance_rng();
     counter++;
+    if((REG_SIOCNT & SIO_IRQ) && (!(REG_SIOCNT & SIO_START)))
+        slave_routine();
+    if((get_start_state_raw() == START_TRADE_PAR) && (REG_SIOCNT & SIO_IRQ) && (increment_last_tranfer() == NO_INFO_LIMIT)) {
+        REG_SIODATA8 = SEND_0_INFO;
+        REG_SIODATA32 = SEND_0_INFO;
+        REG_IF &= ~IRQ_SERIAL;
+        slave_routine();
+    }
+    if((REG_DISPSTAT >> 8) >= 0xA0 && ((REG_DISPSTAT >> 8) <= REG_VCOUNT))
+        set_next_vcount_interrupt();
 }
 
 u8 init_cursor_y_pos_main_menu(){
@@ -134,14 +103,12 @@ int main(void)
     irqInit();
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
-    irqSet(IRQ_SERIAL, sio_handle_irq_slave);
-    irqEnable(IRQ_SERIAL);
 
     consoleDemoInit();
     init_gender_symbols();
     REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     
-    iprintf("\x1b[2J");
+    PRINT_FUNCTION("\x1b[2J");
     
     read_gen_3_data(&game_data[0]);
     prepare_main_options(&game_data[0]);
@@ -173,9 +140,10 @@ int main(void)
             VBlankIntrWait();
             scanKeys();
             keys = keysDown();
+            if(curr_state == START_TRADE)
+                print_start_trade();
         }
-        //load_comm_buffer(&game_data[0], sizes, curr_gen, region);
-        //iprintf("%p %p\n", get_communication_buffer(0), sizes);
+        //PRINT_FUNCTION("%p %p\n", get_communication_buffer(0));
         //worst_case_conversion_tester(&counter);
         input_counter++;
         switch(curr_state) {
@@ -199,6 +167,15 @@ int main(void)
                     prepare_options_trade(game_data, curr_gen, own_menu);
                     print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
                     cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
+                }
+                else if(returned_val > 0 && returned_val <= TOTAL_GENS) {
+                    curr_gen = returned_val;
+                    curr_state = START_TRADE;
+                    init_start_state();
+                    load_comm_buffer(&game_data[0], curr_gen, region);
+                    start_transfer(master, curr_gen);
+                    disable_cursor();
+                    print_start_trade();
                 }
                 break;
             case TRADING_MENU:
@@ -233,6 +210,12 @@ int main(void)
             case MULTIBOOT:
                 if(handle_input_multiboot_menu(keys))
                     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
+                break;
+            case START_TRADE:
+                if(handle_input_trade_setup(keys, curr_gen)) {
+                    stop_transfer(master);
+                    main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
+                }
                 break;
             default:
                 main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);

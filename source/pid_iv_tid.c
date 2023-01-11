@@ -5,6 +5,7 @@
 #include "text_handler.h"
 #include "fast_pokemon_methods.h"
 #include "optimized_swi.h"
+#include "print_system.h"
 
 #define ALWAYS_INLINE __attribute__((always_inline)) static inline
     
@@ -451,8 +452,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 search_unown_with_mask(u32 mask, u1
 }
 
 IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wanted_nature, u16 tsv, u8 letter, u32 given_seed) {
-    // Worst case:
-    // Implement the seeding logic!!!
+    // Worst case: 5, 0x4FF8, 5, 0x8FC00000
     u16 high_pid;
     u16 low_pid;
     u8 nature;
@@ -465,16 +465,22 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wante
     
     u32 generating_seed = get_next_seed(given_seed);
     #if TEST_WORST_CASE
-    s32 base_increment = (((given_seed >> 16) & 0xF)*2)*(-1 + (2 * ((given_seed>>20)&1)));
+    s32 base_increment = (((given_seed >> 16) & 0xF)*2);
+    if(base_increment == 0)
+        base_increment += 1;
+    base_increment*=(-1 + (2 * ((given_seed>>20)&1)));
     u16 initial_pos = given_seed >> 21;
     #else
-    s32 base_increment = (((generating_seed >> 16) & 0xF)*2)*(-1 + (2 * ((generating_seed>>20)&1)));
+    s32 base_increment = (((generating_seed >> 16) & 0xF)*2);
+    if(base_increment == 0)
+        base_increment += 1;
+    base_increment*=(-1 + (2 * ((generating_seed>>20)&1)));
     u16 initial_pos = generating_seed >> 21;
     #endif
     u16 pos = initial_pos;
     generating_seed = get_next_seed(generating_seed);
     
-    for(int i = 0; i < NUM_DIFFERENT_UNOWN_PSV; i++) {
+    for(int iter = 0; iter < NUM_DIFFERENT_UNOWN_PSV; iter++) {
         generating_seed = get_next_seed(generating_seed); 
         low_pid = generating_seed >> 16;
         generating_seed = get_next_seed(generating_seed); 
@@ -489,7 +495,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wante
         if((nature == wanted_nature) && (get_unown_letter_gen3_fast(pid) == letter) && (shiny_pid < 8))
             return 1;
         
-        low_pid = ((i << 3) & 0xF8) | (((i>>5)<<(8+2)));
+        low_pid = ((pos << 3) & 0xF8) | (((pos>>5)<<(8+2)));
         
         for(int j = 0; j < num_valid_values; j++) {
             u16 converted_low_pid_flag = unown_tsv_possibilities[tsv_flag][letter][j];
@@ -542,6 +548,20 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wante
                         }
                     }
             }
+        }
+        if(pos + base_increment < 0)
+            pos += (0x10000>>5);
+        if(pos + base_increment >= (0x10000>>5))
+            pos = pos + base_increment - (0x10000>>5);
+        else
+            pos += base_increment;
+        if(pos == initial_pos) {
+            pos += 1;
+            initial_pos += 1;
+            if(initial_pos >= (0x10000>>5))
+                initial_pos -= (0x10000>>5);
+            if(pos >= (0x10000>>5))
+                pos -= (0x10000>>5);
         }
     }
     return 0;
@@ -596,10 +616,10 @@ void worst_case_conversion_tester(u32* counter) {
     curr_counter = *counter;
     
     if(!success)
-        iprintf("Failed!\n");
+        PRINT_FUNCTION("Failed!\n");
     
-    iprintf("Max time 1 alt: 0x%X\n", max_counter);
-    iprintf("Max value 1 alt: %d\n", success);
+    PRINT_FUNCTION("Max time 1 alt: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max value 1 alt: %d\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -611,10 +631,10 @@ void worst_case_conversion_tester(u32* counter) {
     curr_counter = *counter;
     
     if(!success)
-        iprintf("Failed!\n");
+        PRINT_FUNCTION("Failed!\n");
     
-    iprintf("Max time 2 alt: 0x%X\n", max_counter);
-    iprintf("Max value 2 alt: %d\n", success);
+    PRINT_FUNCTION("Max time 2 alt: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max value 2 alt: %d\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -626,10 +646,10 @@ void worst_case_conversion_tester(u32* counter) {
     curr_counter = *counter;
     
     if(!success)
-        iprintf("Failed!\n");
+        PRINT_FUNCTION("Failed!\n");
     
-    iprintf("Max time 4: 0x%X\n", max_counter);
-    iprintf("Max value 4: %d\n", success);
+    PRINT_FUNCTION("Max time 4: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max value 4: %d\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -641,10 +661,10 @@ void worst_case_conversion_tester(u32* counter) {
     curr_counter = *counter;
     
     if(!success)
-        iprintf("Failed!\n");
+        PRINT_FUNCTION("Failed!\n");
     
-    iprintf("Max time 1 s: 0x%X\n", max_counter);
-    iprintf("Max value 1 s: 0x%X\n", success);
+    PRINT_FUNCTION("Max time 1 s: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max value 1 s: 0x%X\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -656,25 +676,25 @@ void worst_case_conversion_tester(u32* counter) {
     curr_counter = *counter;
     
     if(!success)
-        iprintf("Failed!\n");
+        PRINT_FUNCTION("Failed!\n");
     
-    iprintf("Max time 2 s: 0x%X\n", max_counter);
-    iprintf("Max value 2 s: 0x%X\n", success);
+    PRINT_FUNCTION("Max time 2 s: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max value 2 s: 0x%X\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
     
-    success = _generate_unown_shiny_info(14, 0x5FF<<3, 2, 0x100000);
+    success = _generate_unown_shiny_info(5, 0x4FF8, 5, 0x8FC00000);
     
     if(max_counter < ((*counter)-curr_counter))
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
     if(!success)
-        iprintf("Failed!\n");
+        PRINT_FUNCTION("Failed!\n");
     
-    iprintf("Max time 4 s: 0x%X\n", max_counter);
-    iprintf("Max value 4 s: 0x%X\n", success);
+    PRINT_FUNCTION("Max time 4 s: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max value 4 s: 0x%X\n", success);
     
     #endif
 }

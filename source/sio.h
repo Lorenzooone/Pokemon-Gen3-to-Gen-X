@@ -9,11 +9,14 @@
 
 #define SIO_DEFAULT_VALUE 0xFE
 
-void init_sio_normal(int is_master, int is_32);
-int sio_normal(int data, int is_master, int is_32);
-void sio_normal_prepare_irq_slave(int data, int is_32);
-int timed_sio_normal_master(int data, int is_32, int vCountWait);
-void sio_handle_irq_slave();
+void init_sio_normal(int, int);
+int sio_normal(int, int, int, u8*);
+void sio_normal_prepare_irq_slave(int);
+int timed_sio_normal_master(int, int, int);
+void sio_handle_irq_slave(int);
 void sio_stop_irq_slave();
+int sio_read(u8);
+u32 sio_send_if_ready_master(u32, u8, u8*);
+u32 sio_send_master(u32 data, u8 is_32);
 
 #endif

@@ -631,7 +631,7 @@ u16 calc_stats_gen1(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
-    return base + Div(((stats_table_gen1[species].stats[stat_index] + iv) + (Sqrt(stat_exp) >> 2)) * level, 100);
+    return base + Div((((stats_table_gen1[species].stats[stat_index] + iv)*2) + (Sqrt(stat_exp) >> 2)) * level, 100);
 }
 
 u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
@@ -770,7 +770,7 @@ u8 to_valid_level_gen3(struct gen3_mon* src) {
 }
 
 void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8* level_ptr, u8* exp_ptr, u8 is_gen2) {
-    if(((is_gen2) && (growth->species > LAST_VALID_GEN_2_MON)) || (growth->species > LAST_VALID_GEN_1_MON))
+    if(((is_gen2) && (growth->species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (growth->species > LAST_VALID_GEN_1_MON)))
         return;
     
     // Level handling
@@ -814,7 +814,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
 }
 
 u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2) {
-    if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || (species > LAST_VALID_GEN_1_MON))
+    if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (species > LAST_VALID_GEN_1_MON)))
         return 0;
         
     // Assign IVs

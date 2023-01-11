@@ -1,6 +1,7 @@
 #include <gba.h>
 #include "multiboot_handler.h"
 #include "sio.h"
+#include "print_system.h"
 
 #define MULTIBOOT_VCOUNTWAIT 2
 
@@ -21,7 +22,7 @@ void wait_fun(int read_value, int wait) {
         VBlankIntrWait();
     //}
 
-    //iprintf("Read_value: %d!\n", read_value);
+    //PRINT_FUNCTION("Read_value: %d!\n", read_value);
     
     //REG_IME = 0;
 }
@@ -37,8 +38,8 @@ enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end) {
 
     init_sio_normal(SIO_MASTER, SIO_32);
 
-    iprintf("\x1b[2J");
-    iprintf("\nInitiating handshake!\n");
+    PRINT_FUNCTION("\x1b[2J");
+    PRINT_FUNCTION("\nInitiating handshake!\n");
 
     for(attempts = 0; attempts < 32; attempts++) {
         for (sends = 0; sends < 16; sends++) {
@@ -106,7 +107,7 @@ enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end) {
     mp.boot_srcp = data;
     mp.boot_endp = end;
     
-    iprintf("\nHandshake successful!\n\nGiving control to SWI 0x25!");
+    PRINT_FUNCTION("\nHandshake successful!\n\nGiving control to SWI 0x25!");
     
     if(MultiBoot(&mp, MODE32_NORMAL))
         return MB_SWI_FAILURE;
