@@ -11,6 +11,7 @@
 #define SKIP_SENDS 0x10
 
 #define MAX_WAIT_FOR_SYN 30
+#define MIN_WAIT_FOR_SYN 3
 #define MAX_NO_NEW_INFO 30
 
 #define NUMBER_OF_ENTITIES 2
@@ -59,11 +60,13 @@ u8 syn_transmitted;
 u8 has_transmitted_syn;
 int last_transfer_counter;
 int buffer_counter;
+int buffer_counter_out;
 u8 start_state_updated;
 u8 start_state;
 u32 prepared_value;
 int skip_sends = 0;
 u8 base_pos_out = 0;
+u8 increment_out = 0;
 u8 last_filtered = 0;
 u8 since_last_recv_gen3 = 0;
 int own_end_gen3;
@@ -169,7 +172,9 @@ u8 get_start_state() {
 void reset_transfer_data_between_sync() {
     has_transmitted_syn = 0;
     syn_transmitted = 0;
+    increment_out = 0;
     buffer_counter = 0;
+    buffer_counter_out = 0;
     last_transfer_counter = 0;
 }
 
@@ -198,21 +203,18 @@ __attribute__((optimize(3))) void set_next_vcount_interrupt(void){
 IWRAM_CODE __attribute__((optimize(3))) int communicate_buffer(u8 data, u8 is_master) {
     u8 ignore_data = 0;
     if(!has_transmitted_syn) {
-        if(syn_transmitted > MAX_WAIT_FOR_SYN) {
-            if(!is_master) {
-                has_transmitted_syn = 1;
-                if(data == SYNCHRONIZE_BYTE) {
-                    base_pos_out = 0;
-                    ignore_data = 1;
-                }
-                else
-                    base_pos_out = 1;
+        if((syn_transmitted > MAX_WAIT_FOR_SYN) && (!is_master)) {
+            if(data == SYNCHRONIZE_BYTE) {
+                base_pos_out = 0;
+                ignore_data = 1;
             }
             else
-                syn_transmitted = MAX_WAIT_FOR_SYN;
+                has_transmitted_syn = 1;
         }
         else {
-            if(syn_transmitted < 3) {
+            if((is_master) && (syn_transmitted >= MAX_WAIT_FOR_SYN))
+                syn_transmitted = MAX_WAIT_FOR_SYN;
+            if(syn_transmitted < MIN_WAIT_FOR_SYN) {
                 if((data != SEND_NO_INFO) && (data == SYNCHRONIZE_BYTE))
                     syn_transmitted++;
                 return SYNCHRONIZE_BYTE;
@@ -238,12 +240,17 @@ IWRAM_CODE __attribute__((optimize(3))) int communicate_buffer(u8 data, u8 is_ma
             reset_transfer_data_between_sync();
             if(sizes_index >= get_number_of_buffers())
                 set_start_state(START_TRADE_DON);
-            if(base_pos_out)
-                return out_buffer[base_pos - base_pos_out];
+            if(buffer_counter_out < transfer_sizes[sizes_index-1])
+                return out_buffer[base_pos-1];
             return SEND_0_INFO;
         }
     }
-    return out_buffer[buffer_counter + base_pos - base_pos_out];
+
+    buffer_counter_out++;
+    if(buffer_counter_out > transfer_sizes[sizes_index])
+        buffer_counter_out = transfer_sizes[sizes_index];
+    
+    return out_buffer[buffer_counter_out - 1 + base_pos];
 }
 
 IWRAM_CODE __attribute__((optimize(3))) int check_if_continue(u8 data, u8* sends, u8* recvs, int size, int new_state, int new_send, u8 filter) {
@@ -270,6 +277,8 @@ IWRAM_CODE __attribute__((optimize(3))) int process_data_arrived_gen1(u8 data, u
             return check_if_continue(data, gen1_start_trade_start_trade_procedure[is_master], gen1_start_trade_start_trade_procedure_next[is_master], GEN1_START_STATES_NUM, START_TRADE_SYN, SEND_NO_INFO, 1);
         case START_TRADE_PAR:
             return communicate_buffer(data, is_master);
+        case START_TRADE_DON:
+            return SEND_NO_INFO;
         case START_TRADE_SYN:
             if(is_master)
                 init_transfer_data();
@@ -345,6 +354,8 @@ IWRAM_CODE __attribute__((optimize(3))) int process_data_arrived_gen2(u8 data, u
             return check_if_continue(data, gen2_start_trade_start_trade_procedure[is_master], gen2_start_trade_start_trade_procedure_next[is_master], GEN2_START_STATES_NUM, START_TRADE_SYN, SEND_NO_INFO, 0);
         case START_TRADE_PAR:
             return communicate_buffer(data, is_master);
+        case START_TRADE_DON:
+            return SEND_NO_INFO;
         case START_TRADE_SYN:
             if(is_master)
                 init_transfer_data();

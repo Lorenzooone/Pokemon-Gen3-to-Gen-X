@@ -140,8 +140,21 @@ int main(void)
             VBlankIntrWait();
             scanKeys();
             keys = keysDown();
-            if(curr_state == START_TRADE)
-                print_start_trade();
+            if(curr_state == START_TRADE) {
+                if(get_start_state_raw() == START_TRADE_DON) {
+                    curr_state = TRADING_MENU;
+                    cursor_y_pos = 0;
+                    cursor_x_pos = 0;
+                    own_menu = 0;
+                    read_comm_buffer(&game_data[1], curr_gen, region);
+                    prepare_options_trade(game_data, curr_gen, own_menu);
+                    print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
+                    cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
+                }
+                else {
+                    print_start_trade();
+                }
+            }
         }
         //PRINT_FUNCTION("%p %p\n", get_communication_buffer(0));
         //worst_case_conversion_tester(&counter);
@@ -223,9 +236,6 @@ int main(void)
         }
         update = 0;
     }
-
-    //start_gen2_slave();
-    //start_gen2();
 
     return 0;
 }

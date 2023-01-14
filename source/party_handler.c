@@ -752,28 +752,28 @@ u32 swap_endian_int(u32 integer) {
     return ((integer & 0xFF000000) >> 24) | ((integer & 0xFF) << 24) | ((integer & 0xFF0000) >> 8) | ((integer & 0xFF00) << 8);
 }
 
-u8 validate_converting_mon_of_gen1(u8 index, struct gen1_mon* data_src) {
+u8 validate_converting_mon_of_gen1(u8 index, struct gen1_mon_data* src) {
     
     // Check for matching index to species
-    if(index != data_src->data.species)
+    if(index != src->species)
         return 0;
     
-    u8 conv_species = get_mon_index_gen1_to_3(data_src->data.species);
+    u8 conv_species = get_mon_index_gen1_to_3(src->species);
     
     // Is this a valid mon
     if((conv_species > LAST_VALID_GEN_1_MON) || (conv_species == 0))
         return 0;
     
     // Does it have a valid movepool
-    if(!has_legal_moves_gen12(data_src->data.moves, 0))
+    if(!has_legal_moves_gen12(src->moves, 0))
         return 0;
     
     // Check for valid types
     u8 matched[2] = {0,0};
     for(int i = 0; i < 2; i++) {
-        if((data_src->data.type[i] == pokemon_types_gen1_bin[(2*data_src->data.species)]) && (!matched[0]))
+        if((src->type[i] == pokemon_types_gen1_bin[(2*src->species)]) && (!matched[0]))
             matched[0] = 1;
-        else if((data_src->data.type[i] == pokemon_types_gen1_bin[(2*data_src->data.species)+1]) && (!matched[1]))
+        else if((src->type[i] == pokemon_types_gen1_bin[(2*src->species)+1]) && (!matched[1]))
             matched[1] = 1;
     }
     for(int i = 0; i < 2; i++)
@@ -783,22 +783,22 @@ u8 validate_converting_mon_of_gen1(u8 index, struct gen1_mon* data_src) {
     return 1;
 }
 
-u8 validate_converting_mon_of_gen2(u8 index, struct gen2_mon* data_src) {
+u8 validate_converting_mon_of_gen2(u8 index, struct gen2_mon_data* src, u8* is_egg) {
     if(index == GEN2_EGG)
-        data_src->is_egg = 1;
+        *is_egg = 1;
     else
-        data_src->is_egg = 0;
+        *is_egg = 0;
     
     // Check for matching index to species
-    if((!data_src->is_egg) && (index != data_src->data.species))
+    if((!(*is_egg)) && (index != src->species))
         return 0;
     
     // Is this a valid mon
-    if((data_src->data.species > LAST_VALID_GEN_2_MON) || (data_src->data.species == 0))
+    if((src->species > LAST_VALID_GEN_2_MON) || (src->species == 0))
         return 0;
     
     // Does it have a valid movepool
-    if(!has_legal_moves_gen12(data_src->data.moves, 1))
+    if(!has_legal_moves_gen12(src->moves, 1))
         return 0;
     
     return 1;
@@ -1311,6 +1311,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     // Initial data decryption
     if(!decrypt_data(src, decryption)) {
         dst->is_valid_gen3 = 0;
+        dst->is_valid_gen2 = 0;
+        dst->is_valid_gen1 = 0;
         return;
     }
     
@@ -1333,12 +1335,16 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     // Species checks
     if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0)) {
         dst->is_valid_gen3 = 0;
+        dst->is_valid_gen2 = 0;
+        dst->is_valid_gen1 = 0;
         return;
     }
     
     // Obedience checks
     if(((growth->species == MEW_SPECIES) || (growth->species == DEOXYS_SPECIES)) && (!misc->obedience)) {
         dst->is_valid_gen3 = 0;
+        dst->is_valid_gen2 = 0;
+        dst->is_valid_gen1 = 0;
         return;
     }
     
@@ -1355,22 +1361,30 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     if(!are_evs_legal_gen3(evs)) {
         dst->is_valid_gen3 = 0;
+        dst->is_valid_gen2 = 0;
+        dst->is_valid_gen1 = 0;
         return;
     }
     
     if(!has_legal_moves_gen3(attacks)) {
         dst->is_valid_gen3 = 0;
+        dst->is_valid_gen2 = 0;
+        dst->is_valid_gen1 = 0;
         return;
     }
     
     if(!is_ability_valid(growth->species, src->pid, misc->ability, misc->met_location, (misc->origins_info>>7) & 0xF, dst->deoxys_form)) {
         dst->is_valid_gen3 = 0;
+        dst->is_valid_gen2 = 0;
+        dst->is_valid_gen1 = 0;
         return;
     }
 
     // Bad egg checks
     if(src->is_bad_egg) {
         dst->is_valid_gen3 = 0;
+        dst->is_valid_gen2 = 0;
+        dst->is_valid_gen1 = 0;
         return;
     }
     
@@ -1541,10 +1555,10 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     return 1;
 }
 
-u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst, u8 index, u8* ot_name, u8* nickname, u8 is_jp) {
-    struct gen2_mon_data* src = &src_data->data;
-    struct gen3_mon* dst = &data_dst->src;
+u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst, u8 index, u8* ot_name, u8* nickname, u8 is_jp) {
+    struct gen3_mon* dst = data_dst->src;
     u8 no_restrictions = 1;
+    u8 is_egg = 0;
     
     // Reset everything
     for(int i = 0; i < sizeof(struct gen3_mon); i++)
@@ -1554,7 +1568,7 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
     data_dst->is_valid_gen2 = 0;
     
     // Check if valid
-    if(!validate_converting_mon_of_gen2(index, src_data))
+    if(!validate_converting_mon_of_gen2(index, src, &is_egg))
         return 0;
     
     data_dst->is_valid_gen3 = 1;
@@ -1563,7 +1577,7 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
     // Set base data
     dst->has_species = 1;
     dst->pokerus_rem = 0xFF;
-    data_dst->is_egg = src_data->is_egg;
+    data_dst->is_egg = is_egg;
     
     if(is_jp)
         dst->language = JAPANESE_LANGUAGE;
@@ -1571,7 +1585,7 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
         dst->language = ENGLISH_LANGUAGE;
     
     // Handle Nickname + OT conversion
-    convert_strings_of_gen12(dst, src->species, ot_name, nickname, src_data->is_egg);
+    convert_strings_of_gen12(dst, src->species, ot_name, nickname, is_egg);
     
     // Handle OT ID, if same as the game owner, set it to the game owner's
     dst->ot_id = swap_endian_short(src->ot_id);
@@ -1599,11 +1613,11 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
     data_dst->growth.item = convert_item_to_gen3(src->item);
     
     // Handle cases in which the nature would be forced
-    if((dst->level == MAX_LEVEL) || (src_data->is_egg))
+    if((dst->level == MAX_LEVEL) || (is_egg))
         wanted_nature = SWI_DivMod(get_rng(), NUM_NATURES);
     
     // Store egg cycles
-    if(src_data->is_egg) {
+    if(is_egg) {
         data_dst->growth.friendship = src->friendship;
         data_dst->misc.is_egg = 1;
         dst->use_egg_name = 1;
@@ -1623,7 +1637,7 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
         data_dst->misc.obedience = 1;
     
     // Set the PID-Origin-IVs data, they're all connected
-    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, src->ot_gender, src_data->is_egg, no_restrictions);
+    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, src->ot_gender, is_egg, no_restrictions);
     
     // Place all the substructures' data
     place_and_encrypt_gen3_data(data_dst, dst);
@@ -1636,9 +1650,8 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
     return 1;
 }
 
-u8 gen1_to_gen3(struct gen1_mon* src_data, struct gen3_mon_data_unenc* data_dst, u8 index, u8* ot_name, u8* nickname, u8 is_jp) {
-    struct gen1_mon_data* src = &src_data->data;
-    struct gen3_mon* dst = &data_dst->src;
+u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst, u8 index, u8* ot_name, u8* nickname, u8 is_jp) {
+    struct gen3_mon* dst = data_dst->src;
     u8 no_restrictions = 1;
     
     // Reset everything
@@ -1649,7 +1662,7 @@ u8 gen1_to_gen3(struct gen1_mon* src_data, struct gen3_mon_data_unenc* data_dst,
     data_dst->is_valid_gen1 = 0;
     
     // Check if valid
-    if(!validate_converting_mon_of_gen1(index, src_data))
+    if(!validate_converting_mon_of_gen1(index, src))
         return 0;
     
     data_dst->is_valid_gen3 = 1;
