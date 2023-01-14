@@ -33,6 +33,12 @@ const u16 ribbon_pos [] = {0x290, 0x21C, 0x328};
 const u16 special_area [] = {0, 9, 9};
 const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0x0406, 0x0503, 0x0504, 0x0603, 0x0604, 0x0700, 0x0701, 0x0804, 0x0805, 0x090a, 0x090b, 0x0a05, 0x0a06, 0x0b05, 0x0b06, 0x0c02, 0x0c03, 0x0d06, 0x0d07, 0x0e03, 0x0e04, 0x0f02, 0x0f03, 0x100c, 0x100d, 0x100a, 0x1918, 0x1919, 0x191a, 0x191b, 0x1a05};
 
+struct game_data_t* own_game_data_ptr;
+
+struct game_data_t* get_own_game_data() {
+    return own_game_data_ptr;
+}
+
 void init_game_data(struct game_data_t* game_data) {
     init_game_identifier(&game_data->game_identifier);
     
@@ -187,4 +193,5 @@ void read_gen_3_data(struct game_data_t* game_data){
     }
     
     read_party(slot, game_data);
+    own_game_data_ptr = game_data;
 }

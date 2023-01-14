@@ -14,6 +14,10 @@
 #define GEN2_STATS_TOTAL 6
 #define GEN1_STATS_TOTAL 5
 
+#define GEN3_NO_ITEM 0xFFFF
+#define GEN2_NO_ITEM 0xFF
+#define GEN2_MAIL 0xFE
+
 #define M_GENDER 0
 #define F_GENDER 1
 #define U_GENDER 2
@@ -82,6 +86,7 @@
 #define NAME_SIZE 11
 #define ITEM_NAME_SIZE 15
 #define NICKNAME_GEN3_SIZE 10
+#define NICKNAME_JP_GEN3_SIZE 5
 #define OT_NAME_GEN3_SIZE 7
 #define OT_NAME_JP_GEN3_SIZE 5
 #define STRING_GEN2_INT_SIZE 11
@@ -92,7 +97,15 @@
 #define GEN2_EGG 253
 #define GEN2_NO_MON 255
 
+#define POKEBALL_ID 4
+
+#define EGG_ENCOUNTER 0
+#define STATIC_ENCOUNTER 1
+#define ROAMER_ENCOUNTER 2
+#define UNOWN_ENCOUNTER 3
+
 #define JAPANESE_LANGUAGE 1
+#define ENGLISH_LANGUAGE 2
 
 struct mail_gen3 {
     u16 words[MAIL_WORDS_SIZE];
@@ -263,6 +276,8 @@ struct gen1_party {
 void process_gen3_data(struct gen3_mon*, struct gen3_mon_data_unenc*, u8, u8);
 u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_unenc*, u32);
 u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_unenc*, u32);
+u8 gen2_to_gen3(struct gen2_mon*, struct gen3_mon_data_unenc*, u8, u8*, u8*, u8);
+u8 gen1_to_gen3(struct gen1_mon*, struct gen3_mon_data_unenc*, u8, u8*, u8*, u8);
 
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);
 u16 get_mon_index_raw(struct gen3_mon_data_unenc*);

@@ -40,6 +40,22 @@ void get_game_id(struct game_identity* identifier){
         }
 }
 
+u8 id_to_version(struct game_identity* identifier){
+    
+    u8 base_game = S_VERSION_ID;
+    if(identifier->game_main_version == FRLG_GAME_CODE)
+        base_game = FR_VERSION_ID;
+    if(identifier->game_main_version == E_MAIN_GAME_CODE)
+        base_game = E_VERSION_ID;
+    
+    if((base_game == S_VERSION_ID) && (identifier->game_sub_version == R_SUB_GAME_CODE))
+        base_game += 1;
+    if((base_game == FR_VERSION_ID) && (identifier->game_sub_version == LG_SUB_GAME_CODE))
+        base_game += 1;
+    
+    return base_game;
+}
+
 void determine_game_with_save(struct game_identity* identifier, u8 slot, u8 section_pos, u16 total_bytes) {
     u32 game_code = -1;
     if(identifier->game_main_version == UNDETERMINED) {

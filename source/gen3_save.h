@@ -24,5 +24,6 @@ struct game_data_t {
 
 void init_game_data(struct game_data_t*);
 void read_gen_3_data(struct game_data_t*);
+struct game_data_t* get_own_game_data();
 
 #endif

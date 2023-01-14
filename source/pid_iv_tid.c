@@ -7,6 +7,9 @@
 #include "optimized_swi.h"
 #include "print_system.h"
 
+#include "shiny_unown_banned_tsv_bin.h"
+#include "shiny_unown_banned_tsv_letter_table_bin.h"
+
 #define ALWAYS_INLINE __attribute__((always_inline)) static inline
     
 #define TEST_WORST_CASE 0
@@ -36,6 +39,40 @@ void init_unown_tsv() {
     }
 }
 
+ALWAYS_INLINE __attribute__ ((optimize(3))) u8 is_bad_tsv(u16 tsv) {
+    tsv = (tsv >> 3) << 3;
+    const u32* shiny_unown_banned_tsv_bin_32 = (const u32*)shiny_unown_banned_tsv_bin;
+    for(int i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
+        if(tsv == (shiny_unown_banned_tsv_bin_32[i] & 0xFFFF))
+            return 1;
+    }
+    return 0;
+}
+
+ALWAYS_INLINE __attribute__ ((optimize(3))) void get_letter_valid_natures(u16 tsv, u8 letter, u8* valid_natures) {
+    tsv = (tsv >> 3) << 3;
+    for(int i = 0; i < NUM_NATURES; i++)
+        valid_natures[i] = 1;
+    u8 letter_kind = shiny_unown_banned_tsv_letter_table_bin[letter] >> 4;
+    u8 letter_dist = shiny_unown_banned_tsv_letter_table_bin[letter] & 0xF;
+    if(letter_kind == 0xF)
+        return;
+    const u32* shiny_unown_banned_tsv_bin_32 = (const u32*)shiny_unown_banned_tsv_bin;
+    for(int i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
+        if(tsv == (shiny_unown_banned_tsv_bin_32[i] & 0xFFFF)) {
+            u8 letter_kind_table = (shiny_unown_banned_tsv_bin_32[i]>>0x14)&0xF;
+            u8 letter_dist_table = (shiny_unown_banned_tsv_bin_32[i]>>0x10)&0xF;
+            if(letter_kind == letter_kind_table) {
+                letter_dist += letter_dist_table;
+                if(letter_dist >= 5)
+                    letter_dist -= 5;
+                for(int j = 0; j < 5; j++)
+                    valid_natures[letter_dist + (j*5)] = 0;
+            }
+        }
+    }
+}
+
 ALWAYS_INLINE __attribute__ ((optimize(3))) u32 get_prev_seed(u32 seed) {
     return (seed-0x6073) * 0xEEB9EB65;
 }
@@ -49,10 +86,9 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_ot(u16 tid, u8* name) {
     // This should NOT be random...
     // All Pokémon from a trainer should have the same TID/SID!
     
-    // Put Unown V and I checks here!
-    
     u16 accumulator = 0;
     u32 seed = 0;
+    u16 sid = 0;
     seed = get_next_seed(seed);
     
     for(int i = 0; i < OT_NAME_GEN3_SIZE; i++) {
@@ -63,12 +99,17 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_ot(u16 tid, u8* name) {
     }
                             
     seed += tid;
-    seed = get_next_seed(seed);
+    do {
+        // Unown V and I checks here!
+        seed = get_next_seed(seed);
+        sid = seed >> 0x10;
+    }
+    while(is_bad_tsv(sid^tid));
     
-    return (seed & 0xFFFF0000) | tid;
+    return (sid << 0x10) | tid;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_egg_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 gender, u8 gender_kind, u32 start_seed) {
+IWRAM_CODE __attribute__ ((optimize(3))) void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 gender, u8 gender_kind, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
     // Worst case: 0, 0x2113, 0, 0, 0, 34
     u8 atk_ivs = ((wanted_ivs<<(4-gender_useful_atk_ivs[gender_kind])) & 0xF)<<1;
     u8 def_ivs = ((wanted_ivs>>4) & 0xF)<<1;
@@ -109,9 +150,10 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_egg_info(u8 wanted_nature
                         u8 new_def_ivs = (((generated_ivs >> 10)&0x1F)>>1) << 1;
                         
                         if(new_atk_ivs == atk_ivs && new_def_ivs == def_ivs) {
+                            ivs = (generated_ivs & 0x7FFF) | (((seed>>16) & 0x7FFF)<<15);
                             seed = get_prev_seed(seed);
                             seed = get_prev_seed(seed);
-                            u16 high_pid = seed & 0xFFFF0000;
+                            u16 high_pid = seed >> 16;
                             u32 inner_seed = get_prev_seed(start_seed>>0x10);
                             u16 lower_pid = 0;
                             do {
@@ -146,8 +188,9 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_egg_info(u8 wanted_nature
                                     if((gender == F_GENDER) && (gender_values[gender_kind] == 0x1F) && ((lower_pid & 0xFF) == 0x1F))
                                         lower_pid -= NUM_NATURES;
                                 }
-                            
-                            return 1 + l + (NUM_SEEDS*pass_counter);
+                            *dst_ivs |= ivs;
+                            *dst_pid = lower_pid | (high_pid << 0x10);
+                            return;
                         }
                     }
                     pass_counter++;
@@ -157,15 +200,13 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_egg_info(u8 wanted_nature
         if(initial_spa == i)
             initial_spa += (limit-start);
     }
-    
-    return 0;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_egg_info(u8 index, u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 curr_gen) {
-    return _generate_egg_info(wanted_nature, wanted_ivs, tsv, get_pokemon_gender_gen2(index, wanted_ivs&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), get_rng());
+IWRAM_CODE __attribute__ ((optimize(3))) void generate_egg_info(u8 index, u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 curr_gen, u32* dst_pid, u32* dst_ivs) {
+    _generate_egg_info(wanted_nature, wanted_ivs, tsv, get_pokemon_gender_gen2(index, wanted_ivs&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_egg_shiny_info(u8 wanted_nature, u16 tsv, u8 gender, u8 gender_kind, u32 start_seed) {
+IWRAM_CODE __attribute__ ((optimize(3))) void _generate_egg_shiny_info(u8 wanted_nature, u16 tsv, u8 gender, u8 gender_kind, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
     // Worst case: ANY
     u16 lower_pid = start_seed &0xFFFF;
     
@@ -204,16 +245,18 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_egg_shiny_info(u8 wanted_
     pid = (higher_pid << 0x10) | lower_pid;
     
     u32 seed = (higher_pid << 16) | (start_seed >> 16);
-    seed = get_prev_seed(seed);
+    seed = get_next_seed(seed);
+    u16 generated_ivs = (seed >> 16) & 0x7FFF;
     
-    return pid;
+    *dst_ivs |= generated_ivs | (((get_next_seed(seed)>>16)&0x7FFF)<<15);
+    *dst_pid = pid;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_egg_shiny_info(u8 index, u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 curr_gen) {
-    return _generate_egg_shiny_info(wanted_nature, tsv, get_pokemon_gender_gen2(index, wanted_ivs&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), get_rng());
+IWRAM_CODE __attribute__ ((optimize(3))) void generate_egg_shiny_info(u8 index, u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 curr_gen, u32* dst_pid, u32* dst_ivs) {
+    _generate_egg_shiny_info(wanted_nature, tsv, get_pokemon_gender_gen2(index, wanted_ivs&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32 start_seed) {
+IWRAM_CODE __attribute__ ((optimize(3))) void _generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
     // Worst case: 6, 12706, 0xA30E, 0
     u8 atk_ivs = ((wanted_ivs) & 0xF)<<1;
     u8 def_ivs = ((wanted_ivs>>4) & 0xF)<<1;
@@ -254,6 +297,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_info(u8 wanted_nat
                         u8 new_def_ivs = (((generated_ivs >> 10)&0x1F)>>1) << 1;
                         
                         if(new_atk_ivs == atk_ivs && new_def_ivs == def_ivs) {
+                            ivs = (generated_ivs & 0x7FFF) | (((seed>>16) & 0x7FFF)<<15);
                             seed = get_prev_seed(seed);
                             seed = get_prev_seed(seed);
                             pid |= seed & 0xFFFF0000;
@@ -262,8 +306,9 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_info(u8 wanted_nat
                             u16 shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
                             u8 nature = get_nature_fast(pid);
                             if((nature == wanted_nature) && (shiny_pid >= 8)) {
-                                seed = get_prev_seed(seed);
-                                return 1 + l + (NUM_SEEDS*pass_counter);
+                                *dst_pid = pid;
+                                *dst_ivs |= ivs;
+                                return;
                             }
                         }
                     }
@@ -274,15 +319,13 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_info(u8 wanted_nat
         if(initial_spa == i)
             initial_spa += (limit-start);
     }
-    
-    return 0;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv) {
-    return _generate_static_info(wanted_nature, wanted_ivs, tsv, get_rng());
+IWRAM_CODE __attribute__ ((optimize(3))) void generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
+    _generate_static_info(wanted_nature, wanted_ivs, tsv, dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_shiny_info(u8 wanted_nature, u16 tsv, u32 given_seed) {
+IWRAM_CODE __attribute__ ((optimize(3))) void _generate_static_shiny_info(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 given_seed) {
     // Worst case: 0, 0x2088, (base_increment = 1, initial_pos = 0x6D0, set TEST_WORST_CASE to 1 to test it, with seed 0x36810000)
     s32 base_increment;
     u16 initial_pos;
@@ -304,15 +347,21 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_shiny_info(u8 want
 
         generating_seed = get_next_seed(generating_seed); 
         low_pid = generating_seed >> 16;
-        generating_seed = get_next_seed(generating_seed); 
+        generating_seed = get_next_seed(generating_seed);
         high_pid = generating_seed >> 16;
         
         u16 shiny_pid = (high_pid ^ low_pid ^ tsv);
         
         nature = get_nature_fast((high_pid<<16) | low_pid);
         
-        if((shiny_pid < 8) && (nature == wanted_nature))
-            return 1;
+        if((shiny_pid < 8) && (nature == wanted_nature)) {
+            generating_seed = get_next_seed(generating_seed); 
+            u16 generated_ivs = (generating_seed >> 16)&0x7FFF;
+            generating_seed = get_next_seed(generating_seed);
+            *dst_pid = low_pid | (high_pid<<16);
+            *dst_ivs |= generated_ivs | (((generating_seed>>16)&0x7FFF)<<15);
+            return;
+        }
         
         high_pid = pos<<3;
         
@@ -335,8 +384,14 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_shiny_info(u8 want
             
             u16 generated_high_pid = get_next_seed(seed) >> 16;
             
-            if(high_pid == generated_high_pid) { 
-                    return 1 + j + (i*NUM_SEEDS);
+            if(high_pid == generated_high_pid) {
+                seed = get_next_seed(seed);
+                seed = get_next_seed(seed);
+                u16 generated_ivs = (seed>>16)&0x7FFF;
+                seed = get_next_seed(seed);
+                *dst_pid = low_pid | (high_pid<<16);
+                *dst_ivs |= generated_ivs | (((seed>>16)&0x7FFF)<<15);
+                return;
             }
         }
 
@@ -355,14 +410,13 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_static_shiny_info(u8 want
                 pos -= NUM_DIFFERENT_PSV;
         }
     }
-    return 0;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_static_shiny_info(u8 wanted_nature, u16 tsv) {
-    return _generate_static_shiny_info(wanted_nature, tsv, get_rng());
+IWRAM_CODE __attribute__ ((optimize(3))) void generate_static_shiny_info(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs) {
+    _generate_static_shiny_info(wanted_nature, tsv, dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_info(u8 wanted_nature, u8 letter, u8 rest_of_ivs, u16 tsv, u32 start_seed) {
+IWRAM_CODE __attribute__ ((optimize(3))) void _generate_unown_info(u8 wanted_nature, u8 letter, u8 rest_of_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
     // Worst case: 15, 4, 0xCE, 0xA021, 0x1AA
     u8 atk_ivs = (((rest_of_ivs>>0)&1) | (((rest_of_ivs>>0)&2)<<2))<<1;
     u8 def_ivs = (((rest_of_ivs>>2)&1) | (((rest_of_ivs>>2)&2)<<2))<<1;
@@ -392,6 +446,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_info(u8 wanted_natu
                         u8 new_spa_ivs = (((((generated_ivs >> 5) & 0x1F) + ((generated_ivs >> 10) & 0x1F))>>1) & 0x12);
                         
                         if(new_spa_ivs == spa_ivs && new_spe_ivs == spe_ivs) {
+                            ivs = ((generated_ivs & 0x7FFF)<<15) | ((seed>>16) & 0x7FFF);
                             seed = get_prev_seed(seed);
                             pid |= seed >> 16;
                             seed = get_prev_seed(seed);
@@ -400,8 +455,9 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_info(u8 wanted_natu
                             u8 nature = get_nature_fast(pid);
                             u8 generated_letter = get_unown_letter_gen3_fast(pid);
                             if((nature == wanted_nature) && (letter == generated_letter) && (shiny_pid >= 8)) {
-                                seed = get_prev_seed(seed);
-                                return 1 + l + (NUM_SEEDS*k) + (2*NUM_SEEDS*u) + (0x10*NUM_SEEDS*j) + (0x80*NUM_SEEDS*i);
+                                *dst_ivs |= ivs;
+                                *dst_pid = pid;
+                                return;
                             }
                         }
                     }
@@ -415,21 +471,19 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_info(u8 wanted_natu
         if(i == base_hp)
             base_hp += 0x20;
     }
-    
-    return 0;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_unown_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv) {
+IWRAM_CODE __attribute__ ((optimize(3))) void generate_unown_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
     u8 atk_ivs = ((wanted_ivs) & 0xF);
     u8 def_ivs = ((wanted_ivs>>4) & 0xF);
     u8 spe_ivs = ((wanted_ivs>>8) & 0xF);
     u8 spa_ivs = ((wanted_ivs>>12) & 0xF);
     u8 letter = get_unown_letter_gen2_fast(wanted_ivs);
     u8 rest_of_ivs = (((atk_ivs & 1) | ((atk_ivs>>2)&2))<<0) | (((def_ivs & 1) | ((def_ivs>>2)&2))<<2) | (((spe_ivs & 1) | ((spe_ivs>>2)&2))<<4) | (((spa_ivs & 1) | ((spa_ivs>>2)&2))<<6);
-    return _generate_unown_info(wanted_nature, letter, rest_of_ivs, tsv, get_rng());
+    _generate_unown_info(wanted_nature, letter, rest_of_ivs, tsv, dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 search_unown_with_mask(u32 mask, u16 new_high, u16 new_low, u8* success) {
+IWRAM_CODE __attribute__ ((optimize(3))) u8 search_unown_with_mask(u32 mask, u16 new_high, u16 new_low, u32* dst_pid, u32* dst_ivs) {
     new_high = new_high ^ (mask>>16);
     new_low = new_low ^ (mask&0xFFFF);
     for(int u = 0; u < NUM_SEEDS; u++) {
@@ -443,22 +497,21 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 search_unown_with_mask(u32 mask, u1
             u32 ivs = (seed >> 16) & 0x7FFF;
             seed = get_next_seed(seed);
             ivs |= ((seed >> 16) & 0x7FFF)<<15;
-            *success = 1;
-            return u;
+            *dst_pid = (new_high<<16) | generated_low_pid;
+            *dst_ivs |= ivs;
+            return 1;
         }
     }
-    *success = 0;
     return 0;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wanted_nature, u16 tsv, u8 letter, u32 given_seed) {
+IWRAM_CODE __attribute__ ((optimize(3))) void _generate_unown_shiny_info(u8 wanted_nature, u16 tsv, u8 letter, u32* dst_pid, u32* dst_ivs, u32 given_seed) {
     // Worst case: 5, 0x4FF8, 5, 0x8FC00000
     u16 high_pid;
     u16 low_pid;
     u8 nature;
     u16 shiny_pid;
     u32 pid = 0;
-    u32 failures = 0;
     
     u8 tsv_flag = ((tsv>>8)&3);
     u8 num_valid_values = unown_tsv_numbers[tsv_flag][letter];
@@ -492,8 +545,14 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wante
         nature = get_nature_fast(pid);
         
         // Basically, asking for a miracle
-        if((nature == wanted_nature) && (get_unown_letter_gen3_fast(pid) == letter) && (shiny_pid < 8))
-            return 1;
+        if((nature == wanted_nature) && (get_unown_letter_gen3_fast(pid) == letter) && (shiny_pid < 8)) {
+            generating_seed = get_next_seed(generating_seed); 
+            u16 generated_ivs = (generating_seed >> 16)&0x7FFF;
+            generating_seed = get_next_seed(generating_seed);
+            *dst_pid = pid;
+            *dst_ivs |= generated_ivs | (((generating_seed>>16)&0x7FFF)<<15);
+            return;
+        }
         
         low_pid = ((pos << 3) & 0xF8) | (((pos>>5)<<(8+2)));
         
@@ -505,8 +564,6 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wante
             high_pid = converted_high_pid_flag | ((inside_low_pid ^ tsv)&0xFCF8);
             
             for(int k = 0; k < 4; k++) {
-                u8 finished;
-                u32 ivs;
                 u16 new_high = high_pid;
                 u16 new_low = inside_low_pid;
                 
@@ -538,14 +595,9 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wante
                             if((i>>k)&1)
                                 mask += 0x01000100 << (3+k);
                         u8 xor_mod_change = get_nature_fast(pid ^ mask);
-                        if(xor_mod_change == wanted_nature) {
-                            finished = 0;
-                            ivs = search_unown_with_mask(mask, new_high, new_low, &finished);
-                            if(finished)
-                                return ivs + failures;
-                            else
-                                failures += NUM_SEEDS;
-                        }
+                        if(xor_mod_change == wanted_nature)
+                            if(search_unown_with_mask(mask, new_high, new_low, dst_pid, dst_ivs))
+                                return;
                     }
             }
         }
@@ -564,16 +616,22 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 _generate_unown_shiny_info(u8 wante
                 pos -= (0x10000>>5);
         }
     }
-    return 0;
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_unown_shiny_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv) {
+IWRAM_CODE __attribute__ ((optimize(3))) void generate_unown_shiny_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
     u8 letter = get_unown_letter_gen2_fast(wanted_ivs);
-    // Put Unown TSV restrictions here
-    return _generate_unown_shiny_info(wanted_nature, letter, tsv, get_rng());
+    u8 valid_natures[NUM_NATURES];
+    get_letter_valid_natures(tsv, letter, valid_natures);
+    // Unown TSV checks
+    while(!valid_natures[wanted_nature]){
+        wanted_nature++;
+        if(wanted_nature >= NUM_NATURES)
+            wanted_nature -= NUM_NATURES;
+    }
+    return _generate_unown_shiny_info(wanted_nature, letter, tsv, dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) u32 get_roamer_ivs(u32 pid, u8 hp_ivs, u8 atk_ivs) {
+IWRAM_CODE __attribute__ ((optimize(3))) u8 get_roamer_ivs(u32 pid, u8 hp_ivs, u8 atk_ivs, u32* dst_ivs) {
     atk_ivs &= 7;
     
     for(u32 l = 0; l < NUM_SEEDS; l++) {
@@ -590,11 +648,11 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 get_roamer_ivs(u32 pid, u8 hp_ivs, 
             if((((ivs >> 0)&0x1F) == hp_ivs) && (((ivs >> 5)&7) == atk_ivs)) {
                 seed = get_next_seed(seed);
                 ivs |= ((seed & 0x7FFF0000) >> 1);
-                return 1 + ivs;
+                dst_ivs = ivs;
+                return 1;
             }
         }
     }
-    
     return 0;
 }
 
@@ -603,98 +661,74 @@ void worst_case_conversion_tester(u32* counter) {
     
     int curr_counter = *counter;
     int max_counter = 0;
-    u32 success;
+    u32 pid, ivs;
     
     curr_counter = *counter;
     max_counter = 0;
     
-    success = _generate_egg_info(0, 0x2113, 0, 0, 0, 34);
+    _generate_egg_info(0, 0x2113, 0, 0, 0, &pid, &ivs, 34);
     
     max_counter = 0;
     if(max_counter < ((*counter)-curr_counter))
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
-    
-    if(!success)
-        PRINT_FUNCTION("Failed!\n");
     
     PRINT_FUNCTION("Max time 1 alt: 0x%X\n", max_counter);
-    PRINT_FUNCTION("Max value 1 alt: %d\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
     
-    success = _generate_static_info(6, 12706, 0xA30E, 0);
+    _generate_static_info(6, 12706, 0xA30E, &pid, &ivs, 0);
     
     if(max_counter < ((*counter)-curr_counter))
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
-    
-    if(!success)
-        PRINT_FUNCTION("Failed!\n");
     
     PRINT_FUNCTION("Max time 2 alt: 0x%X\n", max_counter);
-    PRINT_FUNCTION("Max value 2 alt: %d\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
     
-    success = _generate_unown_info(15, 4, 0xCE, 0xA021, 0x1AA);
+    _generate_unown_info(15, 4, 0xCE, 0xA021, &pid, &ivs, 0x1AA);
     max_counter = 0;
     if(max_counter < ((*counter)-curr_counter))
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
-    
-    if(!success)
-        PRINT_FUNCTION("Failed!\n");
     
     PRINT_FUNCTION("Max time 4: 0x%X\n", max_counter);
-    PRINT_FUNCTION("Max value 4: %d\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
     
-    success = _generate_egg_shiny_info(0, 0x0, 1, 0, 0);
+    _generate_egg_shiny_info(0, 0x0, 1, 0, &pid, &ivs, 0);
     
     if(max_counter < ((*counter)-curr_counter))
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
-    
-    if(!success)
-        PRINT_FUNCTION("Failed!\n");
     
     PRINT_FUNCTION("Max time 1 s: 0x%X\n", max_counter);
-    PRINT_FUNCTION("Max value 1 s: 0x%X\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
     
-    success = _generate_static_shiny_info(0, 0x2088, 0x36810000);
+    _generate_static_shiny_info(0, 0x2088, &pid, &ivs, 0x36810000);
     
     if(max_counter < ((*counter)-curr_counter))
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
-    
-    if(!success)
-        PRINT_FUNCTION("Failed!\n");
     
     PRINT_FUNCTION("Max time 2 s: 0x%X\n", max_counter);
-    PRINT_FUNCTION("Max value 2 s: 0x%X\n", success);
     
     curr_counter = *counter;
     max_counter = 0;
     
-    success = _generate_unown_shiny_info(5, 0x4FF8, 5, 0x8FC00000);
+    _generate_unown_shiny_info(5, 0x4FF8, 5, &pid, &ivs, 0x8FC00000);
     
     if(max_counter < ((*counter)-curr_counter))
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
-    if(!success)
-        PRINT_FUNCTION("Failed!\n");
-    
     PRINT_FUNCTION("Max time 4 s: 0x%X\n", max_counter);
-    PRINT_FUNCTION("Max value 4 s: 0x%X\n", success);
     
     #endif
 }

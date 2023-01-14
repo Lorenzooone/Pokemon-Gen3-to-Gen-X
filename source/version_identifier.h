@@ -12,6 +12,10 @@
 #define E_MAIN_GAME_CODE 0x2
 #define E_SUB_GAME_CODE 0x0
 
+#define S_VERSION_ID 1
+#define E_VERSION_ID 3
+#define FR_VERSION_ID 4
+
 struct game_identity {
     u8 game_is_jp;
     u8 game_main_version;
@@ -21,5 +25,6 @@ struct game_identity {
 void init_game_identifier(struct game_identity*);
 void get_game_id(struct game_identity*);
 void determine_game_with_save(struct game_identity*, u8, u8, u16);
+u8 id_to_version(struct game_identity*);
 
 #endif
