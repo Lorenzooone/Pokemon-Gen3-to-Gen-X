@@ -86,7 +86,6 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_ot(u16 tid, u8* name) {
     // This should NOT be random...
     // All Pokémon from a trainer should have the same TID/SID!
     
-    u16 accumulator = 0;
     u32 seed = 0;
     u16 sid = 0;
     seed = get_next_seed(seed);
@@ -111,10 +110,10 @@ IWRAM_CODE __attribute__ ((optimize(3))) u32 generate_ot(u16 tid, u8* name) {
 
 IWRAM_CODE __attribute__ ((optimize(3))) void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 gender, u8 gender_kind, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
     // Worst case: 0, 0x2113, 0, 0, 0, 34
-    u8 atk_ivs = ((wanted_ivs<<(4-gender_useful_atk_ivs[gender_kind])) & 0xF)<<1;
-    u8 def_ivs = ((wanted_ivs>>4) & 0xF)<<1;
-    u8 spe_ivs = ((wanted_ivs>>8) & 0xF)<<1;
-    u8 spa_ivs = ((wanted_ivs>>12) & 0xF)<<1;
+    u8 atk_ivs = ((((wanted_ivs>>4) & 0xF)<<(4-gender_useful_atk_ivs[gender_kind])) & 0xF)<<1;
+    u8 def_ivs = ((wanted_ivs) & 0xF)<<1;
+    u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
+    u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
     
     u32 pass_counter = 0;
     
@@ -146,7 +145,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) void _generate_egg_info(u8 wanted_natur
                         u32 seed = (k<<31) | (new_spe_ivs << 16) | (new_spa_ivs << 21) | (new_spd_ivs << 26) | l;
                         
                         u16 generated_ivs = get_prev_seed(seed) >> 16;
-                        u8 new_atk_ivs = (((generated_ivs >> 5)&0x1F)>>1) << (1+(4-gender_useful_atk_ivs[gender_kind]));
+                        u8 new_atk_ivs = (((generated_ivs >> 5)&0x1F)>>(1+(4-gender_useful_atk_ivs[gender_kind]))) << (1+(4-gender_useful_atk_ivs[gender_kind]));
                         u8 new_def_ivs = (((generated_ivs >> 10)&0x1F)>>1) << 1;
                         
                         if(new_atk_ivs == atk_ivs && new_def_ivs == def_ivs) {
@@ -203,7 +202,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) void _generate_egg_info(u8 wanted_natur
 }
 
 IWRAM_CODE __attribute__ ((optimize(3))) void generate_egg_info(u8 index, u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 curr_gen, u32* dst_pid, u32* dst_ivs) {
-    _generate_egg_info(wanted_nature, wanted_ivs, tsv, get_pokemon_gender_gen2(index, wanted_ivs&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
+    _generate_egg_info(wanted_nature, wanted_ivs, tsv, get_pokemon_gender_gen2(index, (wanted_ivs>>4)&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
 }
 
 IWRAM_CODE __attribute__ ((optimize(3))) void _generate_egg_shiny_info(u8 wanted_nature, u16 tsv, u8 gender, u8 gender_kind, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
@@ -253,15 +252,15 @@ IWRAM_CODE __attribute__ ((optimize(3))) void _generate_egg_shiny_info(u8 wanted
 }
 
 IWRAM_CODE __attribute__ ((optimize(3))) void generate_egg_shiny_info(u8 index, u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 curr_gen, u32* dst_pid, u32* dst_ivs) {
-    _generate_egg_shiny_info(wanted_nature, tsv, get_pokemon_gender_gen2(index, wanted_ivs&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
+    _generate_egg_shiny_info(wanted_nature, tsv, get_pokemon_gender_gen2(index, (wanted_ivs>>4)&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
 }
 
 IWRAM_CODE __attribute__ ((optimize(3))) void _generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
     // Worst case: 6, 12706, 0xA30E, 0
-    u8 atk_ivs = ((wanted_ivs) & 0xF)<<1;
-    u8 def_ivs = ((wanted_ivs>>4) & 0xF)<<1;
-    u8 spe_ivs = ((wanted_ivs>>8) & 0xF)<<1;
-    u8 spa_ivs = ((wanted_ivs>>12) & 0xF)<<1;
+    u8 atk_ivs = ((wanted_ivs>>4) & 0xF)<<1;
+    u8 def_ivs = ((wanted_ivs) & 0xF)<<1;
+    u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
+    u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
     
     u8 limit = ((spa_ivs+1) * 2);
     if(limit > 0x20)
@@ -474,10 +473,10 @@ IWRAM_CODE __attribute__ ((optimize(3))) void _generate_unown_info(u8 wanted_nat
 }
 
 IWRAM_CODE __attribute__ ((optimize(3))) void generate_unown_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
-    u8 atk_ivs = ((wanted_ivs) & 0xF);
-    u8 def_ivs = ((wanted_ivs>>4) & 0xF);
-    u8 spe_ivs = ((wanted_ivs>>8) & 0xF);
-    u8 spa_ivs = ((wanted_ivs>>12) & 0xF);
+    u8 atk_ivs = ((wanted_ivs>>4) & 0xF);
+    u8 def_ivs = ((wanted_ivs) & 0xF);
+    u8 spe_ivs = ((wanted_ivs>>12) & 0xF);
+    u8 spa_ivs = ((wanted_ivs>>8) & 0xF);
     u8 letter = get_unown_letter_gen2_fast(wanted_ivs);
     u8 rest_of_ivs = (((atk_ivs & 1) | ((atk_ivs>>2)&2))<<0) | (((def_ivs & 1) | ((def_ivs>>2)&2))<<2) | (((spe_ivs & 1) | ((spe_ivs>>2)&2))<<4) | (((spa_ivs & 1) | ((spa_ivs>>2)&2))<<6);
     _generate_unown_info(wanted_nature, letter, rest_of_ivs, tsv, dst_pid, dst_ivs, get_rng());
@@ -648,7 +647,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) u8 get_roamer_ivs(u32 pid, u8 hp_ivs, u
             if((((ivs >> 0)&0x1F) == hp_ivs) && (((ivs >> 5)&7) == atk_ivs)) {
                 seed = get_next_seed(seed);
                 ivs |= ((seed & 0x7FFF0000) >> 1);
-                dst_ivs = ivs;
+                *dst_ivs = ivs;
                 return 1;
             }
         }

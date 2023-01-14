@@ -84,7 +84,6 @@ void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mast
 
 int main(void)
 {
-    int val = 0;
     counter = 0;
     input_counter = 0;
     init_rng(0,0);

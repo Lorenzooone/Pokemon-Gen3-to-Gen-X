@@ -16,11 +16,11 @@ static __attribute__((optimize(3), always_inline)) u8 get_unown_letter_gen3_fast
 }
 
 static __attribute__((optimize(3), always_inline)) u8 get_unown_letter_gen2_fast(u16 ivs){
-    u8 atk_ivs = ((ivs) & 0xF);
-    u8 def_ivs = ((ivs>>4) & 0xF);
-    u8 spe_ivs = ((ivs>>8) & 0xF);
-    u8 spa_ivs = ((ivs>>12) & 0xF);
-    return SWI_Div(((((atk_ivs>>1)&3)) | (((def_ivs>>1)&3)<<2) | (((spe_ivs>>1)&3)<<4) | (((spa_ivs>>1)&3)<<6)), 10);
+    u8 atk_ivs = ((ivs>>4) & 0xF);
+    u8 def_ivs = ((ivs) & 0xF);
+    u8 spe_ivs = ((ivs>>12) & 0xF);
+    u8 spa_ivs = ((ivs>>8) & 0xF);
+    return SWI_Div(((((atk_ivs>>1)&3)<<6) | (((def_ivs>>1)&3)<<4) | (((spe_ivs>>1)&3)<<2) | (((spa_ivs>>1)&3)<<0)), 10);
 }
 
 #endif
