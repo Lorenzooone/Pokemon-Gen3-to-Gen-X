@@ -13,8 +13,10 @@
 #define E_SUB_GAME_CODE 0x0
 
 #define S_VERSION_ID 1
+#define R_VERSION_ID (S_VERSION_ID+1)
 #define E_VERSION_ID 3
 #define FR_VERSION_ID 4
+#define LG_VERSION_ID (FR_VERSION_ID+1)
 
 struct game_identity {
     u8 game_is_jp;

@@ -996,10 +996,22 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     // Assign IVs
     // Keep in mind: Unown letter, gender and shinyness
     // Hidden Power calculations are too restrictive
-    u8 atk_ivs = (misc->atk_ivs >> 1);
-    u8 def_ivs = (misc->def_ivs >> 1);
-    u8 spa_ivs = ((misc->spa_ivs + misc->spd_ivs) >> 2);
-    u8 spe_ivs = (misc->spe_ivs >> 1);
+    u8 atk_ivs = misc->atk_ivs >> 1;
+    u8 def_ivs = misc->def_ivs >> 1;
+    u8 spa_ivs = (misc->spa_ivs + misc->spd_ivs) >> 2;
+    u8 spe_ivs = misc->spe_ivs >> 1;
+    
+    // Handle roamers losing IVs when caught
+    u8 origin_game = (misc->origins_info>>7)&0xF;
+    if(((species >= RAIKOU_SPECIES) && (species <= SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID))) {
+        u32 real_ivs = 0;
+        if(get_roamer_ivs(pid, misc->hp_ivs, misc->atk_ivs, &real_ivs)){
+            atk_ivs = ((real_ivs >> 5) & 0x1F) >> 1;
+            def_ivs = ((real_ivs >> 10) & 0x1F) >> 1;
+            spa_ivs = (((real_ivs >> 20) & 0x1F) + ((real_ivs >> 25) & 0x1F)) >> 2;
+            spe_ivs = ((real_ivs >> 15) & 0x1F) >> 1;
+        }
+    }
     
     // Unown letter
     if((is_gen2) && (species == UNOWN_SPECIES)) {

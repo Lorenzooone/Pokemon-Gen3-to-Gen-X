@@ -62,6 +62,8 @@
 #define DEOXYS_SPE 3
 #define DEOXYS_FORMS_POS 442
 #define MEW_SPECIES 151
+#define RAIKOU_SPECIES 243
+#define SUICUNE_SPECIES 245
 #define GEN2_DOT 0xE8
 #define GEN1_DOT 0xF2
 
