@@ -6,6 +6,9 @@
 #include "version_identifier.h"
 #include "bin_table_handler.h"
 #include "gen3_save.h"
+#include "rng.h"
+#include "fast_pokemon_methods.h"
+#include "optimized_swi.h"
 
 #include "pokemon_moves_pp_gen1_bin.h"
 #include "pokemon_moves_pp_bin.h"
@@ -42,8 +45,6 @@
 #include "encounters_unown_bin.h"
 #include "encounter_types_gen2_bin.h"
 #include "special_encounters_gen2_bin.h"
-#include "fast_pokemon_methods.h"
-#include "optimized_swi.h"
 
 #define MF_7_1_INDEX 2
 #define M_INDEX 1
@@ -1048,10 +1049,18 @@ void set_ivs(struct gen3_mon_misc* misc, u32 ivs) {
     misc->spd_ivs = (ivs >> 25) & 0x1F;
 }
 
-void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 species, u16 wanted_ivs, u8 wanted_nature, u8 ot_gender, u8 no_restrictions) {
+void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 species, u16 wanted_ivs, u8 wanted_nature, u8 ot_gender, u8 is_egg, u8 no_restrictions) {
     struct game_data_t* trainer_data = get_own_game_data();
     u8 trainer_game_version = id_to_version(&trainer_data->game_identifier);
     u8 trainer_gender = trainer_data->trainer_gender;
+    
+    // Handle eggs separately
+    u32 ot_id = dst->ot_id;
+    if(is_egg)
+        ot_id = trainer_data->trainer_id;
+    
+    // Prepare the TSV
+    u16 tsv = (ot_id & 0xFFFF) ^ (ot_id >> 16);
 
     u8 chosen_version = FR_VERSION_ID;
     if(!no_restrictions) {
@@ -1069,17 +1078,17 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
             if(!is_shiny)
-                generate_static_info(wanted_nature, wanted_ivs, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), &dst->pid, &ivs);
+                generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
             else
-                generate_static_shiny_info(wanted_nature, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), &dst->pid, &ivs);
+                generate_static_shiny_info(wanted_nature, tsv, &dst->pid, &ivs);
             searchable_table = encounters_static_bin;
             find_in_table = 1;
             break;
         case ROAMER_ENCOUNTER:
             if(!is_shiny)
-                generate_static_info(wanted_nature, wanted_ivs, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), &dst->pid, &ivs);
+                generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
             else
-                generate_static_shiny_info(wanted_nature, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), &dst->pid, &ivs);
+                generate_static_shiny_info(wanted_nature, tsv, &dst->pid, &ivs);
             // Roamers only get the first byte of their IVs
             ivs &= 0xFF;
             searchable_table = encounters_roamers_bin;
@@ -1087,17 +1096,17 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
             break;
         case UNOWN_ENCOUNTER:
             if(!is_shiny)
-                generate_unown_info(wanted_nature, wanted_ivs, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), &dst->pid, &ivs);
+                generate_unown_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
             else
-                generate_unown_shiny_info(wanted_nature, wanted_ivs, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), &dst->pid, &ivs);
+                generate_unown_shiny_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
             searchable_table = encounters_unown_bin;
             find_in_table = 1;
             break;
         default:
             if(!is_shiny)
-                generate_egg_info(species, wanted_nature, wanted_ivs, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), 2, &dst->pid, &ivs);
+                generate_egg_info(species, wanted_nature, wanted_ivs, tsv, 2, &dst->pid, &ivs);
             else
-                generate_egg_shiny_info(species, wanted_nature, wanted_ivs, (dst->ot_id & 0xFFFF) ^ (dst->ot_id >> 16), 2, &dst->pid, &ivs);
+                generate_egg_shiny_info(species, wanted_nature, wanted_ivs, tsv, 2, &dst->pid, &ivs);
             break;
     }
     
@@ -1577,6 +1586,10 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
     u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, src->exp);
     data_dst->growth.item = convert_item_to_gen3(src->item);
     
+    // Handle cases in which the nature would be forced
+    if((dst->level == MAX_LEVEL) || (src_data->is_egg))
+        wanted_nature = SWI_DivMod(get_rng(), NUM_NATURES);
+    
     // Store egg cycles
     if(src_data->is_egg) {
         data_dst->growth.friendship = src->friendship;
@@ -1598,7 +1611,7 @@ u8 gen2_to_gen3(struct gen2_mon* src_data, struct gen3_mon_data_unenc* data_dst,
         data_dst->misc.obedience = 1;
     
     // Set the PID-Origin-IVs data, they're all connected
-    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, src->ot_gender, no_restrictions);
+    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, src->ot_gender, src_data->is_egg, no_restrictions);
     
     // Place all the substructures' data
     place_and_encrypt_gen3_data(data_dst, dst);
@@ -1668,6 +1681,10 @@ u8 gen1_to_gen3(struct gen1_mon* src_data, struct gen3_mon_data_unenc* data_dst,
     u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, src->exp);
     data_dst->growth.item = convert_item_to_gen3(src->item);
     
+    // Handle cases in which the nature would be forced
+    if(dst->level == MAX_LEVEL)
+        wanted_nature = SWI_DivMod(get_rng(), NUM_NATURES);
+    
     // Set base friendship
     data_dst->growth.friendship = BASE_FRIENDSHIP;
     
@@ -1683,7 +1700,7 @@ u8 gen1_to_gen3(struct gen1_mon* src_data, struct gen3_mon_data_unenc* data_dst,
         data_dst->misc.obedience = 1;
     
     // Set the PID-Origin-IVs data, they're all connected
-    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, 0, no_restrictions);
+    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, 0, 0, no_restrictions);
     
     // Place all the substructures' data
     place_and_encrypt_gen3_data(data_dst, dst);
