@@ -1,8 +1,6 @@
 #include <gba.h>
 #include "graphics_handler.h"
 
-#include "gender_symbols_bin.h"
-
 #define MAX_SIZE_POKEMON_SPRITE 0x400
 #define GRAPHICS_BUFFER_SHIFT 10
 #define GRAPHICS_BUFFER_SIZE (1 << GRAPHICS_BUFFER_SHIFT)
@@ -11,11 +9,6 @@
 
 void convert_3bpp_forward_odd(u8*, u32*, u16);
 void convert_3bpp_forward_even(u8*, u32*, u16);
-
-void init_gender_symbols(){
-    u8 colors[] = {0,1};
-    convert_1bpp(gender_symbols_bin, (u32*)(VRAM+(0x88<<5)), gender_symbols_bin_size, colors, 1);
-}
 
 IWRAM_CODE __attribute__ ((optimize(3))) u8 load_pokemon_sprite_gfx(u32 src, u32 dst, u8 info, u8 index, u8* colors){
     u8 is_3bpp = info&2;

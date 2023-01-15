@@ -86,6 +86,7 @@ int main(void)
 {
     counter = 0;
     input_counter = 0;
+    init_text_system();
     init_rng(0,0);
     u16 keys;
     enum MULTIBOOT_RESULTS result;
@@ -96,18 +97,15 @@ int main(void)
     
     get_game_id(&game_data[0].game_identifier);
     
+    REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
+    init_numbers();
+    
     init_unown_tsv();
     init_oam_palette();
     init_sprite_counter();
     irqInit();
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
-
-    consoleDemoInit();
-    init_gender_symbols();
-    REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
-    
-    PRINT_FUNCTION("\x1b[2J");
     
     read_gen_3_data(&game_data[0]);
     prepare_main_options(&game_data[0]);

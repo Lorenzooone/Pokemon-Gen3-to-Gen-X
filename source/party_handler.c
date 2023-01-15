@@ -10,7 +10,6 @@
 #include "fast_pokemon_methods.h"
 #include "optimized_swi.h"
 
-#include "pokemon_moves_pp_gen1_bin.h"
 #include "pokemon_moves_pp_bin.h"
 #include "pokemon_gender_bin.h"
 #include "pokemon_names_bin.h"

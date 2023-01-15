@@ -672,7 +672,7 @@ void worst_case_conversion_tester(u32* counter) {
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
-    PRINT_FUNCTION("Max time 1 alt: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max time 1 alt: 0x\x04\n", max_counter);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -683,7 +683,7 @@ void worst_case_conversion_tester(u32* counter) {
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
-    PRINT_FUNCTION("Max time 2 alt: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max time 2 alt: 0x\x04\n", max_counter);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -694,7 +694,7 @@ void worst_case_conversion_tester(u32* counter) {
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
-    PRINT_FUNCTION("Max time 4: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max time 4: 0x\x04\n", max_counter);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -705,7 +705,7 @@ void worst_case_conversion_tester(u32* counter) {
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
-    PRINT_FUNCTION("Max time 1 s: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max time 1 s: 0x\x04\n", max_counter);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -716,7 +716,7 @@ void worst_case_conversion_tester(u32* counter) {
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
-    PRINT_FUNCTION("Max time 2 s: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max time 2 s: 0x\x04\n", max_counter);
     
     curr_counter = *counter;
     max_counter = 0;
@@ -727,7 +727,7 @@ void worst_case_conversion_tester(u32* counter) {
         max_counter = ((*counter)-curr_counter);
     curr_counter = *counter;
     
-    PRINT_FUNCTION("Max time 4 s: 0x%X\n", max_counter);
+    PRINT_FUNCTION("Max time 4 s: 0x\x04\n", max_counter);
     
     #endif
 }

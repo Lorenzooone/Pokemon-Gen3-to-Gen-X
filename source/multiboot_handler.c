@@ -38,7 +38,7 @@ enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end) {
 
     init_sio_normal(SIO_MASTER, SIO_32);
 
-    PRINT_FUNCTION("\x1b[2J");
+    default_reset_screen();
     PRINT_FUNCTION("\nInitiating handshake!\n");
 
     for(attempts = 0; attempts < 32; attempts++) {
