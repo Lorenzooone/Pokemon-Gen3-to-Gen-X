@@ -157,6 +157,18 @@ int prepare_base_10(int number, u8* digits) {
     for(int i = 0; i < NUM_DIGITS; i++)
         digits[i] = 0;
     u8 pos = NUM_DIGITS-1;
+    
+    u8 minus = 0;
+    u8 special = 0;
+    if(number < 0){
+        minus = 1;
+        number = -number;
+        if(number < 0) {
+            number -= 1;
+            special = 1;
+        }
+    }
+    
     int mod;
     while(number >= 10000) {
         number = SWI_DivDivMod(number, 10000, &mod);
@@ -174,6 +186,12 @@ int prepare_base_10(int number, u8* digits) {
     
     if(!found)
         digits[pos] = '0';
+    
+    if(minus) {
+        digits[0] = '-';
+        if(special)
+            digits[NUM_DIGITS-1] += 1;
+    }
     
     return 0;
 }
