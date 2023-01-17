@@ -1293,7 +1293,10 @@ void recalc_stats_gen3(struct gen3_mon_data_unenc* data_dst, struct gen3_mon* ds
     // Calculate stats
     dst->curr_hp = calc_stats_gen3_raw(data_dst, HP_STAT_INDEX);
     for(int i = 0; i < GEN2_STATS_TOTAL; i++)
-        dst->stats[index_conversion_gen3[i]] = calc_stats_gen3_raw(data_dst, i);   
+        dst->stats[index_conversion_gen3[i]] = calc_stats_gen3_raw(data_dst, i);
+    
+    // Reset the status
+    dst->status = 0;
 }
 
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mon* dst) {
@@ -1432,6 +1435,10 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, data_src->is_egg, 1))
         return 0;
     
+    // Reset data structure
+    for(int i = 0; i < sizeof(struct gen2_mon); i++)
+        ((u8*)dst_data)[i] = 0;
+    
     // Start setting data
     dst->species = growth->species;
     
@@ -1528,6 +1535,10 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     // Check that the mon can be traded
     if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, data_src->is_egg, 0))
         return 0;
+    
+    // Reset data structure
+    for(int i = 0; i < sizeof(struct gen1_mon); i++)
+        ((u8*)dst_data)[i] = 0;
     
     // Start setting data
     dst->species = get_mon_index_gen1(growth->species);
