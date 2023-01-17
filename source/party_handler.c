@@ -344,17 +344,24 @@ const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
     return get_table_pointer(move_names_bin, move);
 }
 
-u8 has_legal_moves_gen3(struct gen3_mon_attacks* attacks){
+u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks){
     u8 previous_moves[MOVES_SIZE];
     u8 curr_slot = 0;
     
     for(int i = 0; i < MOVES_SIZE; i++) {
         if((attacks->moves[i] != 0) && (attacks->moves[i] <= LAST_VALID_GEN_3_MOVE)) {
+            u8 found = 0;
             for(int j = 0; j < curr_slot; j++)
-                if(attacks->moves[i] == previous_moves[j])
-                    return 0;
-            previous_moves[curr_slot++] = attacks->moves[i];
+                if(attacks->moves[i] == previous_moves[j]){
+                    found = 1;
+                    attacks->moves[i] = 0;
+                    break;
+                }
+            if(!found)
+                previous_moves[curr_slot++] = attacks->moves[i];
         }
+        else
+            attacks->moves[i] = 0;
     }
     
     if(curr_slot)
@@ -656,16 +663,15 @@ u32 get_proper_exp_raw(struct gen3_mon_data_unenc* data_src) {
     return get_proper_exp(data_src->src, &data_src->growth, data_src->deoxys_form);
 }
 
-u8 are_evs_legal_gen3(struct gen3_mon_evs* evs) {
+u8 make_evs_legal_gen3(struct gen3_mon_evs* evs) {
     u8 sum = 0;
 
     // Are they within the cap?
     for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
         if(sum + evs->evs[i] > MAX_EVS)
-            return 0;
+            evs->evs[i] -= sum + evs->evs[i] - MAX_EVS;
         sum += evs->evs[i];
     }
-    return 1;
 }
 
 u8 get_evs_gen3(struct gen3_mon_evs* evs, u8 stat_index) {
@@ -1283,6 +1289,13 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     }
 }
 
+void recalc_stats_gen3(struct gen3_mon_data_unenc* data_dst, struct gen3_mon* dst) {
+    // Calculate stats
+    dst->curr_hp = calc_stats_gen3_raw(data_dst, HP_STAT_INDEX);
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++)
+        dst->stats[index_conversion_gen3[i]] = calc_stats_gen3_raw(data_dst, i);   
+}
+
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mon* dst) {
     u8 index = get_index_key(dst->pid);
     
@@ -1340,12 +1353,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     }
     
     // Obedience checks
-    if(((growth->species == MEW_SPECIES) || (growth->species == DEOXYS_SPECIES)) && (!misc->obedience)) {
-        dst->is_valid_gen3 = 0;
-        dst->is_valid_gen2 = 0;
-        dst->is_valid_gen1 = 0;
-        return;
-    }
+    if((growth->species == MEW_SPECIES) || (growth->species == DEOXYS_SPECIES))
+        misc->obedience = 1;
     
     // Display the different Deoxys forms
     dst->deoxys_form = DEOXYS_NORMAL;
@@ -1358,14 +1367,9 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
             dst->deoxys_form = DEOXYS_DEF;
     }
     
-    if(!are_evs_legal_gen3(evs)) {
-        dst->is_valid_gen3 = 0;
-        dst->is_valid_gen2 = 0;
-        dst->is_valid_gen1 = 0;
-        return;
-    }
+    make_evs_legal_gen3(evs);
     
-    if(!has_legal_moves_gen3(attacks)) {
+    if(!make_moves_legal_gen3(attacks)) {
         dst->is_valid_gen3 = 0;
         dst->is_valid_gen2 = 0;
         dst->is_valid_gen1 = 0;
@@ -1387,8 +1391,21 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         return;
     }
     
+    if((growth->item >= LAST_VALID_GEN_3_ITEM) || (growth->item == ENIGMA_BERRY_ID))
+        growth->item = NO_ITEM_ID;
+    
+    src->level = to_valid_level_gen3(src);
+    
+    growth->exp = get_proper_exp_raw(dst);
+    
+    // Set the new "cleaned" data
+    place_and_encrypt_gen3_data(dst, src);
+    
     // We reuse this SOOOO much...
     dst->is_egg = is_egg_gen3(src, misc);
+    
+    // Recalc the stats, always
+    recalc_stats_gen3(dst, src);
     
     dst->is_valid_gen3 = 1;
 }
@@ -1642,9 +1659,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     place_and_encrypt_gen3_data(data_dst, dst);
     
     // Calculate stats
-    dst->curr_hp = calc_stats_gen3_raw(data_dst, HP_STAT_INDEX);
-    for(int i = 0; i < GEN2_STATS_TOTAL; i++)
-        dst->stats[index_conversion_gen3[i]] = calc_stats_gen3_raw(data_dst, i);
+    recalc_stats_gen3(data_dst, dst);
 
     return 1;
 }
@@ -1730,9 +1745,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     place_and_encrypt_gen3_data(data_dst, dst);
     
     // Calculate stats
-    dst->curr_hp = calc_stats_gen3_raw(data_dst, HP_STAT_INDEX);
-    for(int i = 0; i < GEN2_STATS_TOTAL; i++)
-        dst->stats[index_conversion_gen3[i]] = calc_stats_gen3_raw(data_dst, i);
+    recalc_stats_gen3(data_dst, dst);
 
     return 1;
 }
