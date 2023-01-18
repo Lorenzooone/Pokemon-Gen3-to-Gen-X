@@ -44,6 +44,10 @@
 #include "encounters_unown_bin.h"
 #include "encounter_types_gen2_bin.h"
 #include "special_encounters_gen2_bin.h"
+#include "trade_evolutions_bin.h"
+#include "learnset_evos_gen1_bin.h"
+#include "learnset_evos_gen2_bin.h"
+#include "learnset_evos_gen3_bin.h"
 
 #define MF_7_1_INDEX 2
 #define M_INDEX 1
@@ -1757,6 +1761,67 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     // Calculate stats
     recalc_stats_gen3(data_dst, dst);
+
+    return 1;
+}
+
+u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u16** learnset_ptr, u8 curr_gen) {
+    *learnset_ptr = NULL;
+    const u16* learnsets = (const u16*)learnset_evos_gen3_bin;
+    const u16* trade_evolutions = (const u16*)trade_evolutions_bin;
+    u16 max_index = LAST_VALID_GEN_3_MON;
+    if(curr_gen == 1) {
+        learnsets = (const u16*)learnset_evos_gen1_bin;
+        max_index = LAST_VALID_GEN_1_MON;
+    }
+    if(curr_gen == 2) {
+        learnsets = (const u16*)learnset_evos_gen2_bin;
+        max_index = LAST_VALID_GEN_2_MON;
+    }
+    
+    struct gen3_mon_growth* growth = &mon_data->growth;
+    
+    u8 found = 0;
+    u16 num_entries = trade_evolutions[0];
+    
+    for(int i = 0; i < num_entries; i++)
+        if(growth->species == trade_evolutions[1+i])
+            if((!trade_evolutions[1+(2*i)]) || (growth->item == trade_evolutions[1+(2*i)]))
+                if((trade_evolutions[1+(3*i)] <= max_index) && ((curr_gen == 1) || (growth->item != EVERSTONE_ID))) {
+                    found = 1;
+                    //Evolve
+                    growth->species = trade_evolutions[1+(3*i)];
+                    // Consume the evolution item, if needed
+                    if(growth->item == trade_evolutions[1+(2*i)])
+                        growth->item = NO_ITEM_ID;
+                    break;
+                }
+    
+    if(!found)
+        return 0;
+    
+    // Update growth
+    place_and_encrypt_gen3_data(mon_data, mon);
+    
+    // Calculate stats
+    recalc_stats_gen3(mon_data, mon);
+    
+    // Find if the mon should learn new moves
+    num_entries = learnsets[0];
+    for(int i = 0; i < num_entries; i++) {
+        u16 base_pos = learnsets[1+i] >> 1;
+        if(learnsets[base_pos++] == growth->species) {
+            u16 num_levels = learnsets[base_pos++];
+            for(int j = 0; j < num_levels; j++) {
+                u16 level = learnsets[base_pos++];
+                if(level == mon->level) {
+                    *learnset_ptr = &learnsets[base_pos];
+                    break;
+                }
+            }
+            break;
+        }
+    }
 
     return 1;
 }
