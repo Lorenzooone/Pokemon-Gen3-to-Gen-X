@@ -62,6 +62,8 @@
 #define INITIAL_MAIL_GEN3 121
 #define LAST_MAIL_GEN3 132
 
+#define ACT_AS_GEN1_TRADE 1
+
 u8 decrypt_data(struct gen3_mon*, u32*);
 u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
 
@@ -1787,7 +1789,7 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u16*
     for(int i = 0; i < num_entries; i++)
         if(growth->species == trade_evolutions[1+i])
             if((!trade_evolutions[1+(2*i)]) || (growth->item == trade_evolutions[1+(2*i)]))
-                if((trade_evolutions[1+(3*i)] <= max_index) && ((curr_gen == 1) || (growth->item != EVERSTONE_ID))) {
+                if((trade_evolutions[1+(3*i)] <= max_index) && ((ACT_AS_GEN1_TRADE && (curr_gen == 1)) || (growth->item != EVERSTONE_ID))) {
                     found = 1;
                     //Evolve
                     growth->species = trade_evolutions[1+(3*i)];
