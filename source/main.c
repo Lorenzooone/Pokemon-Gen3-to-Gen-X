@@ -21,19 +21,14 @@
 
 #include "ewram_speed_check_bin.h"
 
-// --------------------------------------------------------------------
-
-#define PACKED __attribute__((packed))
-#define ALWAYS_INLINE __attribute__((always_inline)) static inline
-#define MAX_DUMP_SIZE 0x20000
-
 #define REG_MEMORY_CONTROLLER_ADDR 0x4000800
 #define HW_SET_REG_MEMORY_CONTROLLER_VALUE 0x0D000020
 #define REG_MEMORY_CONTROLLER *((u32*)(REG_MEMORY_CONTROLLER_ADDR))
 
 #define WORST_CASE_EWRAM 1
 
-// --------------------------------------------------------------------
+#define BASE_SCREEN 0
+#define INFO_SCREEN 2
 
 enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE};
 enum STATE curr_state;
@@ -136,6 +131,7 @@ int main(void)
     
     get_game_id(&game_data[0].game_identifier);
     
+    init_sprites();
     REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     init_numbers();
     
@@ -246,8 +242,11 @@ int main(void)
                         curr_state = INFO_MENU;
                         curr_mon = returned_val-1;
                         curr_page = 1;
-                        disable_cursor();
+                        set_screen(INFO_SCREEN);
+                        set_party_sprite_counter();
+                        disable_all_sprites();
                         print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[curr_mon], curr_page);
+                        enable_screen(INFO_SCREEN);
                     }
                 }
                 break;
@@ -256,7 +255,10 @@ int main(void)
                 returned_val = handle_input_info_menu(game_data, &cursor_y_pos, cursor_x_pos, keys, &curr_mon, curr_gen, &curr_page);
                 if(returned_val == CANCEL_INFO){
                     curr_state = TRADING_MENU;
-                    print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
+                    set_screen(BASE_SCREEN);
+                    reset_sprites_to_party();
+                    disable_screen(INFO_SCREEN);
+                    enable_all_valid_sprites();
                     cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
                 }
                 else

@@ -6,6 +6,9 @@
 #define OAM_ADDR 0x7000000
 #define CPUFASTSET_FILL (0x1000000)
 
+#define DISABLE_SPRITE (1<<9)
+#define OFF_SCREEN_SPRITE 0xA0
+
 const u8 sprite_cursor_bin[];
 const u32 sprite_cursor_bin_size;
 const u8 item_icon_bin[];
@@ -21,6 +24,8 @@ const u16* item_icon_palette_bin_16 = (const u16*)item_icon_palette_bin;
 
 u8 __sprite_counter;
 u8 __inner_sprite_counter;
+u8 __party_sprite_counter;
+u8 __party_inner_sprite_counter;
 u8 cursor_sprite;
 u8 inner_cursor_sprite;
 u16 cursor_base_x;
@@ -28,6 +33,15 @@ u16 cursor_base_x;
 void init_sprite_counter(){
     __sprite_counter = 0;
     __inner_sprite_counter = 0;
+}
+
+void set_party_sprite_counter(){
+    __party_sprite_counter = __sprite_counter;
+    __party_inner_sprite_counter = __inner_sprite_counter;
+}
+
+void init_sprites(){
+    reset_sprites(0);
 }
 
 u8 get_sprite_counter(){
@@ -136,7 +150,7 @@ void update_cursor_base_x(u16 cursor_x, u8 counter){
 }
 
 void disable_cursor(){
-    update_cursor_y(1 << 9);
+    update_cursor_y(DISABLE_SPRITE);
 }
 
 void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
@@ -148,11 +162,34 @@ void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
 void reset_sprites_to_cursor(){
     __sprite_counter = cursor_sprite+1;
     __inner_sprite_counter = inner_cursor_sprite+1;
-    for(int i = __inner_sprite_counter; i < 0x80; i++) {
-        *((u16*)(OAM_ADDR + (8*i) + 0)) = 0;
+    reset_sprites(__inner_sprite_counter);
+}
+
+void reset_sprites(u8 start){
+    for(int i = start; i < 0x80; i++) {
+        *((u16*)(OAM_ADDR + (8*i) + 0)) = OFF_SCREEN_SPRITE | DISABLE_SPRITE;
         *((u16*)(OAM_ADDR + (8*i) + 2)) = 0;
         *((u16*)(OAM_ADDR + (8*i) + 4)) = 0;
     }
+}
+
+void disable_all_sprites(){
+    for(int i = 0; i < 0x80; i++)
+        *((u16*)(OAM_ADDR + (8*i) + 0)) |= DISABLE_SPRITE;
+}
+
+void enable_all_valid_sprites(){
+    for(int i = 0; i < 0x80; i++) {
+        u16 attr_0 = *((u16*)(OAM_ADDR + (8*i) + 0));
+        if(((attr_0 & 0xFF) < OFF_SCREEN_SPRITE))
+            *((u16*)(OAM_ADDR + (8*i) + 0)) &= ~DISABLE_SPRITE;
+    }
+}
+
+void reset_sprites_to_party(){
+    __sprite_counter = __party_sprite_counter;
+    __inner_sprite_counter = __party_inner_sprite_counter;
+    reset_sprites(__party_inner_sprite_counter);
 }
 
 void move_sprites(u8 counter){

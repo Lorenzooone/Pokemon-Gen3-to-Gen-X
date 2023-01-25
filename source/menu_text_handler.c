@@ -156,7 +156,7 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
         PRINT_FUNCTION(">");
 
     if(load_sprites) {
-        reset_sprites_to_cursor();
+        reset_sprites_to_party();
         load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE);
     }
     

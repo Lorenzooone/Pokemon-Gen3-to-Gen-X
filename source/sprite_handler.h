@@ -21,9 +21,11 @@ void set_attributes(u16, u16, u16);
 
 int set_palette_3bpp(u8*, int, int);
 
+void init_sprites();
 void init_item_icon();
 void set_item_icon(u16, u16);
 void set_pokemon_sprite(u32, u8, u8, u8, u16, u16);
+void set_party_sprite_counter();
 void init_cursor(u8);
 void update_cursor_y(u16);
 void update_cursor_x(u16);
@@ -31,6 +33,10 @@ void update_cursor_base_x(u16, u8);
 void move_sprites(u8 counter);
 void move_cursor_x(u8);
 void disable_cursor();
+void reset_sprites(u8);
+void disable_all_sprites();
+void enable_all_valid_sprites();
 void reset_sprites_to_cursor();
+void reset_sprites_to_party();
 
 #endif
