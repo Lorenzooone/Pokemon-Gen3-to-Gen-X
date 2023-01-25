@@ -8,9 +8,12 @@
 #include "text_gen3_to_general_int_bin.h"
 #include "amiga_font_c_bin.h"
 #include "jp_font_c_bin.h"
+#include "window_graphics_bin.h"
 
 #define BASE_COLOUR RGB8(58,110,165)
 #define FONT_COLOUR RGB5(31,31,31)
+#define WINDOW_COLOUR_1 RGB5(15,15,15)
+#define WINDOW_COLOUR_2 RGB5(28,28,28)
 
 #define VRAM_START 0x6000000
 #define VRAM_END (VRAM_START+0x10000)
@@ -29,6 +32,12 @@
 #define Y_SIZE 0x20
 #define X_LIMIT 0x1E
 
+#define HSWAP_TILE 0x400
+#define VSWAP_TILE 0x800
+#define HORIZONTAL_WINDOW_TILE 2
+#define VERTICAL_WINDOW_TILE 3
+#define ANGLE_WINDOW_TILE 4
+
 #define SCREEN_SIZE 0x800
 
 #define CPUFASTSET_FILL (0x1000000)
@@ -41,7 +50,7 @@ u16* screen;
 u8 screen_num;
 
 void init_arrangements(u8 bg_num){
-    BGCTRL[bg_num] = 0 | ((((ARRANGEMENT_POS-VRAM_START)>>11)+bg_num)<<8);
+    BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((ARRANGEMENT_POS-VRAM_START)>>11)+bg_num)<<8);
 }
 
 void init_numbers() {
@@ -64,6 +73,8 @@ void init_text_system() {
 	BG_COLORS[(PALETTE*PALETTE_SIZE)]=BASE_COLOUR;
 	BG_COLORS[(PALETTE*PALETTE_SIZE)+1]=FONT_COLOUR;
 	BG_COLORS[(PALETTE*PALETTE_SIZE)+2]=BASE_COLOUR;
+	BG_COLORS[(PALETTE*PALETTE_SIZE)+3]=WINDOW_COLOUR_1;
+	BG_COLORS[(PALETTE*PALETTE_SIZE)+4]=WINDOW_COLOUR_2;
     set_screen(0);
     
     // This is for the first frame
@@ -82,6 +93,8 @@ void init_text_system() {
         *((u32*)(FONT_POS+TILE_SIZE+(i<<2))) = 0;
     LZ77UnCompWram(jp_font_c_bin, buffer);
     convert_1bpp(buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
+    for(int i = 0; i < (window_graphics_bin_size>>2); i++)
+        *((u32*)(FONT_POS+(2*TILE_SIZE)+(i<<2))) = ((u32*)window_graphics_bin)[i];
 }
 
 void enable_screen(u8 bg_num){
@@ -90,6 +103,56 @@ void enable_screen(u8 bg_num){
 
 void disable_screen(u8 bg_num){
     REG_DISPCNT &= ~((0x100)<<bg_num);
+}
+
+u8 get_bg_priority(u8 bg_num) {
+    return 3-bg_num;
+}
+
+u8 get_curr_priority() {
+    return get_bg_priority(screen_num);
+}
+
+void create_window(u8 x, u8 y, u8 x_size, u8 y_size) {
+    reset_screen(1);
+    if(2+x+x_size > X_SIZE)
+        x_size = 0;
+    if(2+y+y_size > Y_SIZE)
+        y_size = 0;
+    
+    if((!x_size) || (!y_size))
+        return;
+    
+    u8 start_x = x-1;
+    u8 start_y = y-1;
+    if(!x)
+        start_x = X_SIZE-1;
+    if(!y)
+        start_y = Y_SIZE-1;
+    
+    u8 end_x = x + x_size;
+    u8 end_y = y + y_size;
+    if(end_x >= X_SIZE)
+        end_x -= X_SIZE;
+    if(end_y >= Y_SIZE)
+        end_y -= Y_SIZE;
+    
+    for(int i = 0; i < x_size; i++) {
+        screen[x+(start_y*X_SIZE)+i] = (PALETTE<<12) | HORIZONTAL_WINDOW_TILE;
+        screen[x+(end_y*X_SIZE)+i] = (PALETTE<<12) | HORIZONTAL_WINDOW_TILE | VSWAP_TILE;
+    }
+    
+    for(int i = 0; i < y_size; i++) {
+        screen[start_x+((y+i)*X_SIZE)] = (PALETTE<<12) | VERTICAL_WINDOW_TILE;
+        screen[end_x+((y+i)*X_SIZE)] = (PALETTE<<12) | VERTICAL_WINDOW_TILE | HSWAP_TILE;
+    }
+    
+    screen[start_x+(start_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE;
+    screen[end_x+(start_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE | HSWAP_TILE;
+    screen[start_x+(end_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE | VSWAP_TILE;
+    screen[end_x+(end_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE | HSWAP_TILE | VSWAP_TILE;
+    
+    reset_window(x, y, x_size, y_size);
 }
 
 void set_bg_pos(u8 bg_num, int x, int y){
@@ -115,6 +178,20 @@ void reset_screen(u8 blank_fill){
     CpuFastSet(screen, screen, CPUFASTSET_FILL | (SCREEN_SIZE>>2));
     x_pos = 0;
     y_pos = 0;
+}
+
+void reset_window(u8 x, u8 y, u8 x_size, u8 y_size){
+    for(int i = 0; i < y_size; i++) {
+        u8 inside_y = y + i;
+        if(inside_y >= Y_SIZE)
+            inside_y -= Y_SIZE;
+        for(int j = 0; j < x_size; j++) {
+            u8 inside_x = x + j;
+            if(inside_x >= X_SIZE)
+                inside_x -= X_SIZE;
+            screen[inside_x+(inside_y*X_SIZE)] = (PALETTE<<12) | 0;
+        }
+    }
 }
 
 void default_reset_screen(){

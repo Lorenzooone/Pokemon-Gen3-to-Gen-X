@@ -164,6 +164,11 @@ int main(void)
     curr_state = MAIN_MENU;
     
     print_main_menu(1, target, region, master);
+    //set_screen(1);
+    //create_window(0, 0x13, 0x1E, 1);
+    //enable_screen(1);
+    //set_screen(0);
+    
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     
     init_item_icon();

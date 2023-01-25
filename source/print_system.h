@@ -17,5 +17,9 @@ void disable_screen(u8);
 void set_bg_pos(u8, int, int);
 void set_screen(u8);
 void init_text_system();
+void create_window(u8, u8, u8, u8);
+void reset_window(u8, u8, u8, u8);
+u8 get_bg_priority(u8);
+u8 get_curr_priority();
 
 #endif

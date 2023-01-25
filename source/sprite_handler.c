@@ -1,7 +1,9 @@
 #include <gba.h>
 #include "sprite_handler.h"
+#include "graphics_handler.h"
+#include "print_system.h"
 
-#define OAM 0x7000000
+#define OAM_ADDR 0x7000000
 #define CPUFASTSET_FILL (0x1000000)
 
 const u8 sprite_cursor_bin[];
@@ -71,12 +73,6 @@ void init_oam_palette(){
         SPRITE_PALETTE[i+(sprite_palettes_bin_size>>1)] = item_icon_palette_bin_16[i];
 }
 
-void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
-    *((u16*)(OAM + (8*__inner_sprite_counter) + 0)) = obj_attr_0;
-    *((u16*)(OAM + (8*__inner_sprite_counter) + 2)) = obj_attr_1;
-    *((u16*)(OAM + (8*__inner_sprite_counter) + 4)) = obj_attr_2;
-}
-
 void init_item_icon(){
     u16* vram_pos = (u16*)(get_vram_pos() + 0x20 + (sprite_cursor_bin_size));
     for(int i = 0; i < (item_icon_bin_size>>1); i++)
@@ -94,8 +90,20 @@ u16 get_item_icon_tile(){
 #define ITEM_ICON_INC_X 24
 
 void set_item_icon(u16 y, u16 x){
-    set_attributes(y + ITEM_ICON_INC_Y, x + ITEM_ICON_INC_X, get_item_icon_tile() | ((sprite_palettes_bin_size>>5)<<12));
+    set_attributes(y + ITEM_ICON_INC_Y, x + ITEM_ICON_INC_X, get_item_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
     inc_inner_sprite_counter();
+}
+
+void set_pokemon_sprite(u32 address, u8 palette, u8 info, u8 display_item, u16 y, u16 x){
+    if(display_item)
+        set_item_icon(y, x);
+    u8 sprite_counter = get_sprite_counter();
+    u8 colors[8];
+    u8 is_3bpp = load_pokemon_sprite_gfx(address, get_vram_pos(), info, sprite_counter-1, colors);
+    if(is_3bpp)
+        palette = set_palette_3bpp(colors, sprite_counter-1, palette);
+    set_attributes(y, x |(1<<15), (32*sprite_counter)|(get_curr_priority()<<10)|(palette<<12));
+    inc_sprite_counter();
 }
 
 void init_cursor(u8 cursor_y_pos){
@@ -107,7 +115,7 @@ void init_cursor(u8 cursor_y_pos){
         vram_pos[i] = sprite_cursor_gfx[i];
     if(cursor_y_pos > 4)
         cursor_y_pos = 4;
-    set_attributes(BASE_Y_CURSOR_MAIN_MENU + (cursor_y_pos*BASE_Y_CURSOR_INCREMENT_MAIN_MENU), BASE_X_CURSOR_MAIN_MENU, (32*__sprite_counter)+1);
+    set_attributes(BASE_Y_CURSOR_MAIN_MENU + (cursor_y_pos*BASE_Y_CURSOR_INCREMENT_MAIN_MENU), BASE_X_CURSOR_MAIN_MENU, ((32*__sprite_counter)+1) | (get_curr_priority()<<10));
     cursor_sprite = __sprite_counter;
     inner_cursor_sprite = __inner_sprite_counter;
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, 0);
@@ -115,11 +123,11 @@ void init_cursor(u8 cursor_y_pos){
 }
 
 void update_cursor_y(u16 cursor_y){
-    *((u16*)(OAM + (8*inner_cursor_sprite) + 0)) = cursor_y;
+    *((u16*)(OAM_ADDR + (8*inner_cursor_sprite) + 0)) = cursor_y;
 }
 
 void update_cursor_x(u16 cursor_x){
-    *((u16*)(OAM + (8*inner_cursor_sprite) + 2)) = cursor_x;
+    *((u16*)(OAM_ADDR + (8*inner_cursor_sprite) + 2)) = cursor_x;
 }
 
 void update_cursor_base_x(u16 cursor_x, u8 counter){
@@ -131,25 +139,31 @@ void disable_cursor(){
     update_cursor_y(1 << 9);
 }
 
+void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
+    *((u16*)(OAM_ADDR + (8*__inner_sprite_counter) + 0)) = obj_attr_0;
+    *((u16*)(OAM_ADDR + (8*__inner_sprite_counter) + 2)) = obj_attr_1;
+    *((u16*)(OAM_ADDR + (8*__inner_sprite_counter) + 4)) = obj_attr_2;
+}
+
 void reset_sprites_to_cursor(){
     __sprite_counter = cursor_sprite+1;
     __inner_sprite_counter = inner_cursor_sprite+1;
     for(int i = __inner_sprite_counter; i < 0x80; i++) {
-        *((u16*)(OAM + (8*i) + 0)) = 0;
-        *((u16*)(OAM + (8*i) + 2)) = 0;
-        *((u16*)(OAM + (8*i) + 4)) = 0;
+        *((u16*)(OAM_ADDR + (8*i) + 0)) = 0;
+        *((u16*)(OAM_ADDR + (8*i) + 2)) = 0;
+        *((u16*)(OAM_ADDR + (8*i) + 4)) = 0;
     }
 }
 
 void move_sprites(u8 counter){
     if(!(counter & 7)) {
         for(int i = inner_cursor_sprite+1; i < __inner_sprite_counter; i++) {
-            u16 obj_attr_2 = *((u16*)(OAM + (8*i) + 4));
+            u16 obj_attr_2 = *((u16*)(OAM_ADDR + (8*i) + 4));
             if(obj_attr_2 & 0x10)
                 obj_attr_2 &= ~0x10;
             else
                 obj_attr_2 |= 0x10;
-            *((u16*)(OAM + (8*i) + 4)) = obj_attr_2;
+            *((u16*)(OAM_ADDR + (8*i) + 4)) = obj_attr_2;
         }
     }
 }

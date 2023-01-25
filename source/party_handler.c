@@ -2,11 +2,11 @@
 #include "party_handler.h"
 #include "text_handler.h"
 #include "sprite_handler.h"
-#include "graphics_handler.h"
 #include "version_identifier.h"
 #include "bin_table_handler.h"
 #include "gen3_save.h"
 #include "rng.h"
+#include "pid_iv_tid.h"
 #include "fast_pokemon_methods.h"
 #include "optimized_swi.h"
 
@@ -318,17 +318,7 @@ u8 get_palette_references(int index, u32 pid, u8 is_egg, u8 deoxys_form){
 }
 
 void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 has_item, u16 y, u16 x){
-    u8 sprite_counter = get_sprite_counter();
-    u32 address = get_pokemon_sprite_pointer(index, pid, is_egg, deoxys_form);
-    u8 palette = get_palette_references(index, pid, is_egg, deoxys_form);
-    u8 colors[8];
-    u8 is_3bpp = load_pokemon_sprite_gfx(address, get_vram_pos(), get_pokemon_sprite_info(index, pid, is_egg, deoxys_form), sprite_counter-1, colors);
-    if(is_3bpp)
-        palette = set_palette_3bpp(colors, sprite_counter-1, palette);
-    set_attributes(y, x |(1<<15), (32*sprite_counter)|(palette<<12));
-    inc_sprite_counter();
-    if(!is_egg && has_item)
-        set_item_icon(y, x);
+    set_pokemon_sprite(get_pokemon_sprite_pointer(index, pid, is_egg, deoxys_form), get_palette_references(index, pid, is_egg, deoxys_form), get_pokemon_sprite_info(index, pid, is_egg, deoxys_form), !is_egg && has_item, y, x);
 }
 
 void load_pokemon_sprite_raw(struct gen3_mon_data_unenc* data_src, u16 y, u16 x){
