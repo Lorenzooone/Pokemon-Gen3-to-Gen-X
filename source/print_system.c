@@ -40,6 +40,10 @@ u8 y_pos;
 u16* screen;
 u8 screen_num;
 
+void init_arrangements(u8 bg_num){
+    BGCTRL[bg_num] = 0 | ((((ARRANGEMENT_POS-VRAM_START)>>11)+bg_num)<<8);
+}
+
 void init_numbers() {
     u16* numbers_storage = (u16*)NUMBERS_POS;
     
@@ -52,9 +56,10 @@ void init_numbers() {
 
 void init_text_system() {
     REG_DISPCNT = 0;
-    REG_BG0CNT = 0 | (((ARRANGEMENT_POS-VRAM_START)>>11)<<8);
-    REG_BG0HOFS = 0;
-    REG_BG0VOFS = 0;
+    for(int i = 0; i < 4; i++) {
+        init_arrangements(i);
+        set_bg_pos(i, 0, 0);
+    }
     BG_COLORS[0]=BASE_COLOUR;
 	BG_COLORS[(PALETTE*PALETTE_SIZE)]=BASE_COLOUR;
 	BG_COLORS[(PALETTE*PALETTE_SIZE)+1]=FONT_COLOUR;
@@ -81,6 +86,21 @@ void init_text_system() {
 
 void enable_screen(u8 bg_num){
     REG_DISPCNT |= (0x100)<<bg_num;
+}
+
+void disable_screen(u8 bg_num){
+    REG_DISPCNT &= ~((0x100)<<bg_num);
+}
+
+void set_bg_pos(u8 bg_num, int x, int y){
+    if(x < 0)
+        x = 0x100 + x;
+    if(y < 0)
+        y = 0x100 + y;
+    x = x & 0xFF;
+    y = y & 0xFF;
+    BG_OFFSET[bg_num].x = x;
+    BG_OFFSET[bg_num].y = x;
 }
 
 void set_screen(u8 bg_num){
@@ -205,7 +225,7 @@ int prepare_base_16(int number, u8* digits) {
     while(number >= 0x10) {
         digit = number & 0xF;
         if(digit >= 0xA)
-            digit += 'A';
+            digit += 'A' - 0xA;
         else
             digit += '0';
         digits[pos--] = digit;
@@ -214,7 +234,7 @@ int prepare_base_16(int number, u8* digits) {
     
     digit = number & 0xF;
     if(digit >= 0xA)
-        digit += 'A';
+        digit += 'A' - 0xA;
     else
         digit += '0';
     digits[pos--] = digit;

@@ -13,6 +13,8 @@ void reset_screen(u8);
 void set_text_x(u8);
 void set_text_y(u8);
 void enable_screen(u8);
+void disable_screen(u8);
+void set_bg_pos(u8, int, int);
 void set_screen(u8);
 void init_text_system();
 

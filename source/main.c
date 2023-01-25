@@ -19,11 +19,19 @@
 #include "communicator.h"
 //#include "save.h"
 
+#include "ewram_speed_check_bin.h"
+
 // --------------------------------------------------------------------
 
 #define PACKED __attribute__((packed))
 #define ALWAYS_INLINE __attribute__((always_inline)) static inline
 #define MAX_DUMP_SIZE 0x20000
+
+#define REG_MEMORY_CONTROLLER_ADDR 0x4000800
+#define HW_SET_REG_MEMORY_CONTROLLER_VALUE 0x0D000020
+#define REG_MEMORY_CONTROLLER *((u32*)(REG_MEMORY_CONTROLLER_ADDR))
+
+#define WORST_CASE_EWRAM 1
 
 // --------------------------------------------------------------------
 
@@ -49,6 +57,36 @@ void vblank_update_function() {
     }
     if((REG_DISPSTAT >> 8) >= 0xA0 && ((REG_DISPSTAT >> 8) <= REG_VCOUNT))
         set_next_vcount_interrupt();
+}
+
+IWRAM_CODE void find_optimal_ewram_settings() {
+    int size = ewram_speed_check_bin_size>>2;
+    u32* ewram_speed_check = (u32*) ewram_speed_check_bin;
+    u32 test_data[size];
+    
+    // Check for unsupported (DS)
+    if(REG_MEMORY_CONTROLLER != HW_SET_REG_MEMORY_CONTROLLER_VALUE)
+        return;
+    
+    // Check for worst case testing (Not for final release)
+    if(WORST_CASE_EWRAM)
+        return;
+    
+    // Prepare data to test against
+    for(int i = 0; i < size; i++)
+        test_data[i] = ewram_speed_check[i];
+    
+    // Detetmine minimum number of stable waitcycles
+    for(int i = 0; i < 16; i++) {
+        REG_MEMORY_CONTROLLER &= ~(0xF<<24);
+        REG_MEMORY_CONTROLLER |= (15-i)<<24;
+        u8 failed = 0;
+        for(int j = 0; (!failed) && (j < size); j++)
+            if(test_data[i] != ewram_speed_check[i])
+                failed = 1;
+        if(!failed)
+            return;
+    }
 }
 
 u8 init_cursor_y_pos_main_menu(){
@@ -86,6 +124,7 @@ int main(void)
 {
     counter = 0;
     input_counter = 0;
+    find_optimal_ewram_settings();
     init_text_system();
     init_rng(0,0);
     u16 keys;
@@ -125,6 +164,7 @@ int main(void)
     curr_state = MAIN_MENU;
     
     print_main_menu(1, target, region, master);
+    //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     
     init_item_icon();
     init_cursor(cursor_y_pos);
