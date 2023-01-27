@@ -3,20 +3,17 @@
 #include "graphics_handler.h"
 #include "print_system.h"
 
+#include "sprite_cursor_bin.h"
+#include "item_icon_bin.h"
+#include "sprite_palettes_bin.h"
+#include "item_icon_palette_bin.h"
+
 #define OAM_ADDR 0x7000000
 #define CPUFASTSET_FILL (0x1000000)
 
 #define DISABLE_SPRITE (1<<9)
 #define OFF_SCREEN_SPRITE 0xA0
 
-const u8 sprite_cursor_bin[];
-const u32 sprite_cursor_bin_size;
-const u8 item_icon_bin[];
-const u32 item_icon_bin_size;
-const u8 sprite_palettes_bin[];
-const u32 sprite_palettes_bin_size;
-const u8 item_icon_palette_bin[];
-const u32 item_icon_palette_bin_size;
 const u16* sprite_cursor_gfx = (const u16*)sprite_cursor_bin;
 const u16* item_icon_gfx = (const u16*)item_icon_bin;
 const u16* sprite_palettes_bin_16 = (const u16*)sprite_palettes_bin;
