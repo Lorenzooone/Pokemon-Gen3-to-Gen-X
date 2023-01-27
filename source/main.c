@@ -26,6 +26,7 @@
 #define REG_MEMORY_CONTROLLER *((u32*)(REG_MEMORY_CONTROLLER_ADDR))
 
 #define WORST_CASE_EWRAM 1
+#define MIN_WAITCYCLE 1
 
 #define BASE_SCREEN 0
 #define INFO_SCREEN 2
@@ -72,9 +73,9 @@ IWRAM_CODE void find_optimal_ewram_settings() {
         test_data[i] = ewram_speed_check[i];
     
     // Detetmine minimum number of stable waitcycles
-    for(int i = 0; i < 16; i++) {
+    for(int i = 0; i < (16-MIN_WAITCYCLE); i++) {
         REG_MEMORY_CONTROLLER &= ~(0xF<<24);
-        REG_MEMORY_CONTROLLER |= (15-i)<<24;
+        REG_MEMORY_CONTROLLER |= (15-i-MIN_WAITCYCLE)<<24;
         u8 failed = 0;
         for(int j = 0; (!failed) && (j < size); j++)
             if(test_data[i] != ewram_speed_check[i])
