@@ -193,14 +193,14 @@ void init_start_state() {
     set_start_state(START_TRADE_UNK);
 }
 
-__attribute__((optimize(3))) void set_next_vcount_interrupt(void){
+IWRAM_CODE __attribute__((optimize(3))) void set_next_vcount_interrupt(void){
     int next_stop = REG_VCOUNT + VCOUNT_WAIT_LINES;
     if(next_stop >= 0xE4)
         next_stop -= 0xE4;
     REG_DISPSTAT  = (REG_DISPSTAT &0xFF) | (next_stop<<8);
 }
 
-IWRAM_CODE __attribute__((optimize(3))) int communicate_buffer(u8 data, u8 is_master) {
+IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
     u8 ignore_data = 0;
     if(!has_transmitted_syn) {
         if((syn_transmitted > MAX_WAIT_FOR_SYN) && (!is_master)) {
@@ -253,7 +253,7 @@ IWRAM_CODE __attribute__((optimize(3))) int communicate_buffer(u8 data, u8 is_ma
     return out_buffer[buffer_counter_out - 1 + base_pos];
 }
 
-IWRAM_CODE __attribute__((optimize(3))) int check_if_continue(u8 data, u8* sends, u8* recvs, int size, int new_state, int new_send, u8 filter) {
+IWRAM_CODE int check_if_continue(u8 data, u8* sends, u8* recvs, int size, int new_state, int new_send, u8 filter) {
     if((filter) && (data >= 0x10))
         data = data & 0xF0;
     if(data == recvs[buffer_counter]) {
@@ -267,7 +267,7 @@ IWRAM_CODE __attribute__((optimize(3))) int check_if_continue(u8 data, u8* sends
     return sends[buffer_counter];
 }
 
-IWRAM_CODE __attribute__((optimize(3))) int process_data_arrived_gen1(u8 data, u8 is_master) {
+IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
     switch(start_state) {
@@ -344,7 +344,7 @@ IWRAM_CODE __attribute__((optimize(3))) int process_data_arrived_gen1(u8 data, u
     }
 }
 
-IWRAM_CODE __attribute__((optimize(3))) int process_data_arrived_gen2(u8 data, u8 is_master) {
+IWRAM_CODE int process_data_arrived_gen2(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
     switch(start_state) {
@@ -495,18 +495,19 @@ IWRAM_CODE __attribute__((optimize(3))) void slave_routine(void) {
     if(!(REG_IF & IRQ_SERIAL)){
         REG_IF |= IRQ_SERIAL;
         int value;
+        int data = sio_read(SIO_8);
         if(stored_curr_gen == 3){
-            int data = sio_read(SIO_32);
+            data = sio_read(SIO_32);
             process_in_data_gen3(data);
             value = prepare_out_data_gen3();
             //PRINT_FUNCTION("0x%08X - 0x%08X\n", value, data);
         }
         else if(stored_curr_gen == 2)
-            value = process_data_arrived_gen2(sio_read(SIO_8), 0);
+            value = process_data_arrived_gen2(data, 0);
         else
-            value = process_data_arrived_gen1(sio_read(SIO_8), 0);
+            value = process_data_arrived_gen1(data, 0);
         sio_handle_irq_slave(value);
-        //PRINT_FUNCTION("0x%02X - 0x%02X\n", value, data);
+        //PRINT_FUNCTION("0x\x0D - 0x\x0D\n", value, 2, data, 2);
         //sio_handle_irq_slave(process_data_arrived_gen12(sio_read(SIO_8), 0));
     }
 }
@@ -533,7 +534,7 @@ IWRAM_CODE __attribute__((optimize(3))) void master_routine_gen12(void) {
     if(!skip_sends) {
         data = sio_send_master(prepared_value, SIO_8);
         if(data != SEND_NO_INFO) {
-            //PRINT_FUNCTION("0x%02X - 0x%02X\n", prepared_value, data);
+            //PRINT_FUNCTION("0x\x0D - 0x\x0D\n", prepared_value, 2, data, 2);
             if(stored_curr_gen == 2)
                 prepared_value = process_data_arrived_gen2(data, 1);
             else

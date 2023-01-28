@@ -8,6 +8,7 @@
 #include "print_system.h"
 #include "sio_buffers.h"
 #include "communicator.h"
+#include "window_handler.h"
 
 #define NUM_LINES 10
 #define MAIN_MENU_DISTANCE_FROM_BORDER 2
@@ -99,6 +100,29 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
     }
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("  Cancel");
+}
+
+void print_trade_options(u8 cursor_x_pos){
+    clear_trade_options_window();
+    set_text_y(TRADE_OPTIONS_WINDOW_Y);
+    set_text_x(TRADE_OPTIONS_WINDOW_X);
+    if(cursor_x_pos) {
+        PRINT_FUNCTION(" Summary");
+        set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
+        PRINT_FUNCTION(" Nature");
+    }
+    else {
+        PRINT_FUNCTION(" Offer");
+        set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
+        PRINT_FUNCTION(" Summary");
+    }
+}
+
+void print_waiting(){
+    clear_waiting_window();
+    set_text_y(WAITING_WINDOW_Y);
+    set_text_x(WAITING_WINDOW_X);
+    PRINT_FUNCTION("Waiting...");
 }
 
 void print_start_trade(){

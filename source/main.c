@@ -16,6 +16,7 @@
 #include "rng.h"
 #include "pid_iv_tid.h"
 #include "print_system.h"
+#include "window_handler.h"
 #include "communicator.h"
 //#include "save.h"
 
@@ -116,6 +117,17 @@ void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mast
     cursor_update_main_menu(*cursor_y_pos);
 }
 
+void info_menu_init(struct game_data_t* game_data, u8 returned_val, u8 cursor_x_pos, u8* curr_mon, u8* curr_page) {
+    curr_state = INFO_MENU;
+    *curr_mon = returned_val-1;
+    *curr_page = 1;
+    set_screen(INFO_SCREEN);
+    set_party_sprite_counter();
+    disable_all_sprites();
+    print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[*curr_mon], *curr_page);
+    enable_screen(INFO_SCREEN);
+}
+
 int main(void)
 {
     counter = 0;
@@ -161,10 +173,6 @@ int main(void)
     curr_state = MAIN_MENU;
     
     print_main_menu(1, target, region, master);
-    //set_screen(1);
-    //create_window(0, 0x13, 0x1E, 1);
-    //enable_screen(1);
-    //set_screen(0);
     
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     
@@ -239,15 +247,27 @@ int main(void)
                 if(own_menu) {
                     if(returned_val == CANCEL_TRADING)
                         main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
+                    else if(returned_val)
+                        info_menu_init(game_data, returned_val, cursor_x_pos, &curr_mon, &curr_page);
+                }
+                else {
+                    if(returned_val == CANCEL_TRADING) {
+                        set_screen(WAITING_WINDOW_SCREEN);
+                        reset_screen(BLANK_FILL);
+                        init_waiting_window();
+                        print_waiting();
+                        enable_screen(WAITING_WINDOW_SCREEN);
+                    }
                     else if(returned_val) {
-                        curr_state = INFO_MENU;
-                        curr_mon = returned_val-1;
-                        curr_page = 1;
-                        set_screen(INFO_SCREEN);
-                        set_party_sprite_counter();
-                        disable_all_sprites();
-                        print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[curr_mon], curr_page);
-                        enable_screen(INFO_SCREEN);
+                        if(cursor_x_pos && curr_gen ==3)
+                            info_menu_init(game_data, returned_val, cursor_x_pos, &curr_mon, &curr_page);
+                        else {
+                            set_screen(TRADE_OPTIONS_WINDOW_SCREEN);
+                            reset_screen(BLANK_FILL);
+                            init_trade_options_window();
+                            print_trade_options(cursor_x_pos);
+                            enable_screen(TRADE_OPTIONS_WINDOW_SCREEN);
+                        }
                     }
                 }
                 break;

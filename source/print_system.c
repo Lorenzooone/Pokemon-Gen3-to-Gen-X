@@ -32,12 +32,6 @@
 #define Y_SIZE 0x20
 #define X_LIMIT 0x1E
 
-#define HSWAP_TILE 0x400
-#define VSWAP_TILE 0x800
-#define HORIZONTAL_WINDOW_TILE 2
-#define VERTICAL_WINDOW_TILE 3
-#define ANGLE_WINDOW_TILE 4
-
 #define SCREEN_SIZE 0x800
 
 #define CPUFASTSET_FILL (0x1000000)
@@ -113,48 +107,6 @@ u8 get_curr_priority() {
     return get_bg_priority(screen_num);
 }
 
-void create_window(u8 x, u8 y, u8 x_size, u8 y_size) {
-    reset_screen(1);
-    if(2+x+x_size > X_SIZE)
-        x_size = 0;
-    if(2+y+y_size > Y_SIZE)
-        y_size = 0;
-    
-    if((!x_size) || (!y_size))
-        return;
-    
-    u8 start_x = x-1;
-    u8 start_y = y-1;
-    if(!x)
-        start_x = X_SIZE-1;
-    if(!y)
-        start_y = Y_SIZE-1;
-    
-    u8 end_x = x + x_size;
-    u8 end_y = y + y_size;
-    if(end_x >= X_SIZE)
-        end_x -= X_SIZE;
-    if(end_y >= Y_SIZE)
-        end_y -= Y_SIZE;
-    
-    for(int i = 0; i < x_size; i++) {
-        screen[x+(start_y*X_SIZE)+i] = (PALETTE<<12) | HORIZONTAL_WINDOW_TILE;
-        screen[x+(end_y*X_SIZE)+i] = (PALETTE<<12) | HORIZONTAL_WINDOW_TILE | VSWAP_TILE;
-    }
-    
-    for(int i = 0; i < y_size; i++) {
-        screen[start_x+((y+i)*X_SIZE)] = (PALETTE<<12) | VERTICAL_WINDOW_TILE;
-        screen[end_x+((y+i)*X_SIZE)] = (PALETTE<<12) | VERTICAL_WINDOW_TILE | HSWAP_TILE;
-    }
-    
-    screen[start_x+(start_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE;
-    screen[end_x+(start_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE | HSWAP_TILE;
-    screen[start_x+(end_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE | VSWAP_TILE;
-    screen[end_x+(end_y*X_SIZE)] = (PALETTE<<12) | ANGLE_WINDOW_TILE | HSWAP_TILE | VSWAP_TILE;
-    
-    reset_window(x, y, x_size, y_size);
-}
-
 void set_bg_pos(u8 bg_num, int x, int y){
     if(x < 0)
         x = 0x100 + x;
@@ -166,9 +118,13 @@ void set_bg_pos(u8 bg_num, int x, int y){
     BG_OFFSET[bg_num].y = x;
 }
 
+u16* get_screen(u8 bg_num){
+	return (u16*)(ARRANGEMENT_POS+(SCREEN_SIZE*bg_num));
+}
+
 void set_screen(u8 bg_num){
     screen_num = bg_num;
-    screen = (u16*)(ARRANGEMENT_POS+(SCREEN_SIZE*bg_num));
+    screen = get_screen(bg_num);
 }
 
 void reset_screen(u8 blank_fill){
@@ -180,22 +136,8 @@ void reset_screen(u8 blank_fill){
     y_pos = 0;
 }
 
-void reset_window(u8 x, u8 y, u8 x_size, u8 y_size){
-    for(int i = 0; i < y_size; i++) {
-        u8 inside_y = y + i;
-        if(inside_y >= Y_SIZE)
-            inside_y -= Y_SIZE;
-        for(int j = 0; j < x_size; j++) {
-            u8 inside_x = x + j;
-            if(inside_x >= X_SIZE)
-                inside_x -= X_SIZE;
-            screen[inside_x+(inside_y*X_SIZE)] = (PALETTE<<12) | 0;
-        }
-    }
-}
-
 void default_reset_screen(){
-    reset_screen(0);
+    reset_screen(REGULAR_FILL);
 }
 
 void set_text_x(u8 new_x){
