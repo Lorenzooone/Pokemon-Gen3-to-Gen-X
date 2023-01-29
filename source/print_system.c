@@ -59,7 +59,7 @@ void init_numbers() {
 
 void init_text_system() {
     REG_DISPCNT = 0;
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < TOTAL_BG; i++) {
         init_arrangements(i);
         set_bg_pos(i, 0, 0);
     }
@@ -97,6 +97,13 @@ void enable_screen(u8 bg_num){
 
 void disable_screen(u8 bg_num){
     REG_DISPCNT &= ~((0x100)<<bg_num);
+}
+
+void disable_all_screens_but_current(){
+    for(int i = 0; i < TOTAL_BG; i++) {
+        if(i != screen_num)
+            disable_screen(i);
+    }
 }
 
 u8 get_bg_priority(u8 bg_num) {

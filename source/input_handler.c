@@ -286,11 +286,30 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
     return 0;
 }
 
+u8 handle_input_trade_options(u16 keys, u8* cursor_x_pos) {
+
+    if(keys & KEY_B)
+        return CANCEL_TRADE_OPTIONS;
+
+    if(keys & KEY_A)
+        return 1 + (*cursor_x_pos);
+
+    if((keys & KEY_LEFT) || (keys & KEY_RIGHT))
+        *cursor_x_pos ^= 1;
+
+    //if((keys & KEY_LEFT) && ((*cursor_x_pos) == 1))
+    //    cursor_x_pos = 0;
+    //if((keys & KEY_RIGHT) && ((*cursor_x_pos) == 0))
+    //    cursor_x_pos = 1;
+
+    return 0;
+}
+
 u8 handle_input_trade_setup(u16 keys, u8 curr_gen) {
 
     if(keys & KEY_B) {
         if((get_start_state_raw() != START_TRADE_PAR) || (get_transferred(0) == 0)) {
-            //if(get_start_state_raw() != START_TRADE_DON)
+            if(get_start_state_raw() != START_TRADE_DON)
                 return CANCEL_TRADE_START;
         }
     }

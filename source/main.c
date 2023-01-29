@@ -32,7 +32,7 @@
 #define BASE_SCREEN 0
 #define INFO_SCREEN 2
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -107,25 +107,59 @@ void cursor_update_main_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
 }
 
+void trade_menu_init(struct game_data_t* game_data, u8 curr_gen, u8 own_menu, u8* cursor_y_pos, u8* cursor_x_pos) {
+    curr_state = TRADING_MENU;
+    *cursor_y_pos = 0;
+    *cursor_x_pos = 0;
+    prepare_options_trade(game_data, curr_gen, own_menu);
+    print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
+    set_party_sprite_counter();
+    cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
+}
+
+void return_to_trade_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
+    curr_state = TRADING_MENU;
+    set_screen(BASE_SCREEN);
+    reset_sprites_to_party();
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    enable_all_valid_sprites();
+    cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
+}
+
 void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
     curr_state = MAIN_MENU;
     prepare_main_options(game_data);
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
     print_main_menu(1, target, region, master);
     *cursor_y_pos = init_cursor_y_pos_main_menu();
     reset_sprites_to_cursor();
+    disable_all_cursors();
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, counter);
     cursor_update_main_menu(*cursor_y_pos);
 }
 
-void info_menu_init(struct game_data_t* game_data, u8 returned_val, u8 cursor_x_pos, u8* curr_mon, u8* curr_page) {
+void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* curr_page) {
     curr_state = INFO_MENU;
-    *curr_mon = returned_val-1;
     *curr_page = 1;
     set_screen(INFO_SCREEN);
-    set_party_sprite_counter();
     disable_all_sprites();
-    print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[*curr_mon], *curr_page);
+    print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[curr_mon], *curr_page);
     enable_screen(INFO_SCREEN);
+}
+
+void waiting_init(u8 cancel, u8 cursor_y_pos) {
+    set_screen(WAITING_WINDOW_SCREEN);
+    reset_screen(BLANK_FILL);
+    init_waiting_window();
+    print_waiting();
+    enable_screen(WAITING_WINDOW_SCREEN);
+    if(cancel)
+        try_to_end_trade();
+    else
+        try_to_offer(cursor_y_pos);
+    curr_state = WAITING_DATA;
 }
 
 int main(void)
@@ -156,7 +190,9 @@ int main(void)
     irqEnable(IRQ_VBLANK);
     
     read_gen_3_data(&game_data[0]);
-    prepare_main_options(&game_data[0]);
+    
+    init_item_icon();
+    init_cursor();
     
     u8 returned_val;
     u8 update = 0;
@@ -165,19 +201,17 @@ int main(void)
     u8 master = 0;
     u8 curr_gen = 0;
     u8 own_menu = 0;
-    u8 cursor_y_pos = init_cursor_y_pos_main_menu();
+    u8 cursor_y_pos = 0;
     u8 cursor_x_pos = 0;
+    //u8 submenu_cursor_y_pos = 0;
+    u8 submenu_cursor_x_pos = 0;
     u8 prev_val = 0;
     u8 curr_mon = 0;
     u8 curr_page = 0;
-    curr_state = MAIN_MENU;
     
-    print_main_menu(1, target, region, master);
+    main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
     
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
-    
-    init_item_icon();
-    init_cursor(cursor_y_pos);
     
     while(1) {
         scanKeys();
@@ -189,17 +223,30 @@ int main(void)
             keys = keysDown();
             if(curr_state == START_TRADE) {
                 if(get_start_state_raw() == START_TRADE_DON) {
-                    curr_state = TRADING_MENU;
-                    cursor_y_pos = 0;
-                    cursor_x_pos = 0;
-                    own_menu = 0;
                     read_comm_buffer(&game_data[1], curr_gen, region);
-                    prepare_options_trade(game_data, curr_gen, own_menu);
-                    print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
-                    cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
+                    own_menu = 0;
+                    trade_menu_init(game_data, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                 }
                 else {
                     print_start_trade();
+                }
+            }
+            if(curr_state == WAITING_DATA) {
+                if(get_trading_state() == RECEIVED_OFFER) {
+                    int result = get_received_trade_offer();
+                    if(result == TRADE_CANCELLED) {
+                        stop_transfer(master);
+                        main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
+                    }
+                    else if(result == WANTS_TO_CANCEL)
+                        return_to_trade_menu(cursor_y_pos, cursor_x_pos);
+                    else {
+                        // Print the offer menu here, if valid
+                        curr_state = OFFER_MENU;
+                    }
+                }
+                else if(get_trading_state() == RECEIVED_ACCEPT) {
+                
                 }
             }
         }
@@ -219,14 +266,9 @@ int main(void)
                     print_multiboot(result);
                 }
                 else if(returned_val > VIEW_OWN_PARTY && returned_val <= VIEW_OWN_PARTY + TOTAL_GENS) {
-                    curr_state = TRADING_MENU;
-                    cursor_y_pos = 0;
-                    cursor_x_pos = 0;
                     curr_gen = returned_val - VIEW_OWN_PARTY;
                     own_menu = 1;
-                    prepare_options_trade(game_data, curr_gen, own_menu);
-                    print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
-                    cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
+                    trade_menu_init(game_data, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                 }
                 else if(returned_val > 0 && returned_val <= TOTAL_GENS) {
                     curr_gen = returned_val;
@@ -242,31 +284,30 @@ int main(void)
                 returned_val = handle_input_trading_menu(&cursor_y_pos, &cursor_x_pos, keys, curr_gen, own_menu);
                 print_trade_menu(game_data, update, curr_gen, 0, own_menu);
                 cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
+                curr_mon = returned_val -1;
                 
-                // IMPLEMENT THE ELSE LATER
                 if(own_menu) {
                     if(returned_val == CANCEL_TRADING)
                         main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                     else if(returned_val)
-                        info_menu_init(game_data, returned_val, cursor_x_pos, &curr_mon, &curr_page);
+                        info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page);
                 }
                 else {
-                    if(returned_val == CANCEL_TRADING) {
-                        set_screen(WAITING_WINDOW_SCREEN);
-                        reset_screen(BLANK_FILL);
-                        init_waiting_window();
-                        print_waiting();
-                        enable_screen(WAITING_WINDOW_SCREEN);
-                    }
+                    if(returned_val == CANCEL_TRADING)
+                        waiting_init(1, cursor_y_pos);
                     else if(returned_val) {
                         if(cursor_x_pos && curr_gen ==3)
-                            info_menu_init(game_data, returned_val, cursor_x_pos, &curr_mon, &curr_page);
+                            info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page);
                         else {
                             set_screen(TRADE_OPTIONS_WINDOW_SCREEN);
                             reset_screen(BLANK_FILL);
                             init_trade_options_window();
                             print_trade_options(cursor_x_pos);
                             enable_screen(TRADE_OPTIONS_WINDOW_SCREEN);
+                            submenu_cursor_x_pos = 0;
+                            update_cursor_base_x(BASE_X_CURSOR_TRADE_OPTIONS + (submenu_cursor_x_pos * BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS), counter);
+                            update_cursor_y(BASE_Y_CURSOR_TRADE_OPTIONS);
+                            curr_state = TRADE_OPTIONS;
                         }
                     }
                 }
@@ -274,14 +315,8 @@ int main(void)
             case INFO_MENU:
                 prev_val = curr_mon;
                 returned_val = handle_input_info_menu(game_data, &cursor_y_pos, cursor_x_pos, keys, &curr_mon, curr_gen, &curr_page);
-                if(returned_val == CANCEL_INFO){
-                    curr_state = TRADING_MENU;
-                    set_screen(BASE_SCREEN);
-                    reset_sprites_to_party();
-                    disable_screen(INFO_SCREEN);
-                    enable_all_valid_sprites();
-                    cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
-                }
+                if(returned_val == CANCEL_INFO)
+                    return_to_trade_menu(cursor_y_pos, cursor_x_pos);
                 else
                     print_pokemon_pages(returned_val, curr_mon != prev_val, &game_data[cursor_x_pos].party_3_undec[curr_mon], curr_page);
                 break;
@@ -294,6 +329,32 @@ int main(void)
                     stop_transfer(master);
                     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                 }
+                break;
+            case TRADE_OPTIONS:
+                returned_val = handle_input_trade_options(keys, &submenu_cursor_x_pos);
+                if(returned_val) {
+                    if(returned_val == CANCEL_TRADE_OPTIONS)
+                        return_to_trade_menu(cursor_y_pos, cursor_x_pos);
+                    else {
+                        if(!submenu_cursor_x_pos)
+                            info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page);
+                        else if(!cursor_x_pos)
+                            waiting_init(0, cursor_y_pos);
+                        else {
+                            // Print the nature settings menu here
+                            curr_state = NATURE_SETTING;
+                        }
+                            
+                    }
+                }
+                else
+                    update_cursor_base_x(BASE_X_CURSOR_TRADE_OPTIONS + (submenu_cursor_x_pos * BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS), counter);
+                break;
+            case WAITING_DATA:
+                break;
+            case NATURE_SETTING:
+                break;
+            case OFFER_MENU:
                 break;
             default:
                 main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);

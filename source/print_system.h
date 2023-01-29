@@ -12,6 +12,8 @@
 #define HSWAP_TILE 0x400
 #define VSWAP_TILE 0x800
 
+#define TOTAL_BG 4
+
 #define REGULAR_FILL 0
 #define BLANK_FILL 1
 
@@ -24,6 +26,7 @@ void set_text_x(u8);
 void set_text_y(u8);
 void enable_screen(u8);
 void disable_screen(u8);
+void disable_all_screens_but_current();
 void set_bg_pos(u8, int, int);
 u16* get_screen(u8 bg_num);
 void set_screen(u8);

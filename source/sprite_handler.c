@@ -117,16 +117,18 @@ void set_pokemon_sprite(u32 address, u8 palette, u8 info, u8 display_item, u16 y
     inc_sprite_counter();
 }
 
-void init_cursor(u8 cursor_y_pos){
+void init_cursor(){
     u16* vram_pos = (u16*)(get_vram_pos() + 0x20);
     for(int i = 0; i < (sprite_cursor_bin_size>>1); i++)
         vram_pos[i] = sprite_cursor_gfx[i];
     vram_pos = (u16*)(get_vram_pos() + 0x220);
     for(int i = 0; i < (sprite_cursor_bin_size>>1); i++)
         vram_pos[i] = sprite_cursor_gfx[i];
-    if(cursor_y_pos > 4)
-        cursor_y_pos = 4;
-    set_attributes(BASE_Y_CURSOR_MAIN_MENU + (cursor_y_pos*BASE_Y_CURSOR_INCREMENT_MAIN_MENU), BASE_X_CURSOR_MAIN_MENU, ((32*__sprite_counter)+1) | (get_curr_priority()<<10));
+    for(int i = 0; i < TOTAL_BG; i++) {
+        set_attributes(OFF_SCREEN_SPRITE | DISABLE_SPRITE, 0, ((32*__sprite_counter)+1) | ((3-i)<<10));
+        if(i < TOTAL_BG-1)
+            inc_inner_sprite_counter();
+    }
     cursor_sprite = __sprite_counter;
     inner_cursor_sprite = __inner_sprite_counter;
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, 0);
@@ -134,11 +136,11 @@ void init_cursor(u8 cursor_y_pos){
 }
 
 void update_cursor_y(u16 cursor_y){
-    *((u16*)(OAM_ADDR + (8*inner_cursor_sprite) + 0)) = cursor_y;
+    *((u16*)(OAM_ADDR + (8*(inner_cursor_sprite-get_curr_priority())) + 0)) = cursor_y;
 }
 
 void update_cursor_x(u16 cursor_x){
-    *((u16*)(OAM_ADDR + (8*inner_cursor_sprite) + 2)) = cursor_x;
+    *((u16*)(OAM_ADDR + (8*(inner_cursor_sprite-get_curr_priority())) + 2)) = cursor_x;
 }
 
 void update_cursor_base_x(u16 cursor_x, u8 counter){
@@ -147,7 +149,12 @@ void update_cursor_base_x(u16 cursor_x, u8 counter){
 }
 
 void disable_cursor(){
-    update_cursor_y(DISABLE_SPRITE);
+    update_cursor_y(OFF_SCREEN_SPRITE | DISABLE_SPRITE);
+}
+
+void disable_all_cursors(){
+    for(int i = 0; i < TOTAL_BG; i++)
+        *((u16*)(OAM_ADDR + (8*(inner_cursor_sprite-i)) + 0)) = OFF_SCREEN_SPRITE | DISABLE_SPRITE;
 }
 
 void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
@@ -204,8 +211,8 @@ void move_sprites(u8 counter){
 
 void move_cursor_x(u8 counter){
     counter = counter & 0x3F;
-    if(counter >= 0x20)
-        counter = 0x40 - counter;
     u8 pos = counter >> 3;
+    if(pos > 4)
+        pos = 8-pos;
     update_cursor_x(cursor_base_x + pos);
 }

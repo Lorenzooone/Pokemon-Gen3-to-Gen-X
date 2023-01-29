@@ -106,16 +106,12 @@ void print_trade_options(u8 cursor_x_pos){
     clear_trade_options_window();
     set_text_y(TRADE_OPTIONS_WINDOW_Y);
     set_text_x(TRADE_OPTIONS_WINDOW_X);
-    if(cursor_x_pos) {
-        PRINT_FUNCTION(" Summary");
-        set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
-        PRINT_FUNCTION(" Nature");
-    }
-    else {
-        PRINT_FUNCTION(" Offer");
-        set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
-        PRINT_FUNCTION(" Summary");
-    }
+    PRINT_FUNCTION("  Summary");
+    set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
+    if(cursor_x_pos)
+        PRINT_FUNCTION("  Set Nature");
+    else 
+        PRINT_FUNCTION("  Offer");
 }
 
 void print_waiting(){
@@ -126,17 +122,14 @@ void print_waiting(){
 }
 
 void print_start_trade(){
-    u8 state = get_start_state();
-    u8 raw_state = get_start_state_raw();
-    if((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))
-        return;
-    //if(((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))||(raw_state == START_TRADE_DON))
+    enum START_TRADE_STATE state = get_start_state();
+    enum START_TRADE_STATE raw_state = get_start_state_raw();
+    //if((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))
     //    return;
+    if(((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))||(raw_state == START_TRADE_DON))
+        return;
     //if(state == START_TRADE_NO_UPDATE)
     //    return;
-    
-    if(raw_state >= START_TRADE_STATES)
-        raw_state = START_TRADE_UNK;
     
     default_reset_screen();
     PRINT_FUNCTION("\nState: \x01\n", trade_start_state_strings[raw_state]);

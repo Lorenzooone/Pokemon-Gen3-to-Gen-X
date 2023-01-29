@@ -12,6 +12,10 @@
 #define BASE_Y_CURSOR_MAIN_MENU 8
 #define BASE_Y_CURSOR_INCREMENT_MAIN_MENU 16
 
+#define BASE_X_CURSOR_TRADE_OPTIONS 2
+#define BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS 120
+#define BASE_Y_CURSOR_TRADE_OPTIONS 152
+
 void init_sprite_counter();
 u8 get_sprite_counter();
 void inc_sprite_counter();
@@ -26,13 +30,14 @@ void init_item_icon();
 void set_item_icon(u16, u16);
 void set_pokemon_sprite(u32, u8, u8, u8, u16, u16);
 void set_party_sprite_counter();
-void init_cursor(u8);
+void init_cursor();
 void update_cursor_y(u16);
 void update_cursor_x(u16);
 void update_cursor_base_x(u16, u8);
 void move_sprites(u8 counter);
 void move_cursor_x(u8);
 void disable_cursor();
+void disable_all_cursors();
 void reset_sprites(u8);
 void disable_all_sprites();
 void enable_all_valid_sprites();

@@ -58,11 +58,15 @@ u16 base_pos;
 u8 sizes_index;
 u8 syn_transmitted;
 u8 has_transmitted_syn;
+volatile u8 next_long_pause;
 int last_transfer_counter;
 int buffer_counter;
 int buffer_counter_out;
 u8 start_state_updated;
-u8 start_state;
+enum START_TRADE_STATE start_state;
+enum TRADING_STATE trading_state;
+u8 trade_offer_out;
+u8 trade_offer_in;
 u32 prepared_value;
 int skip_sends = 0;
 u8 base_pos_out = 0;
@@ -75,7 +79,26 @@ u16 other_end_gen3;
 u8 is_done_gen3;
 u8 received_gen3[(sizeof(struct gen3_trade_data)>>4)+1];
 
-void set_start_state(u8 new_val) {
+void try_to_end_trade() {
+    trade_offer_out = CANCEL_VALUE;
+    trading_state = HAVE_OFFER;
+}
+
+void try_to_offer(u8 index) {
+    trade_offer_out = index;
+    trading_state = HAVE_OFFER;
+}
+
+int get_received_trade_offer() {
+    if((trade_offer_in == CANCEL_VALUE) || (trade_offer_out == CANCEL_VALUE)) {
+        if(trade_offer_in == trade_offer_out)
+            return TRADE_CANCELLED;
+        return WANTS_TO_CANCEL;
+    }
+    return trade_offer_in;
+}
+
+void set_start_state(enum START_TRADE_STATE new_val) {
     start_state = new_val;
     start_state_updated = 1;
 }
@@ -162,7 +185,11 @@ int increment_last_tranfer() {
     return last_transfer_counter++;
 }
 
-u8 get_start_state() {
+enum TRADING_STATE get_trading_state() {
+    return trading_state;
+}
+
+enum START_TRADE_STATE get_start_state() {
     if(!start_state_updated)
         return START_TRADE_NO_UPDATE;
     start_state_updated = 0;
@@ -185,12 +212,21 @@ void init_transfer_data() {
     set_start_state(START_TRADE_PAR);
 }
 
-u8 get_start_state_raw() {
+enum START_TRADE_STATE get_start_state_raw() {
     return start_state;
 }
 
 void init_start_state() {
     set_start_state(START_TRADE_UNK);
+}
+
+IWRAM_CODE u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
+    next_long_pause = 1;
+    if(((data >= trade_offer_start) && (data < trade_offer_start + PARTY_SIZE)) || (data == end_trade_value)) {
+        trade_offer_in = data - trade_offer_start;
+        trading_state = RECEIVED_OFFER;
+    }
+    return trade_offer_start + trade_offer_out;
 }
 
 IWRAM_CODE __attribute__((optimize(3))) void set_next_vcount_interrupt(void){
@@ -238,8 +274,10 @@ IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
             base_pos += transfer_sizes[sizes_index];
             sizes_index++;
             reset_transfer_data_between_sync();
-            if(sizes_index >= get_number_of_buffers())
+            if(sizes_index >= get_number_of_buffers()) {
                 set_start_state(START_TRADE_DON);
+                trading_state = NO_INFO;
+            }
             if(buffer_counter_out < transfer_sizes[sizes_index-1])
                 return out_buffer[base_pos-1];
             return SEND_0_INFO;
@@ -270,127 +308,144 @@ IWRAM_CODE int check_if_continue(u8 data, u8* sends, u8* recvs, int size, int ne
 IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
-    switch(start_state) {
-        case START_TRADE_ENT:
-            return check_if_continue(data, gen1_start_trade_enter_room[is_master], gen1_start_trade_enter_room_next[is_master], GEN1_ENTER_STATES_NUM, START_TRADE_WAI, (START_TRADE_BYTE_GEN1 | 1), 1);
-        case START_TRADE_STA:
-            return check_if_continue(data, gen1_start_trade_start_trade_procedure[is_master], gen1_start_trade_start_trade_procedure_next[is_master], GEN1_START_STATES_NUM, START_TRADE_SYN, SEND_NO_INFO, 1);
-        case START_TRADE_PAR:
-            return communicate_buffer(data, is_master);
-        case START_TRADE_DON:
-            return SEND_NO_INFO;
-        case START_TRADE_SYN:
-            if(is_master)
-                init_transfer_data();
-            else if((data == SYNCHRONIZE_BYTE) || (buffer_counter == MAX_WAIT_FOR_SYN))
-                init_transfer_data();
-            else
-                buffer_counter++;
-            return SEND_NO_INFO;
-        default:
-            if((data == ENTER_TRADE_MASTER) || (data == ENTER_TRADE_SLAVE)) {
-                buffer_counter = 0;
-                last_filtered = 0;
-                set_start_state(START_TRADE_ENT);
-                return gen1_start_trade_enter_room[is_master][0];
-            }
-            if(data == SYNCHRONIZE_BYTE) {
-                buffer_counter = 0;
-                last_filtered = 0;
-                init_transfer_data();
+    if(start_state != START_TRADE_DON)
+        switch(start_state) {
+            case START_TRADE_ENT:
+                return check_if_continue(data, gen1_start_trade_enter_room[is_master], gen1_start_trade_enter_room_next[is_master], GEN1_ENTER_STATES_NUM, START_TRADE_WAI, (START_TRADE_BYTE_GEN1 | 1), 1);
+            case START_TRADE_STA:
+                return check_if_continue(data, gen1_start_trade_start_trade_procedure[is_master], gen1_start_trade_start_trade_procedure_next[is_master], GEN1_START_STATES_NUM, START_TRADE_SYN, SEND_NO_INFO, 1);
+            case START_TRADE_PAR:
+                return communicate_buffer(data, is_master);
+            case START_TRADE_SYN:
+                if(is_master)
+                    init_transfer_data();
+                else if((data == SYNCHRONIZE_BYTE) || (buffer_counter == MAX_WAIT_FOR_SYN))
+                    init_transfer_data();
+                else
+                    buffer_counter++;
                 return SEND_NO_INFO;
-            }
-            u8 filtered_data = data & 0xF0;
-            if(last_filtered != filtered_data) {
-                buffer_counter = 0;
-                last_filtered = filtered_data;
-            }
-            if((!is_master) && (filtered_data == START_TRADE_BYTE_GEN1)) {
-                buffer_counter++;
-                if(buffer_counter == MAX_WAIT_FOR_SYN) {
+            default:
+                if((data == ENTER_TRADE_MASTER) || (data == ENTER_TRADE_SLAVE)) {
+                    buffer_counter = 0;
+                    last_filtered = 0;
+                    set_start_state(START_TRADE_ENT);
+                    return gen1_start_trade_enter_room[is_master][0];
+                }
+                if(data == SYNCHRONIZE_BYTE) {
                     buffer_counter = 0;
                     last_filtered = 0;
                     init_transfer_data();
+                    return SEND_NO_INFO;
                 }
-                return data;
-            }
-            if((!is_master) && (filtered_data == CHOICE_BYTE_GEN1)) {
-                buffer_counter++;
-                if(buffer_counter == MAX_WAIT_FOR_SYN) {
+                u8 filtered_data = data & 0xF0;
+                if(last_filtered != filtered_data) {
                     buffer_counter = 0;
-                    last_filtered = 0;
-                    set_start_state(START_TRADE_STA);
-                    return END_CHOICE_BYTE_GEN1;
+                    last_filtered = filtered_data;
                 }
-                if(buffer_counter > 4)
-                    return END_CHOICE_BYTE_GEN1;
-                return CHOICE_BYTE_GEN1;
-            }
-            if(is_master && (filtered_data == START_TRADE_BYTE_GEN1)) {
-                buffer_counter = 0;
-                return data;
-            }
-            if(is_master && (filtered_data == CHOICE_BYTE_GEN1)) {
-                buffer_counter = 2;
-                set_start_state(START_TRADE_ENT);
+                if((!is_master) && (filtered_data == START_TRADE_BYTE_GEN1)) {
+                    buffer_counter++;
+                    if(buffer_counter == MAX_WAIT_FOR_SYN) {
+                        buffer_counter = 0;
+                        last_filtered = 0;
+                        init_transfer_data();
+                    }
+                    return data;
+                }
+                if((!is_master) && (filtered_data == CHOICE_BYTE_GEN1)) {
+                    buffer_counter++;
+                    if(buffer_counter == MAX_WAIT_FOR_SYN) {
+                        buffer_counter = 0;
+                        last_filtered = 0;
+                        set_start_state(START_TRADE_STA);
+                        return END_CHOICE_BYTE_GEN1;
+                    }
+                    if(buffer_counter > 4)
+                        return END_CHOICE_BYTE_GEN1;
+                    return CHOICE_BYTE_GEN1;
+                }
+                if(is_master && (filtered_data == START_TRADE_BYTE_GEN1)) {
+                    buffer_counter = 0;
+                    return data;
+                }
+                if(is_master && (filtered_data == CHOICE_BYTE_GEN1)) {
+                    buffer_counter = 2;
+                    set_start_state(START_TRADE_ENT);
+                    return SEND_NO_INFO;
+                }
+                if(is_master) {
+                    if(start_state == START_TRADE_UNK)
+                        return gen1_start_trade_enter_room[is_master][0];
+                    return (START_TRADE_BYTE_GEN1 | 1);
+                }
                 return SEND_NO_INFO;
-            }
-            if(is_master) {
-                if(start_state == START_TRADE_UNK)
-                    return gen1_start_trade_enter_room[is_master][0];
-                return (START_TRADE_BYTE_GEN1 | 1);
-            }
-            return SEND_NO_INFO;
+        }
+    else {
+        // Do trading stuff here
+        switch(trading_state) {
+            case HAVE_OFFER:
+                return get_offer(data, GEN1_TRADE_OFFER_START, END_TRADE_BYTE_GEN1);
+            default:
+                return SEND_NO_INFO;
+        }
     }
 }
 
 IWRAM_CODE int process_data_arrived_gen2(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
-    switch(start_state) {
-        case START_TRADE_ENT:
-            return check_if_continue(data, gen2_start_trade_enter_room[is_master], gen2_start_trade_enter_room_next[is_master], GEN2_ENTER_STATES_NUM, START_TRADE_WAI, gen2_start_trade_start_trade_procedure[is_master][0], 0);
-        case START_TRADE_STA:
-            return check_if_continue(data, gen2_start_trade_start_trade_procedure[is_master], gen2_start_trade_start_trade_procedure_next[is_master], GEN2_START_STATES_NUM, START_TRADE_SYN, SEND_NO_INFO, 0);
-        case START_TRADE_PAR:
-            return communicate_buffer(data, is_master);
-        case START_TRADE_DON:
-            return SEND_NO_INFO;
-        case START_TRADE_SYN:
-            if(is_master)
-                init_transfer_data();
-            else if((data == SYNCHRONIZE_BYTE) || (buffer_counter == MAX_WAIT_FOR_SYN))
-                init_transfer_data();
-            else
-                buffer_counter++;
-            return SEND_NO_INFO;
-        default:
-            if((data == ENTER_TRADE_MASTER) || (data == ENTER_TRADE_SLAVE)) {
-                buffer_counter = 0;
-                set_start_state(START_TRADE_ENT);
-                return gen2_start_trade_enter_room[is_master][0];
-            }
-            if(data == END_TRADE_BYTE_GEN2) {
-                buffer_counter = 0;
-                set_start_state(START_TRADE_END);
-                return END_TRADE_BYTE_GEN2;
-            }
-            if(is_master && (data == gen2_start_trade_enter_room_next[is_master][0])) {
-                buffer_counter = 0;
-                set_start_state(START_TRADE_ENT);
-                return gen2_start_trade_enter_room[is_master][0];
-            }
-            if(data == START_TRADE_BYTE_GEN2) {
-                buffer_counter = 0;
-                set_start_state(START_TRADE_STA);
-                return gen2_start_trade_start_trade_procedure[is_master][0];
-            }
-            if(is_master) {
-                if(start_state == START_TRADE_UNK)
+    if(start_state != START_TRADE_DON)
+        switch(start_state) {
+            case START_TRADE_ENT:
+                return check_if_continue(data, gen2_start_trade_enter_room[is_master], gen2_start_trade_enter_room_next[is_master], GEN2_ENTER_STATES_NUM, START_TRADE_WAI, gen2_start_trade_start_trade_procedure[is_master][0], 0);
+            case START_TRADE_STA:
+                return check_if_continue(data, gen2_start_trade_start_trade_procedure[is_master], gen2_start_trade_start_trade_procedure_next[is_master], GEN2_START_STATES_NUM, START_TRADE_SYN, SEND_NO_INFO, 0);
+            case START_TRADE_PAR:
+                return communicate_buffer(data, is_master);
+            case START_TRADE_SYN:
+                if(is_master)
+                    init_transfer_data();
+                else if((data == SYNCHRONIZE_BYTE) || (buffer_counter == MAX_WAIT_FOR_SYN))
+                    init_transfer_data();
+                else
+                    buffer_counter++;
+                return SEND_NO_INFO;
+            default:
+                if((data == ENTER_TRADE_MASTER) || (data == ENTER_TRADE_SLAVE)) {
+                    buffer_counter = 0;
+                    set_start_state(START_TRADE_ENT);
                     return gen2_start_trade_enter_room[is_master][0];
-                return gen2_start_trade_start_trade_procedure[is_master][0];
-            }
-            return SEND_NO_INFO;
+                }
+                if(data == END_TRADE_BYTE_GEN2) {
+                    buffer_counter = 0;
+                    set_start_state(START_TRADE_END);
+                    return END_TRADE_BYTE_GEN2;
+                }
+                if(is_master && (data == gen2_start_trade_enter_room_next[is_master][0])) {
+                    buffer_counter = 0;
+                    set_start_state(START_TRADE_ENT);
+                    return gen2_start_trade_enter_room[is_master][0];
+                }
+                if(data == START_TRADE_BYTE_GEN2) {
+                    buffer_counter = 0;
+                    set_start_state(START_TRADE_STA);
+                    return gen2_start_trade_start_trade_procedure[is_master][0];
+                }
+                if(is_master) {
+                    if(start_state == START_TRADE_UNK)
+                        return gen2_start_trade_enter_room[is_master][0];
+                    return gen2_start_trade_start_trade_procedure[is_master][0];
+                }
+                return SEND_NO_INFO;
+        }
+    else {
+        // Do trading stuff here
+        switch(trading_state) {
+            case HAVE_OFFER:
+                return get_offer(data, GEN2_TRADE_OFFER_START, END_TRADE_BYTE_GEN2);
+            default:
+                return SEND_NO_INFO;
+            break;
+        }
     }
 }
 
@@ -483,8 +538,10 @@ void process_in_data_gen3(u32 data) {
                 own_end_gen3 = -1;
             }
         }
-        if((control_byte & DONE_GEN3) && is_done_gen3)
+        if((control_byte & DONE_GEN3) && is_done_gen3) {
             set_start_state(START_TRADE_DON);
+            trading_state = NO_INFO;
+        }
     }
     else {
         // Do trading stuff here
@@ -507,6 +564,7 @@ IWRAM_CODE __attribute__((optimize(3))) void slave_routine(void) {
         else
             value = process_data_arrived_gen1(data, 0);
         sio_handle_irq_slave(value);
+        next_long_pause = 0;
         //PRINT_FUNCTION("0x\x0D - 0x\x0D\n", value, 2, data, 2);
         //sio_handle_irq_slave(process_data_arrived_gen12(sio_read(SIO_8), 0));
     }
@@ -520,6 +578,7 @@ IWRAM_CODE __attribute__((optimize(3))) void master_routine_gen3(void) {
     data = sio_send_if_ready_master(prepared_value, SIO_32, &success);
     if(success) {
         //PRINT_FUNCTION("0x%08X - 0x%08X\n", prepared_value, data);
+        next_long_pause = 0;
         process_in_data_gen3(data);
         prepared_value = prepare_out_data_gen3();
     }
@@ -533,12 +592,15 @@ IWRAM_CODE __attribute__((optimize(3))) void master_routine_gen12(void) {
     
     if(!skip_sends) {
         data = sio_send_master(prepared_value, SIO_8);
+        next_long_pause = 0;
         if(data != SEND_NO_INFO) {
             //PRINT_FUNCTION("0x\x0D - 0x\x0D\n", prepared_value, 2, data, 2);
             if(stored_curr_gen == 2)
                 prepared_value = process_data_arrived_gen2(data, 1);
             else
                 prepared_value = process_data_arrived_gen1(data, 1);
+            if(next_long_pause)
+                skip_sends = SKIP_SENDS;
         }
         else
             skip_sends = SKIP_SENDS;
@@ -604,6 +666,7 @@ void start_transfer(u8 is_master, u8 curr_gen)
 void stop_transfer(u8 is_master)
 {
     buffer_counter = 0;
+    while(next_long_pause);
     if(!is_master) {
         irqDisable(IRQ_SERIAL);
         sio_stop_irq_slave();
