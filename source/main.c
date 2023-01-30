@@ -107,6 +107,30 @@ void cursor_update_main_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
 }
 
+void waiting_init(u8 cancel, u8 cursor_y_pos) {
+    set_screen(WAITING_WINDOW_SCREEN);
+    reset_screen(BLANK_FILL);
+    init_waiting_window();
+    print_waiting();
+    enable_screen(WAITING_WINDOW_SCREEN);
+    if(cancel)
+        try_to_end_trade();
+    else
+        try_to_offer(cursor_y_pos);
+    curr_state = WAITING_DATA;
+}
+
+void check_bad_trade_received(u8 curr_gen, u8 own_menu) {
+    u8 useless = 0;
+    // Handle bad received / No valid mons
+    if(handle_input_trading_menu(&useless, &useless, 0, curr_gen, own_menu) == CANCEL_TRADING) {
+        if(own_menu)
+            main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
+        else
+            waiting_init(1, 0);
+    }
+}
+
 void trade_menu_init(struct game_data_t* game_data, u8 curr_gen, u8 own_menu, u8* cursor_y_pos, u8* cursor_x_pos) {
     curr_state = TRADING_MENU;
     *cursor_y_pos = 0;
@@ -115,9 +139,10 @@ void trade_menu_init(struct game_data_t* game_data, u8 curr_gen, u8 own_menu, u8
     print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
     set_party_sprite_counter();
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
+    check_bad_trade_received(curr_gen, own_menu);
 }
 
-void return_to_trade_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
+void return_to_trade_menu(u8 cursor_y_pos, u8 cursor_x_pos, u8 curr_gen, u8 own_menu) {
     curr_state = TRADING_MENU;
     set_screen(BASE_SCREEN);
     reset_sprites_to_party();
@@ -125,6 +150,7 @@ void return_to_trade_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
     disable_all_cursors();
     enable_all_valid_sprites();
     cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
+    check_bad_trade_received(curr_gen, own_menu);
 }
 
 void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
@@ -147,19 +173,6 @@ void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon,
     disable_all_sprites();
     print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[curr_mon], *curr_page);
     enable_screen(INFO_SCREEN);
-}
-
-void waiting_init(u8 cancel, u8 cursor_y_pos) {
-    set_screen(WAITING_WINDOW_SCREEN);
-    reset_screen(BLANK_FILL);
-    init_waiting_window();
-    print_waiting();
-    enable_screen(WAITING_WINDOW_SCREEN);
-    if(cancel)
-        try_to_end_trade();
-    else
-        try_to_offer(cursor_y_pos);
-    curr_state = WAITING_DATA;
 }
 
 int main(void)
@@ -207,6 +220,7 @@ int main(void)
     u8 submenu_cursor_x_pos = 0;
     u8 prev_val = 0;
     u8 curr_mon = 0;
+    u8 other_mon = 0;
     u8 curr_page = 0;
     
     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
@@ -226,6 +240,7 @@ int main(void)
                     read_comm_buffer(&game_data[1], curr_gen, region);
                     own_menu = 0;
                     trade_menu_init(game_data, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                    
                 }
                 else {
                     print_start_trade();
@@ -239,10 +254,17 @@ int main(void)
                         main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                     }
                     else if(result == WANTS_TO_CANCEL)
-                        return_to_trade_menu(cursor_y_pos, cursor_x_pos);
+                        return_to_trade_menu(cursor_y_pos, cursor_x_pos, curr_gen, own_menu);
                     else {
-                        // Print the offer menu here, if valid
-                        curr_state = OFFER_MENU;
+                        if(game_data[1].party_3_undec[result].is_valid_gen3) {
+                            // Print the offer menu here
+                            other_mon = result;
+                            curr_state = OFFER_MENU;
+                        }
+                        else {
+                            // Handle bad offer
+                            curr_state = WAITING_DATA;
+                        }
                     }
                 }
                 else if(get_trading_state() == RECEIVED_ACCEPT) {
@@ -316,7 +338,7 @@ int main(void)
                 prev_val = curr_mon;
                 returned_val = handle_input_info_menu(game_data, &cursor_y_pos, cursor_x_pos, keys, &curr_mon, curr_gen, &curr_page);
                 if(returned_val == CANCEL_INFO)
-                    return_to_trade_menu(cursor_y_pos, cursor_x_pos);
+                    return_to_trade_menu(cursor_y_pos, cursor_x_pos, curr_gen, own_menu);
                 else
                     print_pokemon_pages(returned_val, curr_mon != prev_val, &game_data[cursor_x_pos].party_3_undec[curr_mon], curr_page);
                 break;
@@ -334,7 +356,7 @@ int main(void)
                 returned_val = handle_input_trade_options(keys, &submenu_cursor_x_pos);
                 if(returned_val) {
                     if(returned_val == CANCEL_TRADE_OPTIONS)
-                        return_to_trade_menu(cursor_y_pos, cursor_x_pos);
+                        return_to_trade_menu(cursor_y_pos, cursor_x_pos, curr_gen, own_menu);
                     else {
                         if(!submenu_cursor_x_pos)
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page);
