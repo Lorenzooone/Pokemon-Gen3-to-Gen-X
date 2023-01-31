@@ -33,6 +33,7 @@
 #define INFO_SCREEN 3
 
 void main_menu_init(struct game_data_t*, u8, u8, u8, u8*);
+void conclude_trade(struct game_data_t*, u8, u8, u8, u8*);
 
 enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION};
 enum STATE curr_state;
@@ -197,26 +198,31 @@ void trade_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mas
     check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
 }
 
-void return_to_trade_menu(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos, u8* cursor_x_pos) {
-    curr_state = TRADING_MENU;
-    set_screen(BASE_SCREEN);
-    reset_sprites_to_party();
-    disable_all_screens_but_current();
-    disable_all_cursors();
-    enable_all_valid_sprites();
-    cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
-    check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
+void start_trade_init(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8 curr_gen, u8* cursor_y_pos) {
+    if(is_valid_for_gen(game_data, curr_gen)) {
+        curr_state = START_TRADE;
+        load_comm_buffer(game_data, curr_gen, region);
+        init_start_state();
+        set_screen(BASE_SCREEN);
+        print_start_trade();
+        disable_all_screens_but_current();
+        reset_sprites_to_cursor();
+        disable_all_cursors();
+        start_transfer(master, curr_gen);
+    }
+    else
+        conclude_trade(game_data, target, region, master, cursor_y_pos);
 }
 
 void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
     curr_state = MAIN_MENU;
     prepare_main_options(game_data);
     set_screen(BASE_SCREEN);
-    disable_all_screens_but_current();
     print_main_menu(1, target, region, master);
-    *cursor_y_pos = init_cursor_y_pos_main_menu();
+    disable_all_screens_but_current();
     reset_sprites_to_cursor();
     disable_all_cursors();
+    *cursor_y_pos = init_cursor_y_pos_main_menu();
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, counter);
     cursor_update_main_menu(*cursor_y_pos);
 }
@@ -228,6 +234,22 @@ void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon,
     disable_all_sprites();
     print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[curr_mon], *curr_page);
     enable_screen(INFO_SCREEN);
+}
+
+void conclude_trade(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
+    stop_transfer(master);
+    main_menu_init(game_data, target, region, master, cursor_y_pos);
+}
+
+void return_to_trade_menu(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos, u8* cursor_x_pos) {
+    curr_state = TRADING_MENU;
+    set_screen(BASE_SCREEN);
+    reset_sprites_to_party();
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    enable_all_valid_sprites();
+    cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
+    check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
 }
 
 int main(void)
@@ -305,10 +327,8 @@ int main(void)
             if(curr_state == WAITING_DATA) {
                 if(get_trading_state() == RECEIVED_OFFER) {
                     int result = get_received_trade_offer();
-                    if(result == TRADE_CANCELLED) {
-                        stop_transfer(master);
-                        main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
-                    }
+                    if(result == TRADE_CANCELLED)
+                        conclude_trade(&game_data[0], target, region, master, &cursor_y_pos);
                     else if(result == WANTS_TO_CANCEL)
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     else {
@@ -358,12 +378,7 @@ int main(void)
                 }
                 else if(returned_val > 0 && returned_val <= TOTAL_GENS) {
                     curr_gen = returned_val;
-                    curr_state = START_TRADE;
-                    init_start_state();
-                    load_comm_buffer(&game_data[0], curr_gen, region);
-                    start_transfer(master, curr_gen);
-                    disable_cursor();
-                    print_start_trade();
+                    start_trade_init(&game_data[0], target, region, master, curr_gen, &cursor_y_pos);
                 }
                 break;
             case TRADING_MENU:
@@ -402,10 +417,8 @@ int main(void)
                     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                 break;
             case START_TRADE:
-                if(handle_input_trade_setup(keys, curr_gen)) {
-                    stop_transfer(master);
-                    main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
-                }
+                if(handle_input_trade_setup(keys, curr_gen))
+                    conclude_trade(&game_data[0], target, region, master, &cursor_y_pos);
                 break;
             case TRADE_OPTIONS:
                 returned_val = handle_input_trade_options(keys, &submenu_cursor_x_pos);

@@ -58,7 +58,7 @@ u16 base_pos;
 u8 sizes_index;
 u8 syn_transmitted;
 u8 has_transmitted_syn;
-volatile u8 next_long_pause;
+volatile u8 next_long_pause = 0;
 int last_transfer_counter;
 int buffer_counter;
 int buffer_counter_out;

@@ -6,25 +6,39 @@ u8 valid_options_main;
 u8 options_trade[2][PARTY_SIZE];
 u8 num_options_trade[2];
 
+u8 is_valid_for_gen(struct game_data_t* game_data, u8 gen) {
+    if(gen == 1)
+        return (game_data->party_1.total > 0);
+    if(gen == 2)
+        return (game_data->party_2.total > 0);
+    u8 found = 0;
+    for(int i = 0; i < game_data->party_3.total; i++)
+        if(game_data->party_3_undec[i].is_valid_gen3) {
+            found = 1;
+            break;
+        }
+    return found;
+}
+
 void set_valid_options_main(struct game_data_t* game_data) {
-    valid_options_main = (game_data->party_1.total > 0 ? 1: 0) | (game_data->party_2.total > 0 ? 2: 0) | (game_data->party_3.total > 0 ? 4: 0);
+    valid_options_main = (is_valid_for_gen(game_data, 1) ? 1: 0) | (is_valid_for_gen(game_data, 2) ? 2: 0) | (is_valid_for_gen(game_data, 3) ? 4: 0);
 }
 
 void fill_options_main_array(struct game_data_t* game_data) {
     u8 curr_slot = MAIN_OPTIONS_NO_OPTION;
     for(int i = 0; i < MAIN_OPTIONS_NUM; i++)
         options_main[i] = 0;
-    if(game_data->party_1.total > 0) {
+    if(is_valid_for_gen(game_data, 1)) {
         options_main[curr_slot++] = 1;
         for(int i = curr_slot; i < MAIN_OPTIONS_NUM; i++)
             options_main[i] = 1;
     }
-    if(game_data->party_2.total > 0) {
+    if(is_valid_for_gen(game_data, 2)) {
         options_main[curr_slot++] = 2;
         for(int i = curr_slot; i < MAIN_OPTIONS_NUM; i++)
             options_main[i] = 2;
     }
-    if(game_data->party_3.total > 0) {
+    if(is_valid_for_gen(game_data, 3)) {
         options_main[curr_slot++] = 3;
         for(int i = curr_slot; i < MAIN_OPTIONS_NUM; i++)
             options_main[i] = 3;
