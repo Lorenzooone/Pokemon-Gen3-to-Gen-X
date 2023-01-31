@@ -13,6 +13,8 @@
 #define LAST_VALID_GEN_3_ITEM 348
 #define GEN2_STATS_TOTAL 6
 #define GEN1_STATS_TOTAL 5
+#define EVS_TOTAL_GEN3 GEN2_STATS_TOTAL
+#define EVS_TOTAL_GEN12 GEN1_STATS_TOTAL
 
 #define NO_DEX_INDEX 0xFFFF
 
@@ -85,7 +87,12 @@
 #define MAIL_WORDS_SIZE 9
 
 #define MAX_EVS 510
+#define MAX_USABLE_EVS ((MAX_EVS>>2)<<2)
+
 #define HP_STAT_INDEX 0
+#define ATK_STAT_INDEX 1
+#define DEF_STAT_INDEX 2
+#define SPE_STAT_INDEX 3
 
 #define NUM_UNOWN_LETTERS_GEN3 28
 #define NUM_UNOWN_LETTERS_GEN2 26
@@ -160,7 +167,7 @@ struct gen3_mon_attacks {
 };
 
 struct gen3_mon_evs {
-    u8 evs[GEN2_STATS_TOTAL];
+    u8 evs[EVS_TOTAL_GEN3];
     u8 contest[CONTEST_STATS_TOTAL];
 };
 
@@ -220,7 +227,7 @@ struct gen2_mon_data {
     u8 moves[MOVES_SIZE];
     u16 ot_id;
     u8 exp[3];
-    u16 evs[GEN1_STATS_TOTAL];
+    u16 evs[EVS_TOTAL_GEN12];
     u16 ivs;
     u8 pps[MOVES_SIZE];
     u8 friendship;
@@ -255,7 +262,7 @@ struct gen1_mon_data {
     u8 moves[MOVES_SIZE];
     u16 ot_id;
     u8 exp[3];
-    u16 evs[GEN1_STATS_TOTAL];
+    u16 evs[EVS_TOTAL_GEN12];
     u16 ivs;
     u8 pps[MOVES_SIZE];
     u8 level;

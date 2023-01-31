@@ -480,7 +480,7 @@ u8 is_egg_gen3_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return 1;
     
-    return is_egg_gen3(data_src->src, &data_src->misc);
+    return data_src->is_egg;
 }
 
 u8 has_pokerus_gen3_raw(struct gen3_mon_data_unenc* data_src){
@@ -533,7 +533,9 @@ u8 has_mail(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) {
 }
 
 u8 has_mail_raw(struct gen3_mon_data_unenc* data_src) {
-    return has_mail(data_src->src, &data_src->growth, is_egg_gen3_raw(data_src));
+    if(!data_src->is_valid_gen3)
+        return 0;
+    return has_mail(data_src->src, &data_src->growth, data_src->is_egg);
 }
 
 u8 get_mail_id(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) {
@@ -543,7 +545,9 @@ u8 get_mail_id(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) 
 }
 
 u8 get_mail_id_raw(struct gen3_mon_data_unenc* data_src) {
-    return get_mail_id(data_src->src, &data_src->growth, is_egg_gen3_raw(data_src));
+    if(!data_src->is_valid_gen3)
+        return GEN3_NO_MAIL;
+    return get_mail_id(data_src->src, &data_src->growth, data_src->is_egg);
 }
 
 u16 get_dex_index_raw(struct gen3_mon_data_unenc* data_src){
@@ -581,11 +585,6 @@ void encrypt_data(struct gen3_mon* dst) {
     for(int i = 0; i < (ENC_DATA_SIZE>>2); i++)
         dst->enc_data[i] = dst->enc_data[i] ^ key;
 }
-
-#define ATK_STAT_INDEX 1
-#define DEF_STAT_INDEX 2
-#define SPE_STAT_INDEX 3
-#define EVS_TOTAL 5
 
 u8 index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
 u8 index_conversion_gen3[] = {0, 1, 2, 4, 5, 3};
@@ -709,7 +708,7 @@ u8 make_evs_legal_gen3(struct gen3_mon_evs* evs) {
     u8 sum = 0;
 
     // Are they within the cap?
-    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+    for(int i = 0; i < EVS_TOTAL_GEN3; i++) {
         if(sum + evs->evs[i] > MAX_EVS)
             evs->evs[i] -= sum + evs->evs[i] - MAX_EVS;
         sum += evs->evs[i];
@@ -717,14 +716,14 @@ u8 make_evs_legal_gen3(struct gen3_mon_evs* evs) {
 }
 
 u8 get_evs_gen3(struct gen3_mon_evs* evs, u8 stat_index) {
-    if(stat_index >= GEN2_STATS_TOTAL)
-        stat_index = GEN2_STATS_TOTAL-1;
+    if(stat_index >= EVS_TOTAL_GEN3)
+        stat_index = EVS_TOTAL_GEN3-1;
 
     u8 own_evs[] = {0,0,0,0,0,0};
     u8 sum = 0;
     
     // Are they within the cap?
-    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+    for(int i = 0; i < EVS_TOTAL_GEN3; i++) {
         if(sum + evs->evs[i] > MAX_EVS)
             own_evs[i] = MAX_EVS-sum;
         else
@@ -1034,6 +1033,25 @@ u8 get_exp_nature(struct gen3_mon* dst, struct gen3_mon_growth* growth, u8 level
     dst->level = level;
     growth->exp = exp;
     return nature;
+}
+
+void convert_evs_of_gen3(struct gen3_mon_evs* evs, u16* old_evs) {
+    // Convert to Gen1/2 EVs
+    u16 evs_total = 0;
+    for(int i = 0; i < EVS_TOTAL_GEN3; i++)
+        evs_total += evs->evs[i];
+    if(evs_total >= MAX_USABLE_EVS)
+        evs_total = MAX_EVS;
+    u16 new_evs = ((evs_total+1)>>1) * ((evs_total+1)>>1);
+    for(int i = 0; i < EVS_TOTAL_GEN12; i++)
+        old_evs[i] = swap_endian_short(new_evs & 0xFFFF);
+}
+
+void convert_evs_to_gen3(struct gen3_mon_evs* evs, u16* old_evs) {
+    // A direct conversion is possible, but it would be
+    // atrocious for competitive/high-level battling...
+    for(int i = 0; i < EVS_TOTAL_GEN3; i++)
+        evs->evs[i] = 0;
 }
 
 u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2) {
@@ -1436,7 +1454,16 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         return;
     }
     
-    if((growth->item >= LAST_VALID_GEN_3_ITEM) || (growth->item == ENIGMA_BERRY_ID))
+    // We reuse this SOOOO much...
+    dst->is_egg = is_egg_gen3(src, misc);
+    
+    // Eggs should not have items or mails
+    if(dst->is_egg) {
+        growth->item = NO_ITEM_ID;
+        src->mail_id = GEN3_NO_MAIL;
+    }
+    
+    if((growth->item > LAST_VALID_GEN_3_ITEM) || (growth->item == ENIGMA_BERRY_ID))
         growth->item = NO_ITEM_ID;
     
     src->level = to_valid_level_gen3(src);
@@ -1445,9 +1472,6 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     // Set the new "cleaned" data
     place_and_encrypt_gen3_data(dst, src);
-    
-    // We reuse this SOOOO much...
-    dst->is_egg = is_egg_gen3(src, misc);
     
     // Recalc the stats, always
     recalc_stats_gen3(dst, src);
@@ -1497,9 +1521,8 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     // Assign level and experience
     convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 1);
     
-    // Zero all EVs, since it's an entirely different system
-    for(int i = 0; i < EVS_TOTAL; i++)
-        dst->evs[i] = 0;
+    // Convert EVs
+    convert_evs_of_gen3(evs, dst->evs);
     
     // Assign IVs
     dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 1);
@@ -1544,7 +1567,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     else
         dst->curr_hp = 0;
     for(int i = 0; i < GEN2_STATS_TOTAL; i++)
-        dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, src->pid, i, dst->level, get_ivs_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL ? EVS_TOTAL-1 : i])));
+        dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, src->pid, i, dst->level, get_ivs_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL_GEN12 ? EVS_TOTAL_GEN12-1 : i])));
     
     // Store egg cycles
     if(dst_data->is_egg)
@@ -1602,9 +1625,8 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     // Assign level and experience
     convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 0);
     
-    // Zero all EVs, since it's an entirely different system
-    for(int i = 0; i < EVS_TOTAL; i++)
-        dst->evs[i] = 0;
+    // Convert EVs
+    convert_evs_of_gen3(evs, dst->evs);
     
     // Assign IVs
     dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 0);
@@ -1680,6 +1702,9 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     data_dst->growth.species = src->species;
     u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, src->exp);
     data_dst->growth.item = convert_item_to_gen3(src->item);
+    
+    // Convert EVs
+    convert_evs_to_gen3(&data_dst->evs, src->evs);
     
     // Handle cases in which the nature would be forced
     if((dst->level == MAX_LEVEL) || (is_egg))
@@ -1770,6 +1795,9 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     data_dst->growth.species = get_mon_index_gen1_to_3(src->species);
     u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, src->exp);
     data_dst->growth.item = convert_item_to_gen3(src->item);
+    
+    // Convert EVs
+    convert_evs_to_gen3(&data_dst->evs, src->evs);
     
     // Handle cases in which the nature would be forced
     if(dst->level == MAX_LEVEL)
