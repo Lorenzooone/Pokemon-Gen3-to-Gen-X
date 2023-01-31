@@ -304,12 +304,14 @@ int main(void)
                     else if(result == WANTS_TO_CANCEL)
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     else {
-                        if(game_data[1].party_3_undec[result].is_valid_gen3) {
+                        u8 is_invalid = is_invalid_offer(game_data, curr_mon, result);
+                        if(!is_invalid) {
                             other_mon = result;
                             offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos);
                         }
                         else {
                             // TODO: Handle bad offer
+                            is_invalid -= 1;
                             return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                             waiting_accept_init(1);
                         }

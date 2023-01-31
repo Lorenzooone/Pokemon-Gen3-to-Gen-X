@@ -585,13 +585,16 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     u8 found = 0;
     for(int i = 0; i < game_data->party_3.total; i++) {
         game_data->party_3_undec[i].src = &game_data->party_3.mons[i];
+        u8 conversion_success = 0;
         if(curr_gen == 2)
-            gen2_to_gen3(&party_info2->mons_data[i], &game_data->party_3_undec[i], party_info2->mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
+            conversion_success = gen2_to_gen3(&party_info2->mons_data[i], &game_data->party_3_undec[i], party_info2->mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
         else
-            gen1_to_gen3(&party_info1->mons_data[i], &game_data->party_3_undec[i], party_info1->mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
-        process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
-        if(game_data->party_3_undec[i].is_valid_gen3)
-            found = 1;
+            conversion_success = gen1_to_gen3(&party_info1->mons_data[i], &game_data->party_3_undec[i], party_info1->mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
+        if(conversion_success) {
+            process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
+            if(game_data->party_3_undec[i].is_valid_gen3)
+                found = 1;
+        }
     }
     if (!found)
         game_data->party_3.total = 0;

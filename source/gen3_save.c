@@ -137,6 +137,25 @@ u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u16** lea
     return ret_val;
 }
 
+u8 is_invalid_offer(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
+    // Check for validity
+    if(!game_data[1].party_3_undec[other_mon].is_valid_gen3)
+        return 1 + 0;
+    // Check that the receiving party has at least one active mon
+    if(game_data[1].party_3_undec[other_mon].is_egg) {
+        u8 found_normal = 0;
+        for(int i = 0; i < PARTY_SIZE; i++) {
+            if((i != own_mon) && (game_data[0].party_3_undec[i].is_valid_gen3) && (!game_data[0].party_3_undec[i].is_egg)) {
+                found_normal = 1;
+                break;
+            }
+        }
+        if(!found_normal)
+            return 1 + 1;
+    }
+    return 0;
+}
+
 void process_party_data(struct game_data_t* game_data) {
     if(game_data->party_3.total > PARTY_SIZE)
         game_data->party_3.total = PARTY_SIZE;
