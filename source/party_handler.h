@@ -306,6 +306,7 @@ u8 get_pokemon_gender_raw(struct gen3_mon_data_unenc*);
 char get_pokemon_gender_char_raw(struct gen3_mon_data_unenc*);
 u8 is_shiny_gen3_raw(struct gen3_mon_data_unenc*, u32);
 u16 get_dex_index_raw(struct gen3_mon_data_unenc*);
+u8 has_mail_raw(struct gen3_mon_data_unenc*);
 u8 get_mail_id_raw(struct gen3_mon_data_unenc*);
 u8 to_valid_level_gen3(struct gen3_mon*);
 u16 calc_stats_gen3_raw(struct gen3_mon_data_unenc*, u8);

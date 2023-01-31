@@ -333,15 +333,15 @@ u8 get_palette_references(int index, u32 pid, u8 is_egg, u8 deoxys_form){
     return palettes_references_bin[get_mon_index(index, pid, is_egg, deoxys_form)];
 }
 
-void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 has_item, u16 y, u16 x){
-    set_pokemon_sprite(get_pokemon_sprite_pointer(index, pid, is_egg, deoxys_form), get_palette_references(index, pid, is_egg, deoxys_form), get_pokemon_sprite_info(index, pid, is_egg, deoxys_form), !is_egg && has_item, y, x);
+void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 has_item, u8 has_mail, u16 y, u16 x){
+    set_pokemon_sprite(get_pokemon_sprite_pointer(index, pid, is_egg, deoxys_form), get_palette_references(index, pid, is_egg, deoxys_form), get_pokemon_sprite_info(index, pid, is_egg, deoxys_form), has_item, has_mail, y, x);
 }
 
 void load_pokemon_sprite_raw(struct gen3_mon_data_unenc* data_src, u16 y, u16 x){
     if(!data_src->is_valid_gen3)
         return;
 
-    return load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, has_item_raw(data_src), y, x);
+    return load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, has_item_raw(data_src), has_mail_raw(data_src), y, x);
 }
 
 const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
@@ -522,7 +522,9 @@ u8 is_shiny_gen2_raw(struct gen2_mon_data* src){
     return is_shiny_gen2_unfiltered(src->ivs);
 }
 
-u8 has_mail(struct gen3_mon* src, struct gen3_mon_growth* growth) {
+u8 has_mail(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) {
+    if(is_egg)
+        return 0;
     if(growth->item < INITIAL_MAIL_GEN3 || growth->item > LAST_MAIL_GEN3)
         return 0;
     if(src->mail_id == GEN3_NO_MAIL)
@@ -530,14 +532,18 @@ u8 has_mail(struct gen3_mon* src, struct gen3_mon_growth* growth) {
     return 1;
 }
 
-u8 get_mail_id(struct gen3_mon* src, struct gen3_mon_growth* growth) {
-    if(!has_mail(src, growth))
+u8 has_mail_raw(struct gen3_mon_data_unenc* data_src) {
+    return has_mail(data_src->src, &data_src->growth, is_egg_gen3_raw(data_src));
+}
+
+u8 get_mail_id(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) {
+    if(!has_mail(src, growth, is_egg))
         return GEN3_NO_MAIL;
     return src->mail_id;
 }
 
 u8 get_mail_id_raw(struct gen3_mon_data_unenc* data_src) {
-    return get_mail_id(data_src->src, &data_src->growth);
+    return get_mail_id(data_src->src, &data_src->growth, is_egg_gen3_raw(data_src));
 }
 
 u16 get_dex_index_raw(struct gen3_mon_data_unenc* data_src){
@@ -855,7 +861,7 @@ u8 validate_converting_mon_of_gen3(struct gen3_mon* src, struct gen3_mon_growth*
         return 0;
     
     // Item checks
-    if(has_mail(src, growth))
+    if(has_mail(src, growth, is_egg))
         return 0;
     
     // Validity checks

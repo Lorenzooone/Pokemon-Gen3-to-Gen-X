@@ -33,7 +33,7 @@ int set_palette_3bpp(u8*, int, int);
 void init_sprites();
 void init_item_icon();
 void set_item_icon(u16, u16);
-void set_pokemon_sprite(u32, u8, u8, u8, u16, u16);
+void set_pokemon_sprite(u32, u8, u8, u8, u8, u16, u16);
 void set_party_sprite_counter();
 void init_cursor();
 void update_cursor_y(u16);

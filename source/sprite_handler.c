@@ -97,6 +97,10 @@ u16 get_item_icon_tile(){
     return (32*cursor_sprite) + 1 + (sprite_cursor_bin_size>>5);
 }
 
+u16 get_mail_icon_tile(){
+    return (32*cursor_sprite) + 2 + (sprite_cursor_bin_size>>5);
+}
+
 #define ITEM_ICON_INC_Y 24
 #define ITEM_ICON_INC_X 24
 
@@ -105,8 +109,15 @@ void set_item_icon(u16 y, u16 x){
     inc_inner_sprite_counter();
 }
 
-void set_pokemon_sprite(u32 address, u8 palette, u8 info, u8 display_item, u16 y, u16 x){
-    if(display_item)
+void set_mail_icon(u16 y, u16 x){
+    set_attributes(y + ITEM_ICON_INC_Y, x + ITEM_ICON_INC_X, get_mail_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
+    inc_inner_sprite_counter();
+}
+
+void set_pokemon_sprite(u32 address, u8 palette, u8 info, u8 display_item, u8 display_mail, u16 y, u16 x){
+    if(display_mail)
+        set_mail_icon(y, x);
+    else if(display_item)
         set_item_icon(y, x);
     u8 sprite_counter = get_sprite_counter();
     u8 colors[8];
