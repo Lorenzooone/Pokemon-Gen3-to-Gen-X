@@ -757,7 +757,11 @@ u16 calc_stats_gen1(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
-    return base + Div((((stats_table_gen1[species].stats[stat_index] + iv)*2) + (Sqrt(stat_exp) >> 2)) * level, 100);
+    u16 stat_exp_contribution = Sqrt(stat_exp);
+    // Bulbapedia error...
+    //if((stat_exp_contribution * stat_exp_contribution) < stat_exp)
+    //    stat_exp_contribution += 1;
+    return base + Div((((stats_table_gen1[species].stats[stat_index] + iv)*2) + (stat_exp_contribution >> 2)) * level, 100);
 }
 
 u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
@@ -772,7 +776,11 @@ u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 st
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
-    return base + Div((((stats_table[mon_index].stats[stat_index] + iv)*2) + (Sqrt(stat_exp) >> 2)) * level, 100);
+    u16 stat_exp_contribution = Sqrt(stat_exp);
+    // Bulbapedia error...
+    //if((stat_exp_contribution * stat_exp_contribution) < stat_exp)
+    //    stat_exp_contribution += 1;
+    return base + Div((((stats_table[mon_index].stats[stat_index] + iv)*2) + (stat_exp_contribution >> 2)) * level, 100);
 }
 
 u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev, u8 deoxys_form) {
@@ -1488,10 +1496,10 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     // Set the new "cleaned" data
     place_and_encrypt_gen3_data(dst, src);
     
+    dst->is_valid_gen3 = 1;
+    
     // Recalc the stats, always
     recalc_stats_gen3(dst, src);
-    
-    dst->is_valid_gen3 = 1;
 }
 
 u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src, u32 trainer_id) {
@@ -1537,7 +1545,10 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 1);
     
     // Convert EVs
-    convert_evs_of_gen3(evs, dst->evs);
+    u16 evs_container[EVS_TOTAL_GEN12];
+    convert_evs_of_gen3(evs, evs_container);
+    for(int i = 0; i < EVS_TOTAL_GEN12; i++)
+        dst->evs[i] = evs_container[i];
     
     // Assign IVs
     dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 1);
@@ -1641,7 +1652,10 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 0);
     
     // Convert EVs
-    convert_evs_of_gen3(evs, dst->evs);
+    u16 evs_container[EVS_TOTAL_GEN12];
+    convert_evs_of_gen3(evs, evs_container);
+    for(int i = 0; i < EVS_TOTAL_GEN12; i++)
+        dst->evs[i] = evs_container[i];
     
     // Assign IVs
     dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 0);
@@ -1719,7 +1733,10 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     data_dst->growth.item = convert_item_to_gen3(src->item);
     
     // Convert EVs
-    convert_evs_to_gen3(&data_dst->evs, src->evs);
+    u16 evs_container[EVS_TOTAL_GEN12];
+    for(int i = 0; i < EVS_TOTAL_GEN12; i++)
+        evs_container[i] = src->evs[i];
+    convert_evs_to_gen3(&data_dst->evs, evs_container);
     
     // Handle cases in which the nature would be forced
     if((dst->level == MAX_LEVEL) || (is_egg))
@@ -1812,7 +1829,10 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     data_dst->growth.item = convert_item_to_gen3(src->item);
     
     // Convert EVs
-    convert_evs_to_gen3(&data_dst->evs, src->evs);
+    u16 evs_container[EVS_TOTAL_GEN12];
+    for(int i = 0; i < EVS_TOTAL_GEN12; i++)
+        evs_container[i] = src->evs[i];
+    convert_evs_to_gen3(&data_dst->evs, evs_container);
     
     // Handle cases in which the nature would be forced
     if(dst->level == MAX_LEVEL)

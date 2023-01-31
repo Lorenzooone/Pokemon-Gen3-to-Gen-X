@@ -18,6 +18,7 @@
 #include "print_system.h"
 #include "window_handler.h"
 #include "communicator.h"
+#include "sio.h"
 //#include "save.h"
 
 #include "ewram_speed_check_bin.h"
@@ -47,16 +48,27 @@ void vblank_update_function() {
     move_cursor_x(counter);
     advance_rng();
     counter++;
+    // Handle slave communications
     if((REG_SIOCNT & SIO_IRQ) && (!(REG_SIOCNT & SIO_START)))
         slave_routine();
+    // Handle no data received
     if((get_start_state_raw() == START_TRADE_PAR) && (REG_SIOCNT & SIO_IRQ) && (increment_last_tranfer() == NO_INFO_LIMIT)) {
         REG_SIODATA8 = SEND_0_INFO;
         REG_SIODATA32 = SEND_0_INFO;
         REG_IF &= ~IRQ_SERIAL;
         slave_routine();
     }
-    if((REG_DISPSTAT >> 8) >= 0xA0 && ((REG_DISPSTAT >> 8) <= REG_VCOUNT))
-        set_next_vcount_interrupt();
+    // Handle master communications
+    if(REG_DISPSTAT & LCDC_VCNT) {
+        u16 next_vcount_irq = (REG_DISPSTAT >> 8);
+        if(next_vcount_irq < 0xA0)
+            next_vcount_irq += 0xE4;
+        u16 curr_vcount = REG_VCOUNT + 2;
+        if(curr_vcount < 0xA0)
+            curr_vcount += 0xE4;
+        if(next_vcount_irq <= curr_vcount)
+            set_next_vcount_interrupt();
+    }
 }
 
 IWRAM_CODE void find_optimal_ewram_settings() {
@@ -275,9 +287,11 @@ int main(void)
     init_unown_tsv();
     init_oam_palette();
     init_sprite_counter();
+    sio_stop_irq_slave();
     irqInit();
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
+    irqDisable(IRQ_SERIAL);
     
     read_gen_3_data(&game_data[0]);
     
@@ -356,8 +370,7 @@ int main(void)
                 }
             }
         }
-        //PRINT_FUNCTION("%p %p\n", get_communication_buffer(0));
-        //worst_case_conversion_tester(&counter);
+        
         input_counter++;
         switch(curr_state) {
             case MAIN_MENU:
@@ -366,6 +379,7 @@ int main(void)
                 cursor_update_main_menu(cursor_y_pos);
                 if(returned_val == START_MULTIBOOT) {
                     curr_state = MULTIBOOT;
+                    sio_stop_irq_slave();
                     irqDisable(IRQ_SERIAL);
                     disable_cursor();
                     result = multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + 0x3FF40));
@@ -452,7 +466,7 @@ int main(void)
                         returned_val -= OFFER_INFO_DISPLAY;
                         if(returned_val)
                             returned_val = 1;
-                        // TODO: Handle the summaries here
+                        // TODO: Print the summaries here
                         
                     }
                     else

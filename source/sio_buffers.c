@@ -61,18 +61,18 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, int size, int start_pos
     for(int i = 0; i < patch_set_size; i++)
         patch_set_buffer[i] = 0;
     
-    u32 base = 0;
-    for(int i = start_pos; i < size; i++) {
-        if(buffer[i] == NO_ACTION_BYTE) {
-            buffer[i] = 0xFF;
-            patch_set_buffer[cursor_data++] = i+1-base;
+    u32 base = start_pos;
+    for(int i = 0; i < size; i++) {
+        if(buffer[start_pos + i] == NO_ACTION_BYTE) {
+            buffer[start_pos + i] = 0xFF;
+            patch_set_buffer[cursor_data++] = start_pos + i + 1 -base;
             if(cursor_data >= patch_set_size) {
                 cursor_data -= 1;
                 patch_set_buffer[cursor_data] = 0xFF;
                 break;
             }
         }
-        if((i-base) == (NO_ACTION_BYTE-2)) {
+        if((start_pos + i - base) == (NO_ACTION_BYTE-2)) {
             base += NO_ACTION_BYTE-1;
             patch_set_buffer[cursor_data++] = 0xFF;
             if(cursor_data >= patch_set_size) {
@@ -83,12 +83,12 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, int size, int start_pos
         }
     }
     
-    if((size-base) > 0)
+    if((size+start_pos-base) > 0)
         patch_set_buffer[cursor_data] = 0xFF;
 }
 
 void apply_patch_set(u8* buffer, u8* patch_set_buffer, int size, int start_pos, int patch_set_size, int base_pos) {    
-    u32 base = start_pos;
+    u32 base = 0;
     for(int i = base_pos; i < patch_set_size; i++) {
         if(patch_set_buffer[i]) {
             if(patch_set_buffer[i] == 0xFF) {
@@ -97,7 +97,7 @@ void apply_patch_set(u8* buffer, u8* patch_set_buffer, int size, int start_pos, 
                     return;
             }
             else if(patch_set_buffer[i] <= NO_ACTION_BYTE-2)
-                buffer[patch_set_buffer[i]+base-1] = 0xFE;
+                buffer[patch_set_buffer[i]+start_pos+base-1] = 0xFE;
         }
     }
 }

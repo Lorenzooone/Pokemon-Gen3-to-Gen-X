@@ -41,7 +41,7 @@ enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end) {
     default_reset_screen();
     PRINT_FUNCTION("\nInitiating handshake!\n");
 
-    for(attempts = 0; attempts < 32; attempts++) {
+    for(attempts = 0; attempts < 128; attempts++) {
         for (sends = 0; sends < 16; sends++) {
             response = multiboot_normal_send(0x6200);
 
