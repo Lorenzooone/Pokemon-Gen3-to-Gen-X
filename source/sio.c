@@ -1,5 +1,6 @@
 #include <gba.h>
 #include "sio.h"
+#include "vcount_basic.h"
 
 #define BLANK_LINES_WAIT 13
 
@@ -17,8 +18,8 @@ int timed_sio_normal_master(int data, int is_32, int vCountWait) {
     // - Wait at least 36 us between sends (this is a bit more, but it works)
     curr_vcount = REG_VCOUNT;
     target_vcount = curr_vcount + vCountWait;
-    if(target_vcount >= 0xE4)
-        target_vcount -= 0xE4;
+    if(target_vcount >= SCANLINES)
+        target_vcount -= SCANLINES;
     while (target_vcount != REG_VCOUNT);
     
     // - Set Start flag.
@@ -124,8 +125,8 @@ u8 sio_normal_inner_master() {
     // - Wait for SI to become LOW (slave ready). (Check timeout here!)
     int curr_vcount = REG_VCOUNT;
     int target_vcount = curr_vcount + BLANK_LINES_WAIT;
-    if(target_vcount >= 0xE4)
-        target_vcount -= 0xE4;
+    if(target_vcount >= SCANLINES)
+        target_vcount -= SCANLINES;
     while (REG_SIOCNT & SIO_RDY) {
         if(REG_VCOUNT == target_vcount)
             return 0;

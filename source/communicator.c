@@ -2,6 +2,7 @@
 #include "communicator.h"
 #include "sio.h"
 #include "sio_buffers.h"
+#include "vcount_basic.h"
 #include "print_system.h"
 
 #define GEN2_ENTER_STATES_NUM 4
@@ -260,8 +261,8 @@ IWRAM_CODE u8 get_accept(u8 data, u8 trade_offer_start) {
 
 IWRAM_CODE __attribute__((optimize(3))) void set_next_vcount_interrupt(void){
     int next_stop = REG_VCOUNT + VCOUNT_WAIT_LINES;
-    if(next_stop >= 0xE4)
-        next_stop -= 0xE4;
+    if(next_stop >= SCANLINES)
+        next_stop -= SCANLINES;
     REG_DISPSTAT  = (REG_DISPSTAT &0xFF) | (next_stop<<8);
 }
 

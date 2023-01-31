@@ -1,9 +1,11 @@
 #ifndef PRINT_SYSTEM__
 #define PRINT_SYSTEM__
 
+#include "gba.h"
+
 #define PRINT_FUNCTION fast_printf
-#define X_LIMIT 0x1E
-#define Y_LIMIT 0x14
+#define X_LIMIT (SCREEN_WIDTH>>3)
+#define Y_LIMIT (SCREEN_HEIGHT>>3)
 #define X_SIZE 0x20
 #define Y_SIZE 0x20
 

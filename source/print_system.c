@@ -28,9 +28,10 @@
 #define FONT_POS VRAM_START
 #define JP_FONT_POS (FONT_POS + FONT_SIZE)
 #define NUMBERS_POS (VRAM_END - (10000*2))
-#define X_SIZE 0x20
-#define Y_SIZE 0x20
-#define X_LIMIT 0x1E
+#define SCREEN_REAL_WIDTH 0x100
+#define SCREEN_REAL_HEIGHT 0x100
+#define X_SIZE (SCREEN_REAL_WIDTH>>3)
+#define Y_SIZE (SCREEN_REAL_HEIGHT>>3)
 
 #define SCREEN_SIZE 0x800
 
@@ -116,9 +117,9 @@ u8 get_curr_priority() {
 
 void set_bg_pos(u8 bg_num, int x, int y){
     if(x < 0)
-        x = 0x100 + x;
+        x = SCREEN_REAL_WIDTH + x;
     if(y < 0)
-        y = 0x100 + y;
+        y = SCREEN_REAL_HEIGHT + y;
     x = x & 0xFF;
     y = y & 0xFF;
     BG_OFFSET[bg_num].x = x;
@@ -269,52 +270,31 @@ int prepare_base_16(int number, u8* digits) {
     return 0;
 }
 
-int write_base_10(int number) {
+int digits_print(u8* digits, int max, u8 sub) {
+    for(int i = 0; i < NUM_DIGITS; i++)
+        if(digits[i]) {
+            if(write_char(digits[i]))
+                return 0;
+        }
+        else if(i >= NUM_DIGITS-max) {
+            if(write_char(sub))
+                return 0;
+        }
+    return 0;
+}
+
+int write_base_10(int number, int max, u8 sub) {
     u8 digits[NUM_DIGITS];
     prepare_base_10(number, digits);
     
-    for(int i = 0; i < NUM_DIGITS; i++)
-        if(digits[i])
-            write_char(digits[i]);
-    
-    return 0;
+    return digits_print(digits, max, sub);
 }
 
-int write_base_16(int number) {
+int write_base_16(int number, int max, u8 sub) {
     u8 digits[NUM_DIGITS];
     prepare_base_16(number, digits);
     
-    for(int i = 0; i < NUM_DIGITS; i++)
-        if(digits[i])
-            write_char(digits[i]);
-    
-    return 0;
-}
-
-int write_base_10_subs(int number, int max, u8 sub) {
-    u8 digits[NUM_DIGITS];
-    prepare_base_10(number, digits);
-    
-    for(int i = 0; i < NUM_DIGITS; i++)
-        if(digits[i])
-            write_char(digits[i]);
-        else if(i >= NUM_DIGITS-max)
-            write_char(sub);
-    
-    return 0;
-}
-
-int write_base_16_subs(int number, int max, u8 sub) {
-    u8 digits[NUM_DIGITS];
-    prepare_base_16(number, digits);
-    
-    for(int i = 0; i < NUM_DIGITS; i++)
-        if(digits[i])
-            write_char(digits[i]);
-        else if(i >= NUM_DIGITS-max)
-            write_char(sub);
-    
-    return 0;
+    return digits_print(digits, max, sub);
 }
 
 int fast_printf(const char * format, ... ) {
@@ -332,25 +312,25 @@ int fast_printf(const char * format, ... ) {
                 write_char((u8)va_arg(va, int));
                 break;
             case '\x03':
-                write_base_10(va_arg(va, int));
+                write_base_10(va_arg(va, int), 0, 0);
                 break;
             case '\x04':
-                write_base_16(va_arg(va, int));
+                write_base_16(va_arg(va, int), 0, 0);
                 break;
             case '\x05':
                 sub_printf_gen3(va_arg(va, u8*), va_arg(va, int), va_arg(va, int));
                 break;
             case '\x09':
-                write_base_10_subs(va_arg(va, int), va_arg(va, int), ' ');
+                write_base_10(va_arg(va, int), va_arg(va, int), ' ');
                 break;
             case '\x0B':
-                write_base_10_subs(va_arg(va, int), va_arg(va, int), '0');
+                write_base_10(va_arg(va, int), va_arg(va, int), '0');
                 break;
             case '\x0C':
-                write_base_16_subs(va_arg(va, int), va_arg(va, int), ' ');
+                write_base_16(va_arg(va, int), va_arg(va, int), ' ');
                 break;
             case '\x0D':
-                write_base_16_subs(va_arg(va, int), va_arg(va, int), '0');
+                write_base_16(va_arg(va, int), va_arg(va, int), '0');
                 break;
             case '\x11':
                 curr_x_pos = x_pos;
@@ -361,14 +341,14 @@ int fast_printf(const char * format, ... ) {
                 break;
             case '\x13':
                 curr_x_pos = x_pos;
-                write_base_10(va_arg(va, int));
+                write_base_10(va_arg(va, int), 0, 0);
                 x_pos = curr_x_pos + va_arg(va, int);
                 if(x_pos >= X_LIMIT)
                     new_line();
                 break;
             case '\x14':
                 curr_x_pos = x_pos;
-                write_base_16(va_arg(va, int));
+                write_base_16(va_arg(va, int), 0, 0);
                 x_pos = curr_x_pos + va_arg(va, int);
                 if(x_pos >= X_LIMIT)
                     new_line();

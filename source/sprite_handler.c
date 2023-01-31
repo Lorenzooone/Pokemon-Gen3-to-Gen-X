@@ -12,7 +12,7 @@
 #define CPUFASTSET_FILL (0x1000000)
 
 #define DISABLE_SPRITE (1<<9)
-#define OFF_SCREEN_SPRITE 0xA0
+#define OFF_SCREEN_SPRITE SCREEN_HEIGHT
 
 const u16* sprite_cursor_gfx = (const u16*)sprite_cursor_bin;
 const u16* item_icon_gfx = (const u16*)item_icon_bin;

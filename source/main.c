@@ -19,6 +19,7 @@
 #include "window_handler.h"
 #include "communicator.h"
 #include "sio.h"
+#include "vcount_basic.h"
 //#include "save.h"
 
 #include "ewram_speed_check_bin.h"
@@ -61,11 +62,11 @@ void vblank_update_function() {
     // Handle master communications
     if(REG_DISPSTAT & LCDC_VCNT) {
         u16 next_vcount_irq = (REG_DISPSTAT >> 8);
-        if(next_vcount_irq < 0xA0)
-            next_vcount_irq += 0xE4;
+        if(next_vcount_irq < VBLANK_SCANLINES)
+            next_vcount_irq += SCANLINES;
         u16 curr_vcount = REG_VCOUNT + 2;
-        if(curr_vcount < 0xA0)
-            curr_vcount += 0xE4;
+        if(curr_vcount < VBLANK_SCANLINES)
+            curr_vcount += SCANLINES;
         if(next_vcount_irq <= curr_vcount)
             set_next_vcount_interrupt();
     }
