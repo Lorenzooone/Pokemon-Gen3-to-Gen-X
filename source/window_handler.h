@@ -13,6 +13,12 @@
 #define WAITING_WINDOW_X_SIZE 10
 #define WAITING_WINDOW_Y_SIZE 1
 
+#define MESSAGE_WINDOW_SCREEN 2
+#define MESSAGE_WINDOW_X 1
+#define MESSAGE_WINDOW_Y 0x10
+#define MESSAGE_WINDOW_X_SIZE (0x1E - MESSAGE_WINDOW_X - 1)
+#define MESSAGE_WINDOW_Y_SIZE (0x14 - MESSAGE_WINDOW_Y - 1)
+
 #define OFFER_WINDOW_SCREEN 1
 #define OFFER_WINDOW_X 15
 #define OFFER_WINDOW_Y 0
@@ -30,6 +36,9 @@ void clear_trade_options_window();
 
 void init_offer_window();
 void clear_offer_window();
+
+void init_message_window();
+void clear_message_window();
 
 void init_offer_options_window();
 void clear_offer_options_window();

@@ -14,6 +14,7 @@
 #define MAIN_MENU_DISTANCE_FROM_BORDER 2
 
 #define SUMMARY_LINE_MAX_SIZE 18
+#define PRINTABLE_INVALID_STRINGS 3
 
 const char* person_strings[] = {"You", "Other"};
 const char* game_strings[] = {"RS", "FRLG", "E"};
@@ -28,6 +29,7 @@ const char* stat_strings[] = {"Hp", "Atk", "Def", "SpA", "SpD", "Spe"};
 const char* contest_strings[] = {"Coolness", "Beauty", "Cuteness", "Smartness", "Toughness", "Feel"};
 const char* trade_start_state_strings[] = {"Unknown", "Entering Room", "Starting Trade", "Ending Trade", "Waiting Trade", "Trading Party Data", "Synchronizing", "Completed"};
 const char* offer_strings[] = {" Sending ", "Receiving"};
+const char* invalid_strings[][PRINTABLE_INVALID_STRINGS] = {{"      TRADE REJECTED!", "The Pokémon offered by the", "other player has issues!"}, {"      TRADE REJECTED!", "The trade would leave you", "with no usable Pokémon!"}};
 
 const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
 
@@ -172,6 +174,17 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
             set_text_x(4+(OFFER_WINDOW_X*i));
             PRINT_FUNCTION("\x01", get_pokemon_name_raw(mon));
         }
+    }
+}
+
+void print_invalid(u8 reason) {
+    reset_screen(BLANK_FILL);
+    init_message_window();
+    clear_message_window();
+    for(int i = 0; i < PRINTABLE_INVALID_STRINGS; i++) {
+        set_text_y(MESSAGE_WINDOW_Y + (i*1));
+        set_text_x(MESSAGE_WINDOW_X);
+        PRINT_FUNCTION("\x01", invalid_strings[reason][i]);
     }
 }
 

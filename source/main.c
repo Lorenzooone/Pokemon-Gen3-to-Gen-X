@@ -32,6 +32,8 @@
 #define BASE_SCREEN 0
 #define INFO_SCREEN 3
 
+void main_menu_init(struct game_data_t*, u8, u8, u8, u8*);
+
 enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION};
 enum STATE curr_state;
 u32 counter = 0;
@@ -139,6 +141,12 @@ void waiting_init() {
     set_screen(WAITING_WINDOW_SCREEN);
     print_waiting();
     enable_screen(WAITING_WINDOW_SCREEN);
+}
+
+void invalid_init(u8 reason) {
+    set_screen(MESSAGE_WINDOW_SCREEN);
+    print_invalid(reason);
+    enable_screen(MESSAGE_WINDOW_SCREEN);
 }
 
 void waiting_offer_init(u8 cancel, u8 cursor_y_pos) {
@@ -310,9 +318,9 @@ int main(void)
                             offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos);
                         }
                         else {
-                            // TODO: Handle bad offer
                             is_invalid -= 1;
                             return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                            invalid_init(is_invalid);
                             waiting_accept_init(1);
                         }
                     }

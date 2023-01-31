@@ -23,6 +23,7 @@ void print_main_menu(u8, u8, u8, u8);
 void print_multiboot(enum MULTIBOOT_RESULTS);
 void print_start_trade();
 void print_waiting();
+void print_invalid(u8);
 void print_offer_screen(struct game_data_t*, u8, u8);
 void print_offer_options_screen(struct game_data_t*, u8, u8);
 void print_trade_options(u8 cursor_x_pos);
