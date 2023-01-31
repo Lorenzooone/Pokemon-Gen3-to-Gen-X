@@ -97,7 +97,8 @@ void apply_patch_set(u8* buffer, u8* patch_set_buffer, int size, int start_pos, 
                     return;
             }
             else if(patch_set_buffer[i] <= NO_ACTION_BYTE-2)
-                buffer[patch_set_buffer[i]+start_pos+base-1] = 0xFE;
+                if((patch_set_buffer[i]+base-1) < size)
+                    buffer[patch_set_buffer[i]+start_pos+base-1] = 0xFE;
         }
     }
 }
