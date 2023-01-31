@@ -123,7 +123,7 @@ u16 get_mon_index(int index, u32 pid, u8 is_egg, u8 deoxys_form){
 u16 get_mon_index_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return get_mon_index(0,0,0,0);
-    
+
     return get_mon_index(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form);
 }
 
@@ -167,7 +167,7 @@ const u8* get_pokemon_name_pure(int index, u32 pid, u8 is_egg){
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return get_pokemon_name(0,0,0,0);
-    
+
     return get_pokemon_name(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form);
 }
 
@@ -196,7 +196,7 @@ const u8* get_item_name(int index, u8 is_egg){
 u8 has_item_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return 0;
-    
+
     u8 index = data_src->growth.item;
     u8 is_egg = data_src->is_egg;
     
@@ -211,7 +211,7 @@ u8 has_item_raw(struct gen3_mon_data_unenc* data_src){
 const u8* get_item_name_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return get_item_name(0,0);
-    
+
     return get_item_name(data_src->growth.item, data_src->is_egg);
 }
 
@@ -227,7 +227,7 @@ u8 get_ability_pokemon(int index, u32 pid, u8 is_egg, u8 ability_bit, u8 deoxys_
 const u8* get_ability_name_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return get_table_pointer(ability_names_bin, get_ability_pokemon(0,0,0,0,0));
-    
+
     return get_table_pointer(ability_names_bin, get_ability_pokemon(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->misc.ability, data_src->deoxys_form));
 }
 
@@ -279,7 +279,7 @@ const u8* get_ribbon_rank_name(struct gen3_mon_misc* misc, u8 ribbon_num){
 const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return get_table_pointer(location_names_bin, EMPTY_LOCATION);
-    
+
     u16 location = data_src->misc.met_location;
     u8 origin_game = (data_src->misc.origins_info>>7)&0xF;
     
@@ -298,6 +298,7 @@ const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_unenc* data_src){
 u8 get_met_level_gen3_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return 0;
+
     u8 level = data_src->misc.origins_info&0x7F;
     if(level > 100)
         level = 100;
@@ -307,14 +308,14 @@ u8 get_met_level_gen3_raw(struct gen3_mon_data_unenc* data_src){
 const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return get_table_pointer(pokeball_names_bin, 0);
-    
+
     return get_table_pointer(pokeball_names_bin, (data_src->misc.origins_info>>11)&0xF);
 }
 
 u8 get_trainer_gender_char_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return GENERIC_U_GENDER;
-    
+
     if(data_src->misc.origins_info>>15)
         return GENERIC_F_GENDER;
     return GENERIC_M_GENDER;
@@ -441,7 +442,7 @@ u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg, u8 deoxys_form){
 u8 get_pokemon_gender_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return GENERIC_U_GENDER;
-    
+
     return get_pokemon_gender_gen3(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form);
 }
 
@@ -479,14 +480,14 @@ u8 is_egg_gen3(struct gen3_mon* src, struct gen3_mon_misc* misc){
 u8 is_egg_gen3_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return 1;
-    
+
     return data_src->is_egg;
 }
 
 u8 has_pokerus_gen3_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return NO_POKERUS;
-    
+
     if(!data_src->misc.pokerus)
         return NO_POKERUS;
     
@@ -505,6 +506,9 @@ u8 is_shiny_gen3(u32 pid, u32 ot_id, u8 is_egg, u32 trainer_id){
 }
 
 u8 is_shiny_gen3_raw(struct gen3_mon_data_unenc* data_src, u32 trainer_id){
+    if(!data_src->is_valid_gen3)
+        return 0;
+
     return is_shiny_gen3(data_src->src->pid, data_src->src->ot_id, data_src->is_egg, trainer_id);
 }
 
@@ -535,6 +539,7 @@ u8 has_mail(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) {
 u8 has_mail_raw(struct gen3_mon_data_unenc* data_src) {
     if(!data_src->is_valid_gen3)
         return 0;
+
     return has_mail(data_src->src, &data_src->growth, data_src->is_egg);
 }
 
@@ -547,10 +552,14 @@ u8 get_mail_id(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) 
 u8 get_mail_id_raw(struct gen3_mon_data_unenc* data_src) {
     if(!data_src->is_valid_gen3)
         return GEN3_NO_MAIL;
+
     return get_mail_id(data_src->src, &data_src->growth, data_src->is_egg);
 }
 
 u16 get_dex_index_raw(struct gen3_mon_data_unenc* data_src){
+    if(!data_src->is_valid_gen3)
+        return NO_DEX_INDEX;
+
     u16* dex_conversion_bin_16 = (u16*)dex_conversion_bin;
     u16 mon_index = get_mon_index_raw(data_src);
     return dex_conversion_bin_16[mon_index];
@@ -701,6 +710,9 @@ u32 get_proper_exp(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 deox
 }
 
 u32 get_proper_exp_raw(struct gen3_mon_data_unenc* data_src) {
+    if(!data_src->is_valid_gen3)
+        return 0;
+
     return get_proper_exp(data_src->src, &data_src->growth, data_src->deoxys_form);
 }
 
@@ -787,6 +799,9 @@ u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev,
 }
 
 u16 calc_stats_gen3_raw(struct gen3_mon_data_unenc* data_src, u8 stat_index) {    
+    if(!data_src->is_valid_gen3)
+        return 0;
+
     return calc_stats_gen3(data_src->growth.species, data_src->src->pid, stat_index, to_valid_level_gen3(data_src->src), get_ivs_gen3(&data_src->misc, stat_index), get_evs_gen3(&data_src->evs, stat_index), data_src->deoxys_form);
 }
 
