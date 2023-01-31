@@ -48,6 +48,7 @@
 #include "learnset_evos_gen1_bin.h"
 #include "learnset_evos_gen2_bin.h"
 #include "learnset_evos_gen3_bin.h"
+#include "dex_conversion_bin.h"
 
 #define MF_7_1_INDEX 2
 #define M_INDEX 1
@@ -192,6 +193,21 @@ const u8* get_item_name(int index, u8 is_egg){
     return get_table_pointer(item_names_bin, index);
 }
 
+u8 has_item_raw(struct gen3_mon_data_unenc* data_src){
+    if(!data_src->is_valid_gen3)
+        return 0;
+    
+    u8 index = data_src->growth.item;
+    u8 is_egg = data_src->is_egg;
+    
+    if(is_egg)
+        return 0;
+    if((!index) || (index > LAST_VALID_GEN_3_ITEM))
+        return 0;
+    
+    return 1;
+}
+
 const u8* get_item_name_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return get_item_name(0,0);
@@ -325,7 +341,7 @@ void load_pokemon_sprite_raw(struct gen3_mon_data_unenc* data_src, u16 y, u16 x)
     if(!data_src->is_valid_gen3)
         return;
 
-    return load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, (data_src->growth.item > 0) && (data_src->growth.item <= LAST_VALID_GEN_3_ITEM), y, x);
+    return load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, has_item_raw(data_src), y, x);
 }
 
 const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
@@ -504,6 +520,30 @@ u8 is_shiny_gen2_unfiltered(u16 ivs){
 
 u8 is_shiny_gen2_raw(struct gen2_mon_data* src){
     return is_shiny_gen2_unfiltered(src->ivs);
+}
+
+u8 has_mail(struct gen3_mon* src, struct gen3_mon_growth* growth) {
+    if(growth->item < INITIAL_MAIL_GEN3 || growth->item > LAST_MAIL_GEN3)
+        return 0;
+    if(src->mail_id == GEN3_NO_MAIL)
+        return 0;
+    return 1;
+}
+
+u8 get_mail_id(struct gen3_mon* src, struct gen3_mon_growth* growth) {
+    if(!has_mail(src, growth))
+        return GEN3_NO_MAIL;
+    return src->mail_id;
+}
+
+u8 get_mail_id_raw(struct gen3_mon_data_unenc* data_src) {
+    return get_mail_id(data_src->src, &data_src->growth);
+}
+
+u16 get_dex_index_raw(struct gen3_mon_data_unenc* data_src){
+    u16* dex_conversion_bin_16 = (u16*)dex_conversion_bin;
+    u16 mon_index = get_mon_index_raw(data_src);
+    return dex_conversion_bin_16[mon_index];
 }
 
 u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
@@ -815,7 +855,7 @@ u8 validate_converting_mon_of_gen3(struct gen3_mon* src, struct gen3_mon_growth*
         return 0;
     
     // Item checks
-    if(growth->item >= INITIAL_MAIL_GEN3 && growth->item <= LAST_MAIL_GEN3)
+    if(has_mail(src, growth))
         return 0;
     
     // Validity checks
@@ -1599,7 +1639,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     // Set base data
     dst->has_species = 1;
-    dst->pokerus_rem = 0xFF;
+    dst->mail_id = GEN3_NO_MAIL;
     data_dst->is_egg = is_egg;
     
     if(is_jp)
@@ -1652,8 +1692,6 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     convert_moves_to_gen3(&data_dst->attacks, &data_dst->growth, src->moves, src->pps, 1);
     
     data_dst->misc.pokerus = src->pokerus;
-    if(!(data_dst->misc.pokerus & 0xF) && (data_dst->misc.pokerus>>4))
-        dst->pokerus_rem = 0;
     
     // Special Mew handling
     if(data_dst->growth.species == MEW_SPECIES)
@@ -1691,7 +1729,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     // Set base data
     dst->has_species = 1;
-    dst->pokerus_rem = 0xFF;
+    dst->mail_id = GEN3_NO_MAIL;
     data_dst->is_egg = 0;
     
     if(is_jp)
@@ -1738,8 +1776,6 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     convert_moves_to_gen3(&data_dst->attacks, &data_dst->growth, src->moves, src->pps, 1);
     
     data_dst->misc.pokerus = 0;
-    if(!(data_dst->misc.pokerus & 0xF) && (data_dst->misc.pokerus>>4))
-        dst->pokerus_rem = 0;
     
     // Special Mew handling
     if(data_dst->growth.species == MEW_SPECIES)
@@ -1755,6 +1791,18 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     recalc_stats_gen3(data_dst, dst);
 
     return 1;
+}
+
+void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){
+    for(int i = 0; i < MAIL_WORDS_SIZE; i++)
+        mail->words[i] = 0;
+    for(int i = 0; i < OT_NAME_GEN3_SIZE+1; i++)
+        mail->ot_name[i] = GEN3_EOL;
+    mail->ot_id = 0;
+    mail->species = BULBASAUR_SPECIES;
+    mail->item = 0;
+
+    mon->mail_id = GEN3_NO_MAIL;
 }
 
 u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u16** learnset_ptr, u8 curr_gen) {

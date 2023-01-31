@@ -78,26 +78,66 @@ void read_game_data_trainer_info(int slot, struct game_data_t* game_data) {
         }
 }
 
-void read_party(int slot, struct game_data_t* game_data) {
-    if(slot != 0)
-        slot = 1;
-    
-    read_game_data_trainer_info(slot, game_data);
-    if(game_data->game_identifier.game_is_jp == UNDETERMINED) {
-        if(game_data->trainer_name[OT_NAME_JP_GEN3_SIZE+1] == 0)
-            game_data->game_identifier.game_is_jp = 1;
-        else
-            game_data->game_identifier.game_is_jp = 0;
+void register_dex_entry(struct game_data_t* game_data, struct gen3_mon_data_unenc* data_src) {
+    u16 dex_index = get_dex_index_raw(data_src);
+    if(dex_index != NO_DEX_INDEX) {
+        u8 base_index = dex_index >> 3;
+        u8 rest_index = dex_index & 7;
+        game_data->pokedex_seen[base_index] |= (1 << rest_index);
+        game_data->pokedex_owned[base_index] |= (1 << rest_index);
     }
-    u16 add_on = RSE_PARTY;
-    if(game_data->game_identifier.game_main_version == FRLG_MAIN_GAME_CODE)
-        add_on = FRLG_PARTY;
+}
 
-    for(int i = 0; i < SECTION_TOTAL; i++)
-        if(read_section_id(slot, i) == SECTION_PARTY_INFO_ID) {
-            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + add_on, (u8*)(&game_data->party_3), sizeof(struct gen3_party));
-            break;
+void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
+    u8 mail_id = get_mail_id_raw(&game_data[0].party_3_undec[own_mon]);
+    if((mail_id != GEN3_NO_MAIL) && (mail_id < PARTY_SIZE)) {
+        clean_mail_gen3(&game_data[0].mails_3[get_mail_id_raw(&game_data[0].party_3_undec[own_mon])], game_data[0].party_3_undec[own_mon].src);
+    }
+    mail_id = get_mail_id_raw(&game_data[1].party_3_undec[other_mon]);
+    if((mail_id != GEN3_NO_MAIL) && (mail_id < PARTY_SIZE)) {
+        u8 is_mail_free[PARTY_SIZE] = {1,1,1,1,1,1};
+        for(int i = 0; i < game_data[0].party_3.total; i++) {
+            u8 inner_mail_id = get_mail_id_raw(&game_data[0].party_3.mons[i]);
+            if((inner_mail_id != GEN3_NO_MAIL) && (inner_mail_id < PARTY_SIZE))
+                is_mail_free[inner_mail_id] = 0;
         }
+        u8 target = PARTY_SIZE-1;
+        for(int i = 0; i < PARTY_SIZE; i++)
+            if(is_mail_free[i]) {
+                target = i;
+                break;
+            }
+        u8* dst = (u8*)&game_data[0].mails_3[target];
+        u8* src = (u8*)&game_data[1].mails_3[mail_id];
+        for(int i = 0; i < sizeof(struct mail_gen3); i++)
+            dst[i] = src[i];
+        game_data[1].party_3_undec[other_mon].src->mail_id = target;
+    }
+}
+
+u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u16** learnset_ptr, u8 curr_gen) {
+    handle_mail_trade(game_data, own_mon, other_mon);
+
+    u8* dst = (u8*)&game_data[0].party_3.mons[own_mon];
+    u8* src = (u8*)&game_data[1].party_3.mons[other_mon];
+    for(int i = 0; i < sizeof(struct gen3_mon); i++)
+        dst[i] = src[i];
+    dst = (u8*)&game_data[0].party_3_undec[own_mon];
+    src = (u8*)&game_data[1].party_3_undec[other_mon];
+    for(int i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
+        dst[i] = src[i];
+    game_data[0].party_3_undec[own_mon].src = &game_data[0].party_3.mons[own_mon];
+    for(int i = 0; i < GIFT_RIBBONS; i++)
+        if(!game_data[0].giftRibbons[i])
+            game_data[0].giftRibbons[i] = game_data[1].giftRibbons[i];
+    register_dex_entry(&game_data[0], &game_data[0].party_3_undec[own_mon]);
+    u8 ret_val = trade_evolve(&game_data[0].party_3.mons[own_mon], &game_data[0].party_3_undec[own_mon], learnset_ptr, curr_gen);
+    if(ret_val)
+        register_dex_entry(&game_data[0], &game_data[0].party_3_undec[own_mon]);
+    return ret_val;
+}
+
+void process_party_data(struct game_data_t* game_data) {
     if(game_data->party_3.total > PARTY_SIZE)
         game_data->party_3.total = PARTY_SIZE;
     u8 curr_slot = 0;
@@ -126,6 +166,29 @@ void read_party(int slot, struct game_data_t* game_data) {
         else
             game_data->party_3_undec[i].is_valid_gen1 = 0;
     game_data->party_1.total = curr_slot;
+}
+
+void read_party(int slot, struct game_data_t* game_data) {
+    if(slot != 0)
+        slot = 1;
+    
+    read_game_data_trainer_info(slot, game_data);
+    if(game_data->game_identifier.game_is_jp == UNDETERMINED) {
+        if(game_data->trainer_name[OT_NAME_JP_GEN3_SIZE+1] == 0)
+            game_data->game_identifier.game_is_jp = 1;
+        else
+            game_data->game_identifier.game_is_jp = 0;
+    }
+    u16 add_on = RSE_PARTY;
+    if(game_data->game_identifier.game_main_version == FRLG_MAIN_GAME_CODE)
+        add_on = FRLG_PARTY;
+
+    for(int i = 0; i < SECTION_TOTAL; i++)
+        if(read_section_id(slot, i) == SECTION_PARTY_INFO_ID) {
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + add_on, (u8*)(&game_data->party_3), sizeof(struct gen3_party));
+            break;
+        }
+    process_party_data(game_data);
 }
 
 u32 read_slot_index(int slot) {

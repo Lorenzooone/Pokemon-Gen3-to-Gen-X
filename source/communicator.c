@@ -80,13 +80,27 @@ u8 is_done_gen3;
 u8 received_gen3[(sizeof(struct gen3_trade_data)>>4)+1];
 
 void try_to_end_trade() {
+    syn_transmitted = 0;
     trade_offer_out = CANCEL_VALUE;
     trading_state = HAVE_OFFER;
 }
 
 void try_to_offer(u8 index) {
+    syn_transmitted = 0;
     trade_offer_out = index;
     trading_state = HAVE_OFFER;
+}
+
+void try_to_accept_offer() {
+    syn_transmitted = 0;
+    trade_offer_out = ACCEPT_VALUE;
+    trading_state = HAVE_ACCEPT;
+}
+
+void try_to_decline_offer() {
+    syn_transmitted = 0;
+    trade_offer_out = DECLINE_VALUE;
+    trading_state = HAVE_ACCEPT;
 }
 
 int get_received_trade_offer() {
@@ -96,6 +110,12 @@ int get_received_trade_offer() {
         return WANTS_TO_CANCEL;
     }
     return trade_offer_in;
+}
+
+int has_accepted_offer() {
+    if((trade_offer_in == DECLINE_VALUE) || (trade_offer_out == DECLINE_VALUE))
+        return 0;
+    return 1;
 }
 
 void set_start_state(enum START_TRADE_STATE new_val) {
@@ -225,6 +245,15 @@ IWRAM_CODE u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
     if(((data >= trade_offer_start) && (data < trade_offer_start + PARTY_SIZE)) || (data == end_trade_value)) {
         trade_offer_in = data - trade_offer_start;
         trading_state = RECEIVED_OFFER;
+    }
+    return trade_offer_start + trade_offer_out;
+}
+
+IWRAM_CODE u8 get_accept(u8 data, u8 trade_offer_start) {
+    next_long_pause = 1;
+    if((data == (trade_offer_start + DECLINE_VALUE)) || (data == (trade_offer_start + ACCEPT_VALUE))) {
+        trade_offer_in = data - trade_offer_start;
+        trading_state = RECEIVED_ACCEPT;
     }
     return trade_offer_start + trade_offer_out;
 }
@@ -380,10 +409,17 @@ IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
                 return SEND_NO_INFO;
         }
     else {
-        // Do trading stuff here
+        // Space things out
+        if(syn_transmitted < MIN_WAIT_FOR_SYN) {
+            syn_transmitted++;
+            return SEND_NO_INFO;
+        }
+        // The actual trading menu logic
         switch(trading_state) {
             case HAVE_OFFER:
                 return get_offer(data, GEN1_TRADE_OFFER_START, END_TRADE_BYTE_GEN1);
+            case HAVE_ACCEPT:
+                return get_accept(data, GEN1_TRADE_OFFER_START);
             default:
                 return SEND_NO_INFO;
         }
@@ -438,10 +474,17 @@ IWRAM_CODE int process_data_arrived_gen2(u8 data, u8 is_master) {
                 return SEND_NO_INFO;
         }
     else {
-        // Do trading stuff here
+        // Space things out
+        if(syn_transmitted < MIN_WAIT_FOR_SYN) {
+            syn_transmitted++;
+            return SEND_NO_INFO;
+        }
+        // The actual trading menu logic
         switch(trading_state) {
             case HAVE_OFFER:
                 return get_offer(data, GEN2_TRADE_OFFER_START, END_TRADE_BYTE_GEN2);
+            case HAVE_ACCEPT:
+                return get_accept(data, GEN2_TRADE_OFFER_START);
             default:
                 return SEND_NO_INFO;
             break;

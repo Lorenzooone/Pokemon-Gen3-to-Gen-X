@@ -14,9 +14,13 @@
 #define GEN2_STATS_TOTAL 6
 #define GEN1_STATS_TOTAL 5
 
+#define NO_DEX_INDEX 0xFFFF
+
 #define GEN3_NO_ITEM 0xFFFF
 #define GEN2_NO_ITEM 0xFF
 #define GEN2_MAIL 0xFE
+
+#define GEN3_NO_MAIL 0xFF
 
 #define M_GENDER 0
 #define F_GENDER 1
@@ -48,22 +52,24 @@
 #define COLOSSEUM_ALT 0x103
 #define TRADE_MET 0xFE
 
-#define NIDORAN_M_SPECIES 32
+#define BULBASAUR_SPECIES 1
 #define NIDORAN_F_SPECIES 29
-
+#define NIDORAN_M_SPECIES 32
 #define MR_MIME_SPECIES 122
-#define MR_MIME_OLD_NAME_POS 445
+#define MEW_SPECIES 151
 #define UNOWN_SPECIES 201
-#define UNOWN_REAL_NAME_POS 446
+#define RAIKOU_SPECIES 243
+#define SUICUNE_SPECIES 245
 #define DEOXYS_SPECIES 410
+
+#define DEOXYS_FORMS_POS 442
+#define MR_MIME_OLD_NAME_POS 445
+#define UNOWN_REAL_NAME_POS 446
 #define DEOXYS_NORMAL 0
 #define DEOXYS_ATK 1
 #define DEOXYS_DEF 2
 #define DEOXYS_SPE 3
-#define DEOXYS_FORMS_POS 442
-#define MEW_SPECIES 151
-#define RAIKOU_SPECIES 243
-#define SUICUNE_SPECIES 245
+
 #define GEN2_DOT 0xE8
 #define GEN1_DOT 0xF2
 
@@ -203,7 +209,7 @@ struct gen3_mon {
     u32 enc_data[ENC_DATA_SIZE>>2];
     u32 status;
     u8 level;
-    u8 pokerus_rem;
+    u8 mail_id;
     u16 curr_hp;
     u16 stats[GEN2_STATS_TOTAL];
 } __attribute__ ((packed)) __attribute__ ((aligned(4)));
@@ -287,6 +293,7 @@ u8 gen1_to_gen3(struct gen1_mon_data*, struct gen3_mon_data_unenc*, u8, u8*, u8*
 
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);
 u16 get_mon_index_raw(struct gen3_mon_data_unenc*);
+u8 has_item_raw(struct gen3_mon_data_unenc* data_src);
 const u8* get_item_name_raw(struct gen3_mon_data_unenc*);
 const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_unenc*);
 u8 get_met_level_gen3_raw(struct gen3_mon_data_unenc*);
@@ -298,6 +305,8 @@ void load_pokemon_sprite_raw(struct gen3_mon_data_unenc*, u16, u16);
 u8 get_pokemon_gender_raw(struct gen3_mon_data_unenc*);
 char get_pokemon_gender_char_raw(struct gen3_mon_data_unenc*);
 u8 is_shiny_gen3_raw(struct gen3_mon_data_unenc*, u32);
+u16 get_dex_index_raw(struct gen3_mon_data_unenc*);
+u8 get_mail_id_raw(struct gen3_mon_data_unenc*);
 u8 to_valid_level_gen3(struct gen3_mon*);
 u16 calc_stats_gen3_raw(struct gen3_mon_data_unenc*, u8);
 u8 get_evs_gen3(struct gen3_mon_evs*, u8);
@@ -315,6 +324,7 @@ u32 get_level_exp_mon_index(u16, u8);
 u8 get_pokemon_gender_gen2(u8, u8, u8, u8);
 u8 get_pokemon_gender_kind_gen3(int, u32, u8, u8);
 u8 get_pokemon_gender_kind_gen2(u8, u8, u8);
+void clean_mail_gen3(struct mail_gen3*, struct gen3_mon* mon);
 u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, u16**, u8);
 
 #endif

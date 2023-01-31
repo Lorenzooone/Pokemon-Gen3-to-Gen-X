@@ -8,6 +8,7 @@
 #define CANCEL_TRADING 0xFF
 #define CANCEL_TRADE_START 0xFF
 #define CANCEL_TRADE_OPTIONS 0xFF
+#define OFFER_INFO_DISPLAY 0x12
 #define START_MULTIBOOT 0x49
 #define VIEW_OWN_PARTY 0x65
 
@@ -19,6 +20,7 @@ u8 handle_input_info_menu(struct game_data_t*, u8*, u8, u16, u8*, u8, u8*);
 u8 handle_input_trading_menu(u8*, u8*, u16, u8, u8);
 u8 handle_input_main_menu(u8*, u16, u8*, u8*, u8*, u8*);
 u8 handle_input_trade_options(u16, u8*);
+u8 handle_input_offer_options(u16, u8*, u8*);
 u8 handle_input_trade_setup(u16, u8);
 
 #endif

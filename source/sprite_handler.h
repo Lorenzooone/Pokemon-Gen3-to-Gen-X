@@ -16,6 +16,11 @@
 #define BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS 120
 #define BASE_Y_CURSOR_TRADE_OPTIONS 152
 
+#define BASE_X_CURSOR_OFFER_OPTIONS 10
+#define BASE_Y_CURSOR_OFFER_OPTIONS 128
+#define BASE_X_CURSOR_INCREMENT_OFFER_OPTIONS 64
+#define BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS 16
+
 void init_sprite_counter();
 u8 get_sprite_counter();
 void inc_sprite_counter();

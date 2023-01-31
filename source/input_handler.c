@@ -286,6 +286,27 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
     return 0;
 }
 
+u8 handle_input_offer_options(u16 keys, u8* cursor_y_pos, u8* cursor_x_pos) {
+    
+    if(keys & KEY_B)
+        return 1 + 1;
+
+    if(keys & KEY_A) {
+        if(!(*cursor_x_pos))
+            return 1 + (*cursor_y_pos);
+        else
+            return OFFER_INFO_DISPLAY + (*cursor_y_pos);
+    }
+    
+    if((keys & KEY_LEFT) || (keys & KEY_RIGHT))
+        *cursor_x_pos ^= 1;
+        
+    if((keys & KEY_UP) || (keys & KEY_DOWN))
+        *cursor_y_pos ^= 1;
+    
+    return 0;
+}
+
 u8 handle_input_trade_options(u16 keys, u8* cursor_x_pos) {
 
     if(keys & KEY_B)

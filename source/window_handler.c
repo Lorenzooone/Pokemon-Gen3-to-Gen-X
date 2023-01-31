@@ -25,6 +25,22 @@ void clear_waiting_window() {
     reset_window(WAITING_WINDOW_X, WAITING_WINDOW_Y, WAITING_WINDOW_X_SIZE, WAITING_WINDOW_Y_SIZE, WAITING_WINDOW_SCREEN);
 }
 
+void init_offer_window() {
+    create_window(OFFER_WINDOW_X, OFFER_WINDOW_Y, OFFER_WINDOW_X_SIZE, OFFER_WINDOW_Y_SIZE, OFFER_WINDOW_SCREEN);
+}
+
+void clear_offer_window() {
+    reset_window(OFFER_WINDOW_X, OFFER_WINDOW_Y, OFFER_WINDOW_X_SIZE, OFFER_WINDOW_Y_SIZE, OFFER_WINDOW_SCREEN);
+}
+
+void init_offer_options_window() {
+    create_window(OFFER_OPTIONS_WINDOW_X, OFFER_OPTIONS_WINDOW_Y, OFFER_OPTIONS_WINDOW_X_SIZE, OFFER_OPTIONS_WINDOW_Y_SIZE, OFFER_OPTIONS_WINDOW_SCREEN);
+}
+
+void clear_offer_options_window() {
+    reset_window(OFFER_OPTIONS_WINDOW_X, OFFER_OPTIONS_WINDOW_Y, OFFER_OPTIONS_WINDOW_X_SIZE, OFFER_OPTIONS_WINDOW_Y_SIZE, OFFER_OPTIONS_WINDOW_SCREEN);
+}
+
 void create_window(u8 x, u8 y, u8 x_size, u8 y_size, u8 screen_num) {
     u16* screen = get_screen(screen_num);
     
