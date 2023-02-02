@@ -33,6 +33,8 @@ void set_bg_pos(u8, int, int);
 u16* get_screen(u8 bg_num);
 void set_screen(u8);
 void init_text_system();
+void prepare_flush();
+void flush_screens();
 u8 get_bg_priority(u8);
 u8 get_curr_priority();
 

@@ -42,9 +42,11 @@ enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
 
-void vblank_update_function() {
+IWRAM_CODE void vblank_update_function() {
 	REG_IF |= IRQ_VBLANK;
-
+	
+    flush_screens();
+    
     move_sprites(counter);
     move_cursor_x(counter);
     advance_rng();
@@ -148,6 +150,7 @@ void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cur
     *cursor_x_pos = 0;
     *cursor_y_pos = 0;
     cursor_update_offer_options(*cursor_y_pos, *cursor_x_pos);
+    prepare_flush();
 }
 
 void waiting_init() {
@@ -155,12 +158,14 @@ void waiting_init() {
     set_screen(WAITING_WINDOW_SCREEN);
     print_waiting();
     enable_screen(WAITING_WINDOW_SCREEN);
+    prepare_flush();
 }
 
 void invalid_init(u8 reason) {
     set_screen(MESSAGE_WINDOW_SCREEN);
     print_invalid(reason);
     enable_screen(MESSAGE_WINDOW_SCREEN);
+    prepare_flush();
 }
 
 void waiting_offer_init(u8 cancel, u8 cursor_y_pos) {
@@ -198,6 +203,7 @@ void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos) {
     *submenu_cursor_x_pos = 0;
     cursor_update_trade_options(*submenu_cursor_x_pos);
     update_cursor_y(BASE_Y_CURSOR_TRADE_OPTIONS);
+    prepare_flush();
 }
 
 void trade_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos, u8* cursor_x_pos) {
@@ -209,6 +215,7 @@ void trade_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mas
     set_party_sprite_counter();
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
     check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
+    prepare_flush();
 }
 
 void start_trade_init(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8 curr_gen, u8* cursor_y_pos) {
@@ -221,6 +228,7 @@ void start_trade_init(struct game_data_t* game_data, u8 target, u8 region, u8 ma
         disable_all_screens_but_current();
         reset_sprites_to_cursor();
         disable_all_cursors();
+        prepare_flush();
         start_transfer(master, curr_gen);
     }
     else
@@ -238,6 +246,7 @@ void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mast
     *cursor_y_pos = init_cursor_y_pos_main_menu();
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, counter);
     cursor_update_main_menu(*cursor_y_pos);
+    prepare_flush();
 }
 
 void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* curr_page) {
@@ -247,6 +256,7 @@ void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon,
     disable_all_sprites();
     print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[curr_mon], *curr_page);
     enable_screen(INFO_SCREEN);
+    prepare_flush();
 }
 
 void conclude_trade(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
@@ -263,6 +273,7 @@ void return_to_trade_menu(struct game_data_t* game_data, u8 target, u8 region, u
     enable_all_valid_sprites();
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
     check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
+    prepare_flush();
 }
 
 int main(void)
@@ -320,27 +331,29 @@ int main(void)
     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
     
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
+    scanKeys();
+    keys = keysDown();
     
     while(1) {
-        scanKeys();
-        keys = keysDown();
         
-        while ((!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT)) && (!(keys & KEY_A)) && (!(keys & KEY_B)) && (!(keys & KEY_UP)) && (!(keys & KEY_DOWN))) {
+        do {
+            prepare_flush();
             VBlankIntrWait();
             scanKeys();
             keys = keysDown();
             if(curr_state == START_TRADE) {
                 if(get_start_state_raw() == START_TRADE_DON) {
+                    keys = 0;
                     read_comm_buffer(&game_data[1], curr_gen, region);
                     own_menu = 0;
                     trade_menu_init(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                 }
-                else {
+                else
                     print_start_trade();
-                }
             }
             if(curr_state == WAITING_DATA) {
                 if(get_trading_state() == RECEIVED_OFFER) {
+                    keys = 0;
                     int result = get_received_trade_offer();
                     if(result == TRADE_CANCELLED)
                         conclude_trade(&game_data[0], target, region, master, &cursor_y_pos);
@@ -361,6 +374,7 @@ int main(void)
                     }
                 }
                 else if(get_trading_state() == RECEIVED_ACCEPT) {
+                    keys = 0;
                     if(has_accepted_offer()) {
                         evolved = trade_mons(game_data, curr_mon, other_mon, learnset_ptr, curr_gen);
                         process_party_data(&game_data[0]);
@@ -370,7 +384,7 @@ int main(void)
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                 }
             }
-        }
+        } while ((!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT)) && (!(keys & KEY_A)) && (!(keys & KEY_B)) && (!(keys & KEY_UP)) && (!(keys & KEY_DOWN)));
         
         input_counter++;
         switch(curr_state) {
@@ -449,7 +463,6 @@ int main(void)
                             // TODO: Print the nature settings menu here
                             curr_state = NATURE_SETTING;
                         }
-                            
                     }
                 }
                 else

@@ -469,6 +469,14 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
     }
 }
 
+void print_multiboot_mid_process(u8 initial_handshake) {
+    default_reset_screen();
+    PRINT_FUNCTION("\nInitiating handshake!\n");
+    
+    if(initial_handshake)
+        PRINT_FUNCTION("\nHandshake successful!\n\nGiving control to SWI 0x25!");
+}
+
 void print_multiboot(enum MULTIBOOT_RESULTS result) {
 
     default_reset_screen();
