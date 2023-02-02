@@ -21,8 +21,6 @@ u8 handle_input_info_menu(struct game_data_t* game_data, u8* cursor_y_pos, u8 cu
         return CANCEL_INFO;
     
     u8 page = *curr_page;
-    u8 mon = *curr_mon;
-    u8 cursor_y = *cursor_y_pos;
     
     if(*curr_page < FIRST_PAGE) {
         *curr_page = FIRST_PAGE;

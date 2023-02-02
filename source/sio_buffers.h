@@ -142,7 +142,7 @@ struct gen3_trade_data {
     u8 extra_tmp_padding[NUM_EXTRA_PADDING_BYTES_GEN3];
     u32 trainer_id;
     u32 final_checksum;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((aligned(4)));
 
 void load_comm_buffer(struct game_data_t*, int, u8);
 void read_comm_buffer(struct game_data_t*, int, u8);

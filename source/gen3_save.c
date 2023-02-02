@@ -98,7 +98,7 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
     if((mail_id != GEN3_NO_MAIL) && (mail_id < PARTY_SIZE)) {
         u8 is_mail_free[PARTY_SIZE] = {1,1,1,1,1,1};
         for(int i = 0; i < game_data[0].party_3.total; i++) {
-            u8 inner_mail_id = get_mail_id_raw(&game_data[0].party_3.mons[i]);
+            u8 inner_mail_id = get_mail_id_raw(&game_data[0].party_3_undec[i]);
             if((inner_mail_id != GEN3_NO_MAIL) && (inner_mail_id < PARTY_SIZE))
                 is_mail_free[inner_mail_id] = 0;
         }
@@ -118,7 +118,7 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
         game_data[1].party_3_undec[other_mon].src->mail_id = GEN3_NO_MAIL;
 }
 
-u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u16** learnset_ptr, u8 curr_gen) {
+u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, const u16** learnset_ptr, u8 curr_gen) {
     handle_mail_trade(game_data, own_mon, other_mon);
 
     u8* dst = (u8*)&game_data[0].party_3.mons[own_mon];

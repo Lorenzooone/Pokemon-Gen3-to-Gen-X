@@ -8,7 +8,6 @@
 #include "sprite_palettes_bin.h"
 #include "item_icon_palette_bin.h"
 
-#define OAM_ADDR 0x7000000
 #define CPUFASTSET_FILL (0x1000000)
 
 #define ITEM_ICON_INC_Y 24
@@ -18,7 +17,7 @@
 #define SPRITE_ALT_DISTANCE (SPRITE_BASE_TILE_SIZE*TILE_SIZE)
 
 #define SPRITE_SIZE (2*SPRITE_ALT_DISTANCE)
-#define OVRAM_START (VRAM+0x10000)
+#define OVRAM_START ((u32)OBJ_BASE_ADR)
 #define OVRAM_SIZE 0x8000
 #define OVRAM_END (OVRAM_START+OVRAM_SIZE)
 #define POSSIBLE_SPRITES (OVRAM_SIZE/SPRITE_SIZE)
@@ -28,7 +27,7 @@
 #define DISABLE_SPRITE (1<<9)
 #define OFF_SCREEN_SPRITE SCREEN_HEIGHT
 
-u8 check_for_same_address(u8*);
+u8 check_for_same_address(const u8*);
 
 const u16* sprite_cursor_gfx = (const u16*)sprite_cursor_bin;
 const u16* item_icon_gfx = (const u16*)item_icon_bin;
@@ -42,11 +41,35 @@ u8 __party_inner_sprite_counter;
 u8 cursor_sprite;
 u8 inner_cursor_sprite;
 u16 cursor_base_x;
-u8* sprite_pointers[POSSIBLE_SPRITES];
+const u8* sprite_pointers[POSSIBLE_SPRITES];
+
+u8 updated_shadow_oam;
+u8 loaded_inner_sprite_counter;
+u16 loaded_cursor_base_x;
+OBJATTR shadow_oam[OAM_ENTITIES];
 
 void init_sprite_counter(){
     __sprite_counter = 0;
     __inner_sprite_counter = 0;
+    loaded_inner_sprite_counter = 0;
+    loaded_cursor_base_x = 0;
+}
+
+void set_updated_shadow_oam() {
+    wait_for_vblank_if_needed();
+    updated_shadow_oam = 1;
+}
+
+IWRAM_CODE void update_normal_oam() {
+    if(updated_shadow_oam) {
+        u32* oam_ptr = (u32*)OAM;
+        u32* shadow_oam_ptr = (u32*)shadow_oam;
+        for(int i = 0; i < ((sizeof(OBJATTR)*OAM_ENTITIES)>>2); i++)
+            oam_ptr[i] = shadow_oam_ptr[i];
+        updated_shadow_oam = 0;
+    }
+    loaded_inner_sprite_counter = __inner_sprite_counter;
+    loaded_cursor_base_x = cursor_base_x;
 }
 
 void set_party_sprite_counter(){
@@ -56,6 +79,7 @@ void set_party_sprite_counter(){
 
 void init_sprites(){
     reset_sprites(0);
+    update_normal_oam();
 }
 
 u8 get_sprite_counter(){
@@ -108,13 +132,13 @@ void init_cursor(){
     for(int i = 0; i < (sprite_cursor_bin_size>>1); i++)
         vram_pos[i] = sprite_cursor_gfx[i];
     for(int i = 0; i < TOTAL_BG; i++) {
-        set_attributes(OFF_SCREEN_SPRITE | DISABLE_SPRITE, 0, (32*__sprite_counter) | ((3-i)<<10));
+        set_attributes(OFF_SCREEN_SPRITE, 0, (32*__sprite_counter) | ((3-i)<<10));
         if(i < TOTAL_BG-1)
             inc_inner_sprite_counter();
     }
     cursor_sprite = __sprite_counter;
     inner_cursor_sprite = __inner_sprite_counter;
-    update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, 0);
+    update_cursor_base_x(0);
     inc_sprite_counter();
 }
 
@@ -152,7 +176,7 @@ void set_mail_icon(u16 y, u16 x){
     inc_inner_sprite_counter();
 }
 
-u8 check_for_same_address(u8* address){
+u8 check_for_same_address(const u8* address){
     u8 limit = __sprite_counter;
     if(__sprite_counter > POSSIBLE_SPRITES)
         limit = POSSIBLE_SPRITES;
@@ -162,17 +186,18 @@ u8 check_for_same_address(u8* address){
     return POSSIBLE_SPRITES;
 }
 
-void set_pokemon_sprite(u32 address, u8 palette, u8 info, u8 display_item, u8 display_mail, u16 y, u16 x){
+void set_pokemon_sprite(const u8* address, u8 palette, u8 info, u8 display_item, u8 display_mail, u16 y, u16 x){
+    set_updated_shadow_oam();
     if(display_mail)
         set_mail_icon(y, x);
     else if(display_item)
         set_item_icon(y, x);
     u8 is_3bpp = info&2;
     u8 zero_fill = info&1;
-    u8 position = check_for_same_address((u8*)address);
+    u8 position = check_for_same_address(address);
     if(position == POSSIBLE_SPRITES) {
         u8 colors[8];
-        load_pokemon_sprite_gfx(address, get_vram_pos(), is_3bpp, zero_fill, __sprite_counter-(cursor_sprite+1), colors);
+        load_pokemon_sprite_gfx((const u32*)address, (u32*)get_vram_pos(), is_3bpp, zero_fill, __sprite_counter-(cursor_sprite+1), colors);
         if(is_3bpp)
             set_palette_3bpp(colors, __sprite_counter-(cursor_sprite+1), palette);
         position = __sprite_counter;
@@ -181,40 +206,43 @@ void set_pokemon_sprite(u32 address, u8 palette, u8 info, u8 display_item, u8 di
     if(is_3bpp)
         palette = get_3bpp_palette(position-(cursor_sprite+1));
     if(position < POSSIBLE_SPRITES)
-        sprite_pointers[position] = (u8*)address;
-    set_attributes(y, x |(1<<15), (32*position)|(get_curr_priority()<<10)|(palette<<12));
+        sprite_pointers[position] = address;
+    set_attributes(y, x|ATTR1_SIZE_32, (32*position)|(get_curr_priority()<<10)|(palette<<12));
     inc_inner_sprite_counter();
 }
 
 void update_cursor_y(u16 cursor_y){
-    *((u16*)(OAM_ADDR + (8*(inner_cursor_sprite-get_curr_priority())) + 0)) = cursor_y;
+    set_updated_shadow_oam();
+    shadow_oam[inner_cursor_sprite-get_curr_priority()].attr0 = cursor_y;
 }
 
-void update_cursor_x(u16 cursor_x){
-    *((u16*)(OAM_ADDR + (8*(inner_cursor_sprite-get_curr_priority())) + 2)) = cursor_x;
+void raw_update_cursor_x(u16 cursor_x){
+    OAM[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
+    shadow_oam[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
 }
 
-void update_cursor_base_x(u16 cursor_x, u8 counter){
+void update_cursor_base_x(u16 cursor_x){
     cursor_base_x = cursor_x;
-    move_cursor_x(counter);
 }
 
 void disable_cursor(){
-    update_cursor_y(OFF_SCREEN_SPRITE | DISABLE_SPRITE);
+    update_cursor_y(OFF_SCREEN_SPRITE);
 }
 
 void disable_all_cursors(){
+    set_updated_shadow_oam();
     for(int i = 0; i < TOTAL_BG; i++)
-        *((u16*)(OAM_ADDR + (8*(inner_cursor_sprite-i)) + 0)) = OFF_SCREEN_SPRITE | DISABLE_SPRITE;
+        shadow_oam[inner_cursor_sprite-i].attr0 = OFF_SCREEN_SPRITE;
 }
 
 void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
+    set_updated_shadow_oam();
     u8 position = __inner_sprite_counter;
     if(__inner_sprite_counter >= OAM_ENTITIES)
         position = OAM_ENTITIES-1;
-    *((u16*)(OAM_ADDR + (8*position) + 0)) = obj_attr_0;
-    *((u16*)(OAM_ADDR + (8*position) + 2)) = obj_attr_1;
-    *((u16*)(OAM_ADDR + (8*position) + 4)) = obj_attr_2;
+    shadow_oam[position].attr0 = obj_attr_0;
+    shadow_oam[position].attr1 = obj_attr_1;
+    shadow_oam[position].attr2 = obj_attr_2;
 }
 
 void reset_sprites_to_cursor(){
@@ -224,24 +252,24 @@ void reset_sprites_to_cursor(){
 }
 
 void reset_sprites(u8 start){
+    set_updated_shadow_oam();
     for(int i = start; i < OAM_ENTITIES; i++) {
-        *((u16*)(OAM_ADDR + (8*i) + 0)) = OFF_SCREEN_SPRITE | DISABLE_SPRITE;
-        *((u16*)(OAM_ADDR + (8*i) + 2)) = 0;
-        *((u16*)(OAM_ADDR + (8*i) + 4)) = 0;
+        shadow_oam[i].attr0 = OFF_SCREEN_SPRITE;
+        shadow_oam[i].attr1 = 0;
+        shadow_oam[i].attr2 = 0;
     }
 }
 
 void disable_all_sprites(){
+    set_updated_shadow_oam();
     for(int i = 0; i < OAM_ENTITIES; i++)
-        *((u16*)(OAM_ADDR + (8*i) + 0)) |= DISABLE_SPRITE;
+        shadow_oam[i].attr0 |= DISABLE_SPRITE;
 }
 
-void enable_all_valid_sprites(){
-    for(int i = 0; i < OAM_ENTITIES; i++) {
-        u16 attr_0 = *((u16*)(OAM_ADDR + (8*i) + 0));
-        if(((attr_0 & 0xFF) < OFF_SCREEN_SPRITE))
-            *((u16*)(OAM_ADDR + (8*i) + 0)) &= ~DISABLE_SPRITE;
-    }
+void enable_all_sprites(){
+    set_updated_shadow_oam();
+    for(int i = 0; i < OAM_ENTITIES; i++)
+        shadow_oam[i].attr0 &= ~DISABLE_SPRITE;
 }
 
 void reset_sprites_to_party(){
@@ -252,16 +280,14 @@ void reset_sprites_to_party(){
 
 void move_sprites(u8 counter){
     u8 counter_kind = counter & 8;
-    u8 limit = __inner_sprite_counter;
-    if(__inner_sprite_counter > OAM_ENTITIES)
+    u8 limit = loaded_inner_sprite_counter;
+    if(loaded_inner_sprite_counter > OAM_ENTITIES)
         limit = OAM_ENTITIES;
-    if(!(counter & 7)) {
-        for(int i = inner_cursor_sprite+1; i < limit; i++) {
-            u16 obj_attr_2 = (*((u16*)(OAM_ADDR + (8*i) + 4))) & ~SPRITE_BASE_TILE_SIZE;
-            if(counter_kind)
-                obj_attr_2 |= SPRITE_BASE_TILE_SIZE;
-            *((u16*)(OAM_ADDR + (8*i) + 4)) = obj_attr_2;
-        }
+    for(int i = inner_cursor_sprite+1; i < limit; i++) {
+        u16 obj_attr_2 = OAM[i].attr2 & ~SPRITE_BASE_TILE_SIZE;
+        if(counter_kind)
+            obj_attr_2 |= SPRITE_BASE_TILE_SIZE;
+        OAM[i].attr2 = obj_attr_2;
     }
 }
 
@@ -270,5 +296,5 @@ void move_cursor_x(u8 counter){
     u8 pos = counter >> 3;
     if(pos > 4)
         pos = 8-pos;
-    update_cursor_x(cursor_base_x + pos);
+    raw_update_cursor_x(loaded_cursor_base_x + pos);
 }

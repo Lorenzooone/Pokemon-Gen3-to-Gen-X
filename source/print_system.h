@@ -41,7 +41,9 @@ void init_text_system();
 void prepare_flush();
 void set_updated_screen();
 void flush_screens();
+void wait_for_vblank_if_needed();
 u8 get_bg_priority(u8);
 u8 get_curr_priority();
+u8 get_loaded_priority();
 
 #endif

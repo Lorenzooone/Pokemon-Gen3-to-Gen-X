@@ -333,6 +333,6 @@ u8 get_pokemon_gender_gen2(u8, u8, u8, u8);
 u8 get_pokemon_gender_kind_gen3(int, u32, u8, u8);
 u8 get_pokemon_gender_kind_gen2(u8, u8, u8);
 void clean_mail_gen3(struct mail_gen3*, struct gen3_mon* mon);
-u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, u16**, u8);
+u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, const u16**, u8);
 
 #endif

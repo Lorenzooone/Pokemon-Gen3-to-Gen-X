@@ -113,11 +113,11 @@ u8 init_cursor_y_pos_main_menu(){
 
 void cursor_update_trading_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
     if(cursor_y_pos < PARTY_SIZE) {
-        update_cursor_base_x(BASE_X_CURSOR_TRADING_MENU + (BASE_X_CURSOR_INCREMENT_TRADING_MENU * cursor_x_pos), counter);
+        update_cursor_base_x(BASE_X_CURSOR_TRADING_MENU + (BASE_X_CURSOR_INCREMENT_TRADING_MENU * cursor_x_pos));
         update_cursor_y(BASE_Y_CURSOR_TRADING_MENU + (BASE_Y_CURSOR_INCREMENT_TRADING_MENU * cursor_y_pos));
     }
     else {
-        update_cursor_base_x(CURSOR_X_POS_CANCEL, counter);
+        update_cursor_base_x(CURSOR_X_POS_CANCEL);
         update_cursor_y(CURSOR_Y_POS_CANCEL);
     }
 }
@@ -127,11 +127,11 @@ void cursor_update_main_menu(u8 cursor_y_pos) {
 }
 
 void cursor_update_trade_options(u8 cursor_x_pos) {
-    update_cursor_base_x(BASE_X_CURSOR_TRADE_OPTIONS + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS), counter);
+    update_cursor_base_x(BASE_X_CURSOR_TRADE_OPTIONS + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS));
 }
 
 void cursor_update_offer_options(u8 cursor_y_pos, u8 cursor_x_pos) {
-    update_cursor_base_x(BASE_X_CURSOR_OFFER_OPTIONS + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_OFFER_OPTIONS), counter);
+    update_cursor_base_x(BASE_X_CURSOR_OFFER_OPTIONS + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_OFFER_OPTIONS));
     update_cursor_y(BASE_Y_CURSOR_OFFER_OPTIONS + (BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS * cursor_y_pos));
 }
 
@@ -257,7 +257,7 @@ void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mast
     reset_sprites_to_cursor();
     disable_all_cursors();
     *cursor_y_pos = init_cursor_y_pos_main_menu();
-    update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU, counter);
+    update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU);
     cursor_update_main_menu(*cursor_y_pos);
     prepare_flush();
 }
@@ -283,7 +283,7 @@ void return_to_trade_menu(struct game_data_t* game_data, u8 target, u8 region, u
     reset_sprites_to_party();
     disable_all_screens_but_current();
     disable_all_cursors();
-    enable_all_valid_sprites();
+    enable_all_sprites();
     trade_cancel_print_screen(1);
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
     check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
@@ -307,12 +307,12 @@ int main(void)
     get_game_id(&game_data[0].game_identifier);
     
     init_sprites();
+    init_oam_palette();
+    init_sprite_counter();
     REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
     init_numbers();
     
     init_unown_tsv();
-    init_oam_palette();
-    init_sprite_counter();
     sio_stop_irq_slave();
     irqInit();
     irqSet(IRQ_VBLANK, vblank_update_function);
@@ -324,7 +324,7 @@ int main(void)
     init_item_icon();
     init_cursor();
     
-    u16** learnset_ptr = NULL;
+    const u16** learnset_ptr = NULL;
     u8 evolved = 0;
     u8 returned_val;
     u8 update = 0;

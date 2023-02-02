@@ -7,10 +7,10 @@
 
 #define CPUFASTSET_FILL (0x1000000)
 
-void convert_3bpp_forward_odd(u8*, u32*, u16);
-void convert_3bpp_forward_even(u8*, u32*, u16);
+void convert_3bpp_forward_odd(const u8*, u32*, u16);
+void convert_3bpp_forward_even(const u8*, u32*, u16);
 
-IWRAM_CODE __attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(u32 src, u32 dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
+IWRAM_CODE __attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(const u32* src, u32* dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
     u32 zero = 0;
     
     u32 buffer[2][MAX_SIZE_POKEMON_SPRITE>>2];
@@ -22,27 +22,27 @@ IWRAM_CODE __attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(u32 src, u
         if(zero_fill) {
             CpuFastSet(&zero, buffer[1], (MAX_SIZE_POKEMON_SPRITE>>2)|CPUFASTSET_FILL);
             if(index&1){
-                convert_3bpp_forward_odd(buffer[0]+1, (u32*)(((u32)buffer[1])+0x80), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
-                convert_3bpp_forward_odd(buffer[0]+1+(((((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60)>>2), (u32*)(((u32)buffer[1])+0x280), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+                convert_3bpp_forward_odd((u8*)(buffer[0]+1), (u32*)(((u32)buffer[1])+0x80), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+                convert_3bpp_forward_odd((u8*)(buffer[0]+1+(((((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60)>>2)), (u32*)(((u32)buffer[1])+0x280), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
             }
             else {
-                convert_3bpp_forward_even(buffer[0]+1, (u32*)(((u32)buffer[1])+0x80), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
-                convert_3bpp_forward_even(buffer[0]+1+(((((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60)>>2), (u32*)(((u32)buffer[1])+0x280), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+                convert_3bpp_forward_even((u8*)(buffer[0]+1), (u32*)(((u32)buffer[1])+0x80), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
+                convert_3bpp_forward_even((u8*)(buffer[0]+1+(((((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60)>>2)), (u32*)(((u32)buffer[1])+0x280), (((MAX_SIZE_POKEMON_SPRITE>>2)*3)>>1)-0x60);
             }
             CpuFastSet(buffer[1], dst, (MAX_SIZE_POKEMON_SPRITE>>2));
         }
         else {
             if(index&1)
-                convert_3bpp_forward_odd(buffer[0]+1, dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
+                convert_3bpp_forward_odd((u8*)(buffer[0]+1), dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
             else
-                convert_3bpp_forward_even(buffer[0]+1, dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
+                convert_3bpp_forward_even((u8*)(buffer[0]+1), dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
         }
     }
     else {
         if(zero_fill) {
             CpuFastSet(&zero, buffer[1], (MAX_SIZE_POKEMON_SPRITE>>2)|CPUFASTSET_FILL);
-            CpuFastSet(buffer[0], ((u32)buffer[1])+0x80, ((MAX_SIZE_POKEMON_SPRITE>>1)-0x80)>>2);
-            CpuFastSet(buffer[0]+(((MAX_SIZE_POKEMON_SPRITE>>1)-0x80)>>2), ((u32)buffer[1])+0x280, ((MAX_SIZE_POKEMON_SPRITE>>1)-0x80)>>2);
+            CpuFastSet(buffer[0], buffer[1]+(0x80>>2), ((MAX_SIZE_POKEMON_SPRITE>>1)-0x80)>>2);
+            CpuFastSet(buffer[0]+(((MAX_SIZE_POKEMON_SPRITE>>1)-0x80)>>2), buffer[1]+(0x280>>2), ((MAX_SIZE_POKEMON_SPRITE>>1)-0x80)>>2);
             CpuFastSet(buffer[1], dst, (MAX_SIZE_POKEMON_SPRITE>>2));
         }
         else
@@ -70,7 +70,7 @@ void convert_xbpp(u8* src, u32* dst, u16 src_size, u8* colors, u8 is_forward, u8
     }
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_even(u8* src, u32* dst, u16 src_size) {
+IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_even(const u8* src, u32* dst, u16 src_size) {
     // This is soooo slow, even with all of this. 50k cycles more than 4bpp
     u16 num_rows = Div(src_size, 3);
     if(DivMod(src_size, 3))
@@ -88,7 +88,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_even(u8* src,
     }
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_odd(u8* src, u32* dst, u16 src_size) {
+IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_odd(const u8* src, u32* dst, u16 src_size) {
     // This is soooo slow, even with all of this. 50k cycles more than 4bpp
     u16 num_rows = Div(src_size, 3);
     if(DivMod(src_size, 3))

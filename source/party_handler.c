@@ -69,7 +69,7 @@ u8 decrypt_data(struct gen3_mon*, u32*);
 u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
 
 // Order is G A E M, or M E A G reversed. These are their indexes.
-u8 positions[] = {0b11100100, 0b10110100, 0b11011000, 0b10011100, 0b01111000, 0b01101100,
+u8 enc_positions[] = {0b11100100, 0b10110100, 0b11011000, 0b10011100, 0b01111000, 0b01101100,
                   0b11100001, 0b10110001, 0b11010010, 0b10010011, 0b01110010, 0b01100011,
                   0b11001001, 0b10001101, 0b11000110, 0b10000111, 0b01001110, 0b01001011,
                   0b00111001, 0b00101101, 0b00110110, 0b00100111, 0b00011110, 0b00011011};
@@ -174,7 +174,7 @@ const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc* data_src){
 const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp, u8* buffer){
     if(is_jp)
         return &(gen2_names_jap_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_JP_CAP]);
-    u8* buffer_two[STRING_GEN2_INT_SIZE];
+    u8 buffer_two[STRING_GEN2_INT_SIZE];
     u16 mon_index = get_mon_index_gen2(index, is_egg);
     if (mon_index == MR_MIME_SPECIES)
         mon_index = MR_MIME_OLD_NAME_POS;
@@ -537,8 +537,10 @@ u8 has_mail(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) {
 }
 
 u8 has_mail_raw(struct gen3_mon_data_unenc* data_src) {
-    if(!data_src->is_valid_gen3)
+    if(!data_src->is_valid_gen3){
+        data_src->src->mail_id = GEN3_NO_MAIL;
         return 0;
+    }
 
     return has_mail(data_src->src, &data_src->growth, data_src->is_egg);
 }
@@ -550,8 +552,10 @@ u8 get_mail_id(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg) 
 }
 
 u8 get_mail_id_raw(struct gen3_mon_data_unenc* data_src) {
-    if(!data_src->is_valid_gen3)
+    if(!data_src->is_valid_gen3) {
+        data_src->src->mail_id = GEN3_NO_MAIL;
         return GEN3_NO_MAIL;
+    }
 
     return get_mail_id(data_src->src, &data_src->growth, data_src->is_egg);
 }
@@ -716,7 +720,7 @@ u32 get_proper_exp_raw(struct gen3_mon_data_unenc* data_src) {
     return get_proper_exp(data_src->src, &data_src->growth, data_src->deoxys_form);
 }
 
-u8 make_evs_legal_gen3(struct gen3_mon_evs* evs) {
+void make_evs_legal_gen3(struct gen3_mon_evs* evs) {
     u8 sum = 0;
 
     // Are they within the cap?
@@ -798,12 +802,14 @@ u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev,
     u8 boosted_stat = pokemon_natures_bin[(2*nature)];
     u8 nerfed_stat = pokemon_natures_bin[(2*nature)+1];
     u16 stat = base + Div(((2*stats_table[mon_index].stats[stat_index]) + iv + (ev >> 2)) * level, 100);
-    if((boosted_stat == nerfed_stat) || ((boosted_stat != stat_index) && (nerfed_stat != stat_index)))
+    if(boosted_stat == nerfed_stat)
         return stat;
     if(boosted_stat == stat_index)
         return stat + Div(stat, 10);
     if(nerfed_stat == stat_index)
         return stat - Div(stat, 10);
+    // Makes the compiler happy
+    return stat;
 }
 
 u16 calc_stats_gen3_raw(struct gen3_mon_data_unenc* data_src, u8 stat_index) {    
@@ -1216,7 +1222,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
     
     if(find_in_table) {
         u16 mon_index = get_mon_index(species, dst->pid, 0, 0);
-        u8* possible_met_data = search_table_for_index(searchable_table, mon_index);
+        const u8* possible_met_data = search_table_for_index(searchable_table, mon_index);
         if(possible_met_data != NULL) {
             u8 num_elems = possible_met_data[0];
             u8 chosen_entry = 0;
@@ -1385,16 +1391,16 @@ void recalc_stats_gen3(struct gen3_mon_data_unenc* data_dst, struct gen3_mon* ds
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mon* dst) {
     u8 index = get_index_key(dst->pid);
     
-    u8 pos_data = 12*((positions[index] >> 0)&3);
+    u8 pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3);
     for(int i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->growth))[i];
-    pos_data = 12*((positions[index] >> 2)&3);
+    pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3);
     for(int i = 0; i < sizeof(struct gen3_mon_attacks); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->attacks))[i];
-    pos_data = 12*((positions[index] >> 4)&3);
+    pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3);
     for(int i = 0; i < sizeof(struct gen3_mon_evs); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->evs))[i];
-    pos_data = 12*((positions[index] >> 6)&3);
+    pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3);
     for(int i = 0; i < sizeof(struct gen3_mon_misc); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->misc))[i];
     
@@ -1416,10 +1422,11 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     u8 index = get_index_key(src->pid);
     
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)&(decryption[3*((positions[index] >> 0)&3)]);
-    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)&(decryption[3*((positions[index] >> 2)&3)]);
-    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)&(decryption[3*((positions[index] >> 4)&3)]);
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)&(decryption[3*((positions[index] >> 6)&3)]);
+    // Make the compiler happy
+    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3)));
+    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3)));
+    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3)));;
+    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3)));;
     
     for(int i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)(&dst->growth))[i] = ((u8*)growth)[i];
@@ -1874,7 +1881,7 @@ void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){
     mon->mail_id = GEN3_NO_MAIL;
 }
 
-u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u16** learnset_ptr, u8 curr_gen) {
+u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, const u16** learnset_ptr, u8 curr_gen) {
     *learnset_ptr = NULL;
     const u16* learnsets = (const u16*)learnset_evos_gen3_bin;
     const u16* trade_evolutions = (const u16*)trade_evolutions_bin;

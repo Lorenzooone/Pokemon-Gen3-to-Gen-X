@@ -321,7 +321,7 @@ IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
     return out_buffer[buffer_counter_out - 1 + base_pos];
 }
 
-IWRAM_CODE int check_if_continue(u8 data, u8* sends, u8* recvs, int size, int new_state, int new_send, u8 filter) {
+IWRAM_CODE int check_if_continue(u8 data, const u8* sends, const u8* recvs, int size, int new_state, int new_send, u8 filter) {
     if((filter) && (data >= 0x10))
         data = data & 0xF0;
     if(data == recvs[buffer_counter]) {
@@ -505,7 +505,6 @@ u32 prepare_out_data_gen3() {
             out_control_byte |= NOT_DONE_GEN3;
         if((own_end_gen3 == -1) && (!is_done_gen3)) {
             out_control_byte = (out_control_byte & 0xF0) | ASKING_DATA;
-            u32 out_positions = 0;
             u16 first_not_recv = get_first_not_received_gen3() & 0xFFF;
             u16 end_not_recv = (get_not_received_length_gen3(first_not_recv) + first_not_recv) & 0xFFF;
             own_end_gen3 = end_not_recv - 1;

@@ -1,7 +1,7 @@
 #include <gba.h>
 #include "bin_table_handler.h"
 
-u8* get_table_pointer(u8* table, u16 entry){
+const u8* get_table_pointer(const u8* table, u16 entry){
     u16* table_16 = (u16*)table;
     u16 initial_offset;
     u32 offset = 0;
@@ -29,7 +29,7 @@ u8* get_table_pointer(u8* table, u16 entry){
     return table + initial_offset + offset;
 }
 
-u8* search_table_for_index(u8* table, u16 index){
+const u8* search_table_for_index(const u8* table, u16 index){
     u16* table_16 = (u16*)table;
     u16 initial_offset;
     u32 offset = 0;

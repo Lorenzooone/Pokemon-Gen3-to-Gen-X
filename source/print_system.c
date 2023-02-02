@@ -4,11 +4,14 @@
 #include "print_system.h"
 #include "text_handler.h"
 #include "graphics_handler.h"
+#include "sprite_handler.h"
 
 #include "text_gen3_to_general_int_bin.h"
 #include "amiga_font_c_bin.h"
 #include "jp_font_c_bin.h"
 #include "window_graphics_bin.h"
+
+#define ALWAYS_INLINE __attribute__((always_inline)) static inline
 
 #define BASE_COLOUR RGB8(58,110,165)
 #define FONT_COLOUR RGB5(31,31,31)
@@ -40,6 +43,7 @@ u8 x_pos;
 u8 y_pos;
 u16* screen;
 u8 screen_num;
+u8 loaded_screen_num;
 
 u8 screens_flush;
 u8 enabled_screen[TOTAL_BG];
@@ -48,6 +52,8 @@ u8 buffer_screen[TOTAL_BG];
 u8 screen_positions[TOTAL_BG][2];
 
 void set_arrangements(u8 bg_num){
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
     BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((u32)get_screen(bg_num))-VRAM)>>3);
 }
 
@@ -77,12 +83,18 @@ void set_screens_positions() {
     }
 }
 
-void flush_screens() {
+ALWAYS_INLINE void base_flush() {
+    process_arrangements();
+    set_screens_positions();
+    enable_screens();
+    loaded_screen_num = screen_num;
+    screens_flush = 0;
+}
+
+IWRAM_CODE void flush_screens() {
     if(screens_flush) {
-        process_arrangements();
-        set_screens_positions();
-        enable_screens();
-        screens_flush = 0;
+        base_flush();
+        update_normal_oam();
     }
 }
 
@@ -125,11 +137,10 @@ void init_text_system() {
     u32 buffer[FONT_1BPP_SIZE>>2];
     u8 colors[] = {2, 1};
     LZ77UnCompWram(amiga_font_c_bin, buffer);
-    convert_1bpp(buffer, (u32*)FONT_POS, FONT_1BPP_SIZE, colors, 1);
+    convert_1bpp((u8*)buffer, (u32*)FONT_POS, FONT_1BPP_SIZE, colors, 1);
     
     PRINT_FUNCTION("\n  Loading...");
-    prepare_flush();
-    flush_screens();
+    base_flush();
     
     // Set empty tile
     for(int i = 0; i < (TILE_SIZE>>2); i++)
@@ -137,7 +148,7 @@ void init_text_system() {
 
     // Load japanese font
     LZ77UnCompWram(jp_font_c_bin, buffer);
-    convert_1bpp(buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
+    convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
     
     // Set window tiles
     for(int i = 0; i < (window_graphics_bin_size>>2); i++)
@@ -145,9 +156,7 @@ void init_text_system() {
 }
 
 void set_updated_screen() {
-    // Avoid writing where you shouldn't
-    if(screens_flush)
-        VBlankIntrWait();
+    wait_for_vblank_if_needed();
     updated_screen[screen_num] = 1;
 }
 
@@ -155,11 +164,21 @@ void prepare_flush() {
     screens_flush = 1;
 }
 
+void wait_for_vblank_if_needed() {
+    // Avoid writing where you shouldn't
+    if(screens_flush)
+        VBlankIntrWait();
+}
+
 void enable_screen(u8 bg_num){
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
     enabled_screen[bg_num] = 1;
 }
 
 void disable_screen(u8 bg_num){
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
     enabled_screen[bg_num] = 0;
 }
 
@@ -171,6 +190,8 @@ void disable_all_screens_but_current(){
 }
 
 u8 get_bg_priority(u8 bg_num) {
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
     return TOTAL_BG-1-bg_num;
 }
 
@@ -178,7 +199,13 @@ u8 get_curr_priority() {
     return get_bg_priority(screen_num);
 }
 
+u8 get_loaded_priority() {
+    return get_bg_priority(loaded_screen_num);
+}
+
 void set_bg_pos(u8 bg_num, int x, int y){
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
     if(x < 0)
         x = SCREEN_REAL_WIDTH + x;
     if(y < 0)
@@ -192,10 +219,14 @@ u8 get_screen_num(){
 }
 
 u16* get_screen(u8 bg_num){
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
 	return (u16*)(ARRANGEMENT_POS+(SCREEN_SIZE*(bg_num+(TOTAL_BG*buffer_screen[bg_num]))));
 }
 
 void set_screen(u8 bg_num){
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
     screen_num = bg_num;
     screen = get_screen(bg_num);
 }
@@ -254,6 +285,7 @@ int sub_printf(u8* string) {
     while((*string) != '\0')
         if(write_char(*(string++)))
             return 0;
+    return 0;
 }
 
 int sub_printf_gen3(u8* string, u8 size_max, u8 is_jp) {
@@ -275,6 +307,7 @@ int sub_printf_gen3(u8* string, u8 size_max, u8 is_jp) {
         if(curr_pos == size_max)
             return 0;
     }
+    return 0;
 }
 
 int prepare_base_10(int number, u8* digits) {

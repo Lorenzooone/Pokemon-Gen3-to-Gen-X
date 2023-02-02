@@ -30,7 +30,7 @@ void get_game_id(struct game_identity* identifier){
     u8 tmp_buffer[GAME_STRING_SIZE+1];
     text_generic_copy((u8*)GAME_STRING_POS, tmp_buffer, GAME_STRING_SIZE, GAME_STRING_SIZE+1);
     for(int i = 0; i < NUMBER_OF_GAMES; i++)
-        if(text_generic_is_same(game_identifier_strings[i], (u8*)GAME_STRING_POS, GAME_STRING_SIZE, GAME_STRING_SIZE)) {
+        if(text_generic_is_same((const u8*)game_identifier_strings[i], (u8*)GAME_STRING_POS, GAME_STRING_SIZE, GAME_STRING_SIZE)) {
             identifier->game_main_version = main_identifiers[i];
             identifier->game_sub_version = sub_identifiers[i];
             if((*(u8*)JAPANESE_ID_POS) == JAPANESE_ID)

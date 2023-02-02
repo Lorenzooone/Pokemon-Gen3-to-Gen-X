@@ -26,7 +26,7 @@ void init_game_data(struct game_data_t*);
 void read_gen_3_data(struct game_data_t*);
 void process_party_data(struct game_data_t* game_data);
 struct game_data_t* get_own_game_data();
-u8 trade_mons(struct game_data_t*, u8, u8, u16**, u8);
+u8 trade_mons(struct game_data_t*, u8, u8, const u16**, u8);
 u8 is_invalid_offer(struct game_data_t*, u8, u8);
 
 #endif
