@@ -290,10 +290,13 @@ int prepare_base_10(int number, u8* digits) {
             digits[pos--] = ((numbers_storage[mod]>>(i*4)) & 0xF) + '0';
     }
     u8 found = 0;
+    u8 found_pos = 0;
     for(int i = 0; i < 4; i++) {
         u8 digit = ((numbers_storage[number]>>((3-i)*4)) & 0xF);
         if(digit || found) {
-            digits[pos+i-3] = digit + '0';
+            digits[pos-(3-i)] = digit + '0';
+            if(!found)
+                found_pos = (3-i);
             found = 1;
         }
     }
@@ -301,13 +304,16 @@ int prepare_base_10(int number, u8* digits) {
     if(!found)
         digits[pos] = '0';
     
+    pos -= found_pos;
+    
     if(minus) {
-        digits[0] = '-';
+        pos -= 1;
+        digits[pos] = '-';
         if(special)
             digits[NUM_DIGITS-1] += 1;
     }
     
-    return 0;
+    return pos;
 }
 
 int prepare_base_16(int number, u8* digits) {
@@ -331,37 +337,33 @@ int prepare_base_16(int number, u8* digits) {
         digit += 'A' - 0xA;
     else
         digit += '0';
-    digits[pos--] = digit;
-    number >>= 4;
+    digits[pos] = digit;
 
-    return 0;
+    return pos;
 }
 
-int digits_print(u8* digits, int max, u8 sub) {
-    for(int i = 0; i < NUM_DIGITS; i++)
-        if(digits[i]) {
-            if(write_char(digits[i]))
-                return 0;
-        }
-        else if(i >= NUM_DIGITS-max) {
-            if(write_char(sub))
-                return 0;
-        }
+int digits_print(u8* digits, int max, u8 sub, u8 start_pos) {
+    for(int i = NUM_DIGITS-max; i < start_pos; i++)
+        if(write_char(sub))
+            return 0;
+    for(int i = start_pos; i < NUM_DIGITS; i++)
+        if(write_char(digits[i]))
+            return 0;
     return 0;
 }
 
 int write_base_10(int number, int max, u8 sub) {
     u8 digits[NUM_DIGITS];
-    prepare_base_10(number, digits);
+    u8 start_pos = prepare_base_10(number, digits);
     
-    return digits_print(digits, max, sub);
+    return digits_print(digits, max, sub, start_pos);
 }
 
 int write_base_16(int number, int max, u8 sub) {
     u8 digits[NUM_DIGITS];
-    prepare_base_16(number, digits);
+    u8 start_pos = prepare_base_16(number, digits);
     
-    return digits_print(digits, max, sub);
+    return digits_print(digits, max, sub, start_pos);
 }
 
 int fast_printf(const char * format, ... ) {
