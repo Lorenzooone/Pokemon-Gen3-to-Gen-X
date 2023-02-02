@@ -50,6 +50,7 @@ void clear_offer_options_window() {
 }
 
 void create_window(u8 x, u8 y, u8 x_size, u8 y_size, u8 screen_num) {
+    set_updated_screen();
     u16* screen = get_screen(screen_num);
     
     if(2+x+x_size > X_SIZE)
@@ -91,6 +92,7 @@ void create_window(u8 x, u8 y, u8 x_size, u8 y_size, u8 screen_num) {
 }
 
 void reset_window(u8 x, u8 y, u8 x_size, u8 y_size, u8 screen_num){
+    set_updated_screen();
     u16* screen = get_screen(screen_num);
 
     for(int i = 0; i < y_size; i++) {
