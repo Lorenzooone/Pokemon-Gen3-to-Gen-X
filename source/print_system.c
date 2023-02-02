@@ -28,10 +28,6 @@
 #define FONT_POS VRAM_START
 #define JP_FONT_POS (FONT_POS + FONT_SIZE)
 #define NUMBERS_POS (VRAM_END - (10000*2))
-#define SCREEN_REAL_WIDTH 0x100
-#define SCREEN_REAL_HEIGHT 0x100
-#define X_SIZE (SCREEN_REAL_WIDTH>>3)
-#define Y_SIZE (SCREEN_REAL_HEIGHT>>3)
 #define X_OFFSET_POS 0
 #define Y_OFFSET_POS 1
 
@@ -244,6 +240,13 @@ u8 write_char(u16 character) {
     return 0;
 }
 
+void write_above_char(u16 character) {
+    u8 y_pos_altered = y_pos-1;
+    if(!y_pos)
+        y_pos_altered = Y_SIZE-1;
+    screen[x_pos+(y_pos_altered*X_SIZE)] = character | (PALETTE << 12);
+}
+
 int sub_printf(u8* string) {
     while((*string) != '\0')
         if(write_char(*(string++)))
@@ -254,7 +257,13 @@ int sub_printf_gen3(u8* string, u8 size_max, u8 is_jp) {
     u8 curr_pos = 0;
     while((*string) != GEN3_EOL) {
         if(is_jp) {
-            if(write_char((*(string++))+FONT_TILES))
+            // TODO: Fix the above characters' positions, then remove the swaps
+            u8 character = *(string++);
+            if((character >= GEN3_FIRST_TICKS_START && character <= GEN3_FIRST_TICKS_END) || (character >= GEN3_SECOND_TICKS_START && character <= GEN3_SECOND_TICKS_END))
+                write_above_char((GENERIC_TICKS_CHAR+FONT_TILES)|VSWAP_TILE|HSWAP_TILE);
+            else if((character >= GEN3_FIRST_CIRCLE_START && character <= GEN3_FIRST_CIRCLE_END) || (character >= GEN3_SECOND_CIRCLE_START && character <= GEN3_SECOND_CIRCLE_END))
+                write_above_char((GENERIC_CIRCLE_CHAR+FONT_TILES)|VSWAP_TILE|HSWAP_TILE);
+            if(write_char(character+FONT_TILES))
                 return 0;
         }
         else if(write_char(text_gen3_to_general_int_bin[*(string++)]))

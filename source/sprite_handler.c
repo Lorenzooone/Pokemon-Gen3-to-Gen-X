@@ -11,6 +11,8 @@
 #define OAM_ADDR 0x7000000
 #define CPUFASTSET_FILL (0x1000000)
 
+#define SPRITE_ALT_TILE_DISTANCE 0x10
+
 #define DISABLE_SPRITE (1<<9)
 #define OFF_SCREEN_SPRITE SCREEN_HEIGHT
 
@@ -208,13 +210,12 @@ void reset_sprites_to_party(){
 }
 
 void move_sprites(u8 counter){
+    u8 counter_kind = counter & 8;
     if(!(counter & 7)) {
         for(int i = inner_cursor_sprite+1; i < __inner_sprite_counter; i++) {
-            u16 obj_attr_2 = *((u16*)(OAM_ADDR + (8*i) + 4));
-            if(obj_attr_2 & 0x10)
-                obj_attr_2 &= ~0x10;
-            else
-                obj_attr_2 |= 0x10;
+            u16 obj_attr_2 = (*((u16*)(OAM_ADDR + (8*i) + 4))) & ~SPRITE_ALT_TILE_DISTANCE;
+            if(counter_kind)
+                obj_attr_2 |= SPRITE_ALT_TILE_DISTANCE;
             *((u16*)(OAM_ADDR + (8*i) + 4)) = obj_attr_2;
         }
     }

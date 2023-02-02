@@ -99,12 +99,21 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
                 // I tried just using printf here with left padding, but it's EXTREMELY slow
                 PRINT_FUNCTION("\x01", get_pokemon_name_raw(mon));
                 if(load_sprites)
-                    load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (((X_TILES >> 1) << 3)*j) + BASE_X_SPRITE_TRADE_MENU);
+                    load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (((X_LIMIT >> 1) << 3)*j) + BASE_X_SPRITE_TRADE_MENU);
             }
         }
     }
+}
+
+void print_trade_menu_cancel(u8 update) {
+    if(!update)
+        return;
+
+    reset_screen(BLANK_FILL);
+
     set_text_y(Y_LIMIT-1);
-    PRINT_FUNCTION("  Cancel");
+    set_text_x(2);
+    PRINT_FUNCTION("Cancel");
 }
 
 void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {

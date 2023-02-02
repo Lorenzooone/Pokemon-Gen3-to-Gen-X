@@ -6,8 +6,10 @@
 #define PRINT_FUNCTION fast_printf
 #define X_LIMIT (SCREEN_WIDTH>>3)
 #define Y_LIMIT (SCREEN_HEIGHT>>3)
-#define X_SIZE 0x20
-#define Y_SIZE 0x20
+#define SCREEN_REAL_WIDTH 0x100
+#define SCREEN_REAL_HEIGHT 0x100
+#define X_SIZE (SCREEN_REAL_WIDTH>>3)
+#define Y_SIZE (SCREEN_REAL_HEIGHT>>3)
 
 #define PALETTE 0xF
 
