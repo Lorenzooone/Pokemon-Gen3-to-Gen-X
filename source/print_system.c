@@ -188,6 +188,10 @@ void set_bg_pos(u8 bg_num, int x, int y){
     screen_positions[bg_num][Y_OFFSET_POS] = y;
 }
 
+u8 get_screen_num(){
+	return screen_num;
+}
+
 u16* get_screen(u8 bg_num){
 	return (u16*)(ARRANGEMENT_POS+(SCREEN_SIZE*(bg_num+(TOTAL_BG*buffer_screen[bg_num]))));
 }

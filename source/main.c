@@ -196,6 +196,14 @@ void check_bad_trade_received(struct game_data_t* game_data, u8 target, u8 regio
     }
 }
 
+void trade_cancel_print_screen(u8 update) {
+    u8 prev_screen = get_screen_num();
+    set_screen(TRADE_CANCEL_SCREEN);
+    print_trade_menu_cancel(update);
+    enable_screen(TRADE_CANCEL_SCREEN);
+    set_screen(prev_screen);
+}
+
 void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos) {
     curr_state = TRADE_OPTIONS;
     set_screen(TRADE_OPTIONS_WINDOW_SCREEN);
@@ -214,10 +222,7 @@ void trade_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mas
     *cursor_x_pos = 0;
     prepare_options_trade(game_data, curr_gen, own_menu);
     print_trade_menu(game_data, 1, curr_gen, 1, own_menu);
-    set_screen(TRADE_CANCEL_SCREEN);
-    print_trade_menu_cancel(1);
-    enable_screen(TRADE_CANCEL_SCREEN);
-    set_screen(BASE_SCREEN);
+    trade_cancel_print_screen(1);
     set_party_sprite_counter();
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
     check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
@@ -279,10 +284,7 @@ void return_to_trade_menu(struct game_data_t* game_data, u8 target, u8 region, u
     disable_all_screens_but_current();
     disable_all_cursors();
     enable_all_valid_sprites();
-    set_screen(TRADE_CANCEL_SCREEN);
-    print_trade_menu_cancel(1);
-    enable_screen(TRADE_CANCEL_SCREEN);
-    set_screen(BASE_SCREEN);
+    trade_cancel_print_screen(1);
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
     check_bad_trade_received(game_data, target, region, master, curr_gen, own_menu, cursor_y_pos);
     prepare_flush();
@@ -425,10 +427,7 @@ int main(void)
             case TRADING_MENU:
                 returned_val = handle_input_trading_menu(&cursor_y_pos, &cursor_x_pos, keys, curr_gen, own_menu);
                 print_trade_menu(game_data, update, curr_gen, 0, own_menu);
-                set_screen(TRADE_CANCEL_SCREEN);
-                print_trade_menu_cancel(update);
-                enable_screen(TRADE_CANCEL_SCREEN);
-                set_screen(BASE_SCREEN);
+                trade_cancel_print_screen(update);
                 cursor_update_trading_menu(cursor_y_pos, cursor_x_pos);
                 curr_mon = returned_val -1;
                 
