@@ -10,9 +10,7 @@
 void convert_3bpp_forward_odd(u8*, u32*, u16);
 void convert_3bpp_forward_even(u8*, u32*, u16);
 
-IWRAM_CODE __attribute__ ((optimize(3))) u8 load_pokemon_sprite_gfx(u32 src, u32 dst, u8 info, u8 index, u8* colors){
-    u8 is_3bpp = info&2;
-    u8 zero_fill = info&1;
+IWRAM_CODE __attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(u32 src, u32 dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
     u32 zero = 0;
     
     u32 buffer[2][MAX_SIZE_POKEMON_SPRITE>>2];
@@ -34,12 +32,10 @@ IWRAM_CODE __attribute__ ((optimize(3))) u8 load_pokemon_sprite_gfx(u32 src, u32
             CpuFastSet(buffer[1], dst, (MAX_SIZE_POKEMON_SPRITE>>2));
         }
         else {
-            if(index&1){
+            if(index&1)
                 convert_3bpp_forward_odd(buffer[0]+1, dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
-            }
-            else {
+            else
                 convert_3bpp_forward_even(buffer[0]+1, dst, (MAX_SIZE_POKEMON_SPRITE>>2)*3);
-            }
         }
     }
     else {
@@ -52,8 +48,6 @@ IWRAM_CODE __attribute__ ((optimize(3))) u8 load_pokemon_sprite_gfx(u32 src, u32
         else
             CpuFastSet(buffer[0], dst, MAX_SIZE_POKEMON_SPRITE>>2);
     }
-
-    return is_3bpp;
 }
 
 void convert_xbpp(u8* src, u32* dst, u16 src_size, u8* colors, u8 is_forward, u8 num_bpp) {

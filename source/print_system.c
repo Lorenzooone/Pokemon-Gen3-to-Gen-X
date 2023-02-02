@@ -15,19 +15,18 @@
 #define WINDOW_COLOUR_1 RGB5(15,15,15)
 #define WINDOW_COLOUR_2 RGB5(28,28,28)
 
-#define VRAM_START 0x6000000
-#define VRAM_END (VRAM_START+0x10000)
+#define VRAM_SIZE 0x10000
+#define VRAM_END (VRAM+VRAM_SIZE)
 #define PALETTE 0xF
 #define PALETTE_SIZE 0x10
 #define PALETTE_BASE 0x5000000
-#define ARRANGEMENT_POS 0x6004000
-#define TILE_SIZE 0x20
 #define FONT_TILES 0x100
 #define FONT_SIZE (FONT_TILES*TILE_SIZE)
 #define FONT_1BPP_SIZE (FONT_SIZE>>2)
-#define FONT_POS VRAM_START
+#define FONT_POS (VRAM + 0)
 #define JP_FONT_POS (FONT_POS + FONT_SIZE)
 #define NUMBERS_POS (VRAM_END - (10000*2))
+#define ARRANGEMENT_POS (JP_FONT_POS+FONT_SIZE)
 #define X_OFFSET_POS 0
 #define Y_OFFSET_POS 1
 
@@ -49,7 +48,7 @@ u8 buffer_screen[TOTAL_BG];
 u8 screen_positions[TOTAL_BG][2];
 
 void set_arrangements(u8 bg_num){
-    BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((u32)get_screen(bg_num))-VRAM_START)>>3);
+    BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((u32)get_screen(bg_num))-VRAM)>>3);
 }
 
 void process_arrangements() {

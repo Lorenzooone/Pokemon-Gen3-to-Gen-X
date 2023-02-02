@@ -18,6 +18,8 @@
 
 #define TOTAL_BG 4
 
+#define TILE_SIZE 0x20
+
 #define REGULAR_FILL 0
 #define BLANK_FILL 1
 
