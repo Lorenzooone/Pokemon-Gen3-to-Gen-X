@@ -20,7 +20,10 @@
 #define SPRITE_SIZE (2*SPRITE_ALT_DISTANCE)
 #define OVRAM_START (VRAM+0x10000)
 #define OVRAM_SIZE 0x8000
+#define OVRAM_END (OVRAM_START+OVRAM_SIZE)
 #define POSSIBLE_SPRITES (OVRAM_SIZE/SPRITE_SIZE)
+
+#define OAM_ENTITIES 0x80
 
 #define DISABLE_SPRITE (1<<9)
 #define OFF_SCREEN_SPRITE SCREEN_HEIGHT
@@ -73,7 +76,10 @@ u8 get_first_variable_palette(){
 }
 
 u32 get_vram_pos(){
-    return OVRAM_START+(__sprite_counter*SPRITE_SIZE);
+    u32 vram_pos = OVRAM_START+(__sprite_counter*SPRITE_SIZE);
+    if(vram_pos >= OVRAM_END)
+        vram_pos = OVRAM_END - SPRITE_SIZE;
+    return vram_pos;
 }
 
 u8 get_3bpp_palette(int index) {
@@ -147,7 +153,10 @@ void set_mail_icon(u16 y, u16 x){
 }
 
 u8 check_for_same_address(u8* address){
-    for(int i = 0; i < __sprite_counter; i++)
+    u8 limit = __sprite_counter;
+    if(__sprite_counter > POSSIBLE_SPRITES)
+        limit = POSSIBLE_SPRITES;
+    for(int i = 0; i < limit; i++)
         if(sprite_pointers[i] == address)
             return i;
     return POSSIBLE_SPRITES;
@@ -171,7 +180,8 @@ void set_pokemon_sprite(u32 address, u8 palette, u8 info, u8 display_item, u8 di
     }
     if(is_3bpp)
         palette = get_3bpp_palette(position-(cursor_sprite+1));
-    sprite_pointers[position] = (u8*)address;
+    if(position < POSSIBLE_SPRITES)
+        sprite_pointers[position] = (u8*)address;
     set_attributes(y, x |(1<<15), (32*position)|(get_curr_priority()<<10)|(palette<<12));
     inc_inner_sprite_counter();
 }
@@ -199,9 +209,12 @@ void disable_all_cursors(){
 }
 
 void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
-    *((u16*)(OAM_ADDR + (8*__inner_sprite_counter) + 0)) = obj_attr_0;
-    *((u16*)(OAM_ADDR + (8*__inner_sprite_counter) + 2)) = obj_attr_1;
-    *((u16*)(OAM_ADDR + (8*__inner_sprite_counter) + 4)) = obj_attr_2;
+    u8 position = __inner_sprite_counter;
+    if(__inner_sprite_counter >= OAM_ENTITIES)
+        position = OAM_ENTITIES-1;
+    *((u16*)(OAM_ADDR + (8*position) + 0)) = obj_attr_0;
+    *((u16*)(OAM_ADDR + (8*position) + 2)) = obj_attr_1;
+    *((u16*)(OAM_ADDR + (8*position) + 4)) = obj_attr_2;
 }
 
 void reset_sprites_to_cursor(){
@@ -211,7 +224,7 @@ void reset_sprites_to_cursor(){
 }
 
 void reset_sprites(u8 start){
-    for(int i = start; i < 0x80; i++) {
+    for(int i = start; i < OAM_ENTITIES; i++) {
         *((u16*)(OAM_ADDR + (8*i) + 0)) = OFF_SCREEN_SPRITE | DISABLE_SPRITE;
         *((u16*)(OAM_ADDR + (8*i) + 2)) = 0;
         *((u16*)(OAM_ADDR + (8*i) + 4)) = 0;
@@ -219,12 +232,12 @@ void reset_sprites(u8 start){
 }
 
 void disable_all_sprites(){
-    for(int i = 0; i < 0x80; i++)
+    for(int i = 0; i < OAM_ENTITIES; i++)
         *((u16*)(OAM_ADDR + (8*i) + 0)) |= DISABLE_SPRITE;
 }
 
 void enable_all_valid_sprites(){
-    for(int i = 0; i < 0x80; i++) {
+    for(int i = 0; i < OAM_ENTITIES; i++) {
         u16 attr_0 = *((u16*)(OAM_ADDR + (8*i) + 0));
         if(((attr_0 & 0xFF) < OFF_SCREEN_SPRITE))
             *((u16*)(OAM_ADDR + (8*i) + 0)) &= ~DISABLE_SPRITE;
@@ -239,8 +252,11 @@ void reset_sprites_to_party(){
 
 void move_sprites(u8 counter){
     u8 counter_kind = counter & 8;
+    u8 limit = __inner_sprite_counter;
+    if(__inner_sprite_counter > OAM_ENTITIES)
+        limit = OAM_ENTITIES;
     if(!(counter & 7)) {
-        for(int i = inner_cursor_sprite+1; i < __inner_sprite_counter; i++) {
+        for(int i = inner_cursor_sprite+1; i < limit; i++) {
             u16 obj_attr_2 = (*((u16*)(OAM_ADDR + (8*i) + 4))) & ~SPRITE_BASE_TILE_SIZE;
             if(counter_kind)
                 obj_attr_2 |= SPRITE_BASE_TILE_SIZE;
