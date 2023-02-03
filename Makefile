@@ -4,7 +4,7 @@
 .SUFFIXES:
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(DEVKITARM)),)
-$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM)
+$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
 include $(DEVKITARM)/gba_rules
@@ -29,7 +29,10 @@ INCLUDES	:=  include
 #---------------------------------------------------------------------------------
 ARCH	:=	-mthumb -mthumb-interwork
 
-CFLAGS	:=	-g -Wall -save-temps -Os -s\
+CFLAGS	:=	-g -Wall -Wstrict-overflow=5 -Wextra\
+		-Wpointer-arith -Wpedantic -Wcast-qual -Wswitch-default\
+		-Wstrict-prototypes -Wmissing-prototypes\
+		-Wshadow -Wwrite-strings -save-temps -Os -s\
 		-mcpu=arm7tdmi -mtune=arm7tdmi\
  		-fomit-frame-pointer\
 		-ffast-math \

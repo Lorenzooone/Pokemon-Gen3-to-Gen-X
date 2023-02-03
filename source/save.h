@@ -12,6 +12,6 @@ int is_flash_correct(u8* data, int size, int has_banks);
 u32 read_int_save(u32);
 u16 read_short_save(u32);
 void copy_save_to_ram(u32, u8*, int);
-void init_bank();
+void init_bank(void);
 
 #endif

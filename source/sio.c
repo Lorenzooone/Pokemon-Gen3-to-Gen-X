@@ -1,6 +1,7 @@
 #include <gba.h>
 #include "sio.h"
 #include "vcount_basic.h"
+#include "useful_qualifiers.h"
 
 #define BLANK_LINES_WAIT 13
 
@@ -50,7 +51,7 @@ void sio_normal_inner_slave() {
     REG_SIOCNT |= SIO_SO_HIGH;
 }
 
-IWRAM_CODE __attribute__((optimize(3))) void sio_handle_irq_slave(int next_data) {
+IWRAM_CODE MAX_OPTIMIZE void sio_handle_irq_slave(int next_data) {
     REG_SIOCNT |= SIO_SO_HIGH;
 	
 	REG_SIODATA32 = next_data;
@@ -65,7 +66,7 @@ IWRAM_CODE __attribute__((optimize(3))) void sio_handle_irq_slave(int next_data)
     REG_SIOCNT &= ~SIO_SO_HIGH;
 }
 
-IWRAM_CODE __attribute__((optimize(3))) int sio_read(u8 is_32) {
+IWRAM_CODE MAX_OPTIMIZE int sio_read(u8 is_32) {
     u32 data = REG_SIODATA8;
     if(is_32)
         data = REG_SIODATA32;
@@ -94,7 +95,7 @@ void sio_normal_prepare_irq_slave(int data) {
     REG_SIOCNT &= ~SIO_SO_HIGH;
 }
 
-IWRAM_CODE __attribute__((optimize(3))) u32 sio_send_if_ready_master(u32 data, u8 is_32, u8* success) {
+IWRAM_CODE MAX_OPTIMIZE u32 sio_send_if_ready_master(u32 data, u8 is_32, u8* success) {
     // - Wait for SI to become LOW (slave ready). (Check timeout here!)
     REG_SIODATA32 = data;
     REG_SIODATA8 = (data & 0xFF);
@@ -110,7 +111,7 @@ IWRAM_CODE __attribute__((optimize(3))) u32 sio_send_if_ready_master(u32 data, u
     return sio_read(is_32);
 }
 
-IWRAM_CODE __attribute__((optimize(3))) u32 sio_send_master(u32 data, u8 is_32) {
+IWRAM_CODE MAX_OPTIMIZE u32 sio_send_master(u32 data, u8 is_32) {
     // - Wait for SI to become LOW (slave ready). (Check timeout here!)
     REG_SIODATA32 = data;
     REG_SIODATA8 = (data & 0xFF);

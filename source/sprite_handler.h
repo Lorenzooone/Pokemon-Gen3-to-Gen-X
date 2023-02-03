@@ -32,30 +32,24 @@
 #define BASE_X_CURSOR_INCREMENT_OFFER_OPTIONS 64
 #define BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS 16
 
-void init_sprite_counter();
-u8 get_sprite_counter();
-void inc_sprite_counter();
-u32 get_vram_pos();
-void init_oam_palette();
-void set_attributes(u16, u16, u16);
-
-void init_sprites();
-void init_item_icon();
-void set_item_icon(u16, u16);
+void init_sprites(void);
+void init_sprite_counter(void);
+void init_oam_palette(void);
+void init_item_icon(void);
 void set_pokemon_sprite(const u8*, u8, u8, u8, u8, u16, u16);
-void set_party_sprite_counter();
-void init_cursor();
+void set_party_sprite_counter(void);
+void init_cursor(void);
 void update_cursor_y(u16);
 void update_cursor_base_x(u16);
 void move_sprites(u8 counter);
 void move_cursor_x(u8 counter);
-void disable_cursor();
-void disable_all_cursors();
+void disable_cursor(void);
+void disable_all_cursors(void);
 void reset_sprites(u8);
-void disable_all_sprites();
-void enable_all_sprites();
-void update_normal_oam();
-void reset_sprites_to_cursor();
-void reset_sprites_to_party();
+void disable_all_sprites(void);
+void enable_all_sprites(void);
+void update_normal_oam(void);
+void reset_sprites_to_cursor(void);
+void reset_sprites_to_party(void);
 
 #endif

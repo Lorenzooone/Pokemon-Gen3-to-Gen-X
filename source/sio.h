@@ -14,7 +14,7 @@ int sio_normal(int, int, int, u8*);
 void sio_normal_prepare_irq_slave(int);
 int timed_sio_normal_master(int, int, int);
 void sio_handle_irq_slave(int);
-void sio_stop_irq_slave();
+void sio_stop_irq_slave(void);
 int sio_read(u8);
 u32 sio_send_if_ready_master(u32, u8, u8*);
 u32 sio_send_master(u32 data, u8 is_32);

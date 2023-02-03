@@ -3,19 +3,24 @@
 
 #include "optimized_swi.h"
 #include "party_handler.h"
+#include "useful_qualifiers.h"
 
-static __attribute__((optimize(3), always_inline)) inline u8 get_nature_fast(u32 pid){
+static u8 get_nature_fast(u32);
+static u8 get_unown_letter_gen3_fast(u32);
+static u8 get_unown_letter_gen2_fast(u16);
+
+ALWAYS_INLINE MAX_OPTIMIZE u8 get_nature_fast(u32 pid){
     // Make use of modulo properties to get this to positives
     while(pid >= 0x80000000)
         pid -= 0x7FFFFFE9;
     return SWI_DivMod(pid, NUM_NATURES);
 }
 
-static __attribute__((optimize(3), always_inline)) inline u8 get_unown_letter_gen3_fast(u32 pid){
+ALWAYS_INLINE MAX_OPTIMIZE u8 get_unown_letter_gen3_fast(u32 pid){
     return SWI_DivMod((pid & 3) + (((pid >> 8) & 3) << 2) + (((pid >> 16) & 3) << 4) + (((pid >> 24) & 3) << 6), NUM_UNOWN_LETTERS_GEN3);
 }
 
-static __attribute__((optimize(3), always_inline)) inline u8 get_unown_letter_gen2_fast(u16 ivs){
+ALWAYS_INLINE MAX_OPTIMIZE u8 get_unown_letter_gen2_fast(u16 ivs){
     u8 atk_ivs = ((ivs>>4) & 0xF);
     u8 def_ivs = ((ivs) & 0xF);
     u8 spe_ivs = ((ivs>>12) & 0xF);

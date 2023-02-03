@@ -38,22 +38,23 @@
 enum START_TRADE_STATE {START_TRADE_UNK, START_TRADE_ENT, START_TRADE_STA, START_TRADE_END, START_TRADE_WAI, START_TRADE_PAR, START_TRADE_SYN, START_TRADE_DON, START_TRADE_NO_UPDATE};
 enum TRADING_STATE {NO_INFO, HAVE_OFFER, RECEIVED_OFFER, HAVE_ACCEPT, RECEIVED_ACCEPT, DURING_TRADE, COMPLETED_TRADE};
 
-void try_to_end_trade();
+void try_to_end_trade(void);
 void try_to_offer(u8);
-void try_to_accept_offer();
-void try_to_decline_offer();
-int get_received_trade_offer();
-int has_accepted_offer();
+void try_to_accept_offer(void);
+void try_to_decline_offer(void);
+int get_received_trade_offer(void);
+int has_accepted_offer(void);
 void start_transfer(u8, u8);
-void set_next_vcount_interrupt();
+void set_next_vcount_interrupt(void);
 void stop_transfer(u8);
-int increment_last_tranfer();
-void init_start_state();
-enum TRADING_STATE get_trading_state();
-enum START_TRADE_STATE get_start_state();
-enum START_TRADE_STATE get_start_state_raw();
+int increment_last_tranfer(void);
+void init_start_state(void);
+enum TRADING_STATE get_trading_state(void);
+enum START_TRADE_STATE get_start_state(void);
+enum START_TRADE_STATE get_start_state_raw(void);
 u16 get_transferred(u8);
 void slave_routine(void);
 void master_routine_gen12(void);
+void master_routine_gen3(void);
 
 #endif

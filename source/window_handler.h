@@ -1,8 +1,6 @@
 #ifndef WINDOW_HANDLER__
 #define WINDOW_HANDLER__
 
-#include "gba.h"
-
 #define TOTAL_Y_SIZE (SCREEN_HEIGHT>>3)
 #define TOTAL_X_SIZE (SCREEN_WIDTH>>3)
 
@@ -36,19 +34,19 @@
 #define OFFER_OPTIONS_WINDOW_X_SIZE (TOTAL_X_SIZE - OFFER_OPTIONS_WINDOW_X - 1)
 #define OFFER_OPTIONS_WINDOW_Y_SIZE (TOTAL_Y_SIZE - OFFER_OPTIONS_WINDOW_Y - 1)
 
-void init_trade_options_window();
-void clear_trade_options_window();
+void init_trade_options_window(void);
+void clear_trade_options_window(void);
 
-void init_offer_window();
-void clear_offer_window();
+void init_offer_window(void);
+void clear_offer_window(void);
 
-void init_message_window();
-void clear_message_window();
+void init_message_window(void);
+void clear_message_window(void);
 
-void init_offer_options_window();
-void clear_offer_options_window();
+void init_offer_options_window(void);
+void clear_offer_options_window(void);
 
-void init_waiting_window();
-void clear_waiting_window();
+void init_waiting_window(void);
+void clear_waiting_window(void);
 
 #endif

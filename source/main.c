@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <string.h>
 #include <gba.h>
 
 #include "multiboot_handler.h"
@@ -35,8 +33,28 @@
 #define TRADE_CANCEL_SCREEN 1
 #define INFO_SCREEN 3
 
+void vblank_update_function(void);
+void find_optimal_ewram_settings(void);
+u8 init_cursor_y_pos_main_menu(void);
+void cursor_update_trading_menu(u8, u8);
+void cursor_update_main_menu(u8);
+void cursor_update_trade_options(u8);
+void cursor_update_offer_options(u8, u8);
+void offer_init(struct game_data_t*, u8, u8, u8*, u8*);
+void waiting_init(void);
+void invalid_init(u8);
+void waiting_offer_init(u8, u8);
+void waiting_accept_init(u8);
+void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
+void trade_cancel_print_screen(u8);
+void trade_options_init(u8, u8*);
+void trade_menu_init(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
+void start_trade_init(struct game_data_t*, u8, u8, u8, u8, u8*);
 void main_menu_init(struct game_data_t*, u8, u8, u8, u8*);
+void info_menu_init(struct game_data_t*, u8, u8, u8*);
 void conclude_trade(struct game_data_t*, u8, u8, u8, u8*);
+void return_to_trade_menu(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
+int main(void);
 
 enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION};
 enum STATE curr_state;
@@ -76,8 +94,8 @@ IWRAM_CODE void vblank_update_function() {
 }
 
 IWRAM_CODE void find_optimal_ewram_settings() {
-    int size = ewram_speed_check_bin_size>>2;
-    u32* ewram_speed_check = (u32*) ewram_speed_check_bin;
+    u32 size = ewram_speed_check_bin_size>>2;
+    const u32* ewram_speed_check = (const u32*) ewram_speed_check_bin;
     u32 test_data[size];
     
     // Check for unsupported (DS)
@@ -89,7 +107,7 @@ IWRAM_CODE void find_optimal_ewram_settings() {
         return;
     
     // Prepare data to test against
-    for(int i = 0; i < size; i++)
+    for(u32 i = 0; i < size; i++)
         test_data[i] = ewram_speed_check[i];
     
     // Detetmine minimum number of stable waitcycles
@@ -97,8 +115,8 @@ IWRAM_CODE void find_optimal_ewram_settings() {
         REG_MEMORY_CONTROLLER &= ~(0xF<<24);
         REG_MEMORY_CONTROLLER |= (15-i-MIN_WAITCYCLE)<<24;
         u8 failed = 0;
-        for(int j = 0; (!failed) && (j < size); j++)
-            if(test_data[i] != ewram_speed_check[i])
+        for(u32 j = 0; (!failed) && (j < size); j++)
+            if(test_data[j] != ewram_speed_check[j])
                 failed = 1;
         if(!failed)
             return;
@@ -296,9 +314,9 @@ int main(void)
     input_counter = 0;
     find_optimal_ewram_settings();
     init_text_system();
+    init_enc_positions();
     init_rng(0,0);
     u16 keys;
-    enum MULTIBOOT_RESULTS result;
     struct game_data_t game_data[2];
     
     init_game_data(&game_data[0]);
@@ -325,6 +343,7 @@ int main(void)
     init_cursor();
     
     const u16** learnset_ptr = NULL;
+    int result = 0;
     u8 evolved = 0;
     u8 returned_val;
     u8 update = 0;
@@ -368,7 +387,7 @@ int main(void)
             if(curr_state == WAITING_DATA) {
                 if(get_trading_state() == RECEIVED_OFFER) {
                     keys = 0;
-                    int result = get_received_trade_offer();
+                    result = get_received_trade_offer();
                     if(result == TRADE_CANCELLED)
                         conclude_trade(&game_data[0], target, region, master, &cursor_y_pos);
                     else if(result == WANTS_TO_CANCEL)
@@ -411,8 +430,7 @@ int main(void)
                     sio_stop_irq_slave();
                     irqDisable(IRQ_SERIAL);
                     disable_cursor();
-                    result = multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + 0x3FF40));
-                    print_multiboot(result);
+                    print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + 0x3FF40)));
                 }
                 else if(returned_val > VIEW_OWN_PARTY && returned_val <= VIEW_OWN_PARTY + TOTAL_GENS) {
                     curr_gen = returned_val - VIEW_OWN_PARTY;

@@ -1,7 +1,13 @@
 #ifndef OPTIMIZED_SWI__
 #define OPTIMIZED_SWI__
 
-static __attribute__((optimize(3), always_inline)) inline s32 SWI_DivMod(const uint32_t dividend, const uint32_t divisor)
+#include "useful_qualifiers.h"
+
+static s32 SWI_DivMod(const uint32_t, const uint32_t);
+static s32 SWI_Div(const uint32_t, const uint32_t);
+static s32 SWI_DivDivMod(const uint32_t, const uint32_t, int* mod);
+
+ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_DivMod(const uint32_t dividend, const uint32_t divisor)
 {
     register uint32_t divid_ asm("r0") = (uint32_t)dividend;
     register uint32_t divis_ asm("r1") = (uint32_t)divisor;
@@ -15,7 +21,7 @@ static __attribute__((optimize(3), always_inline)) inline s32 SWI_DivMod(const u
     return divis_;
 }
 
-static __attribute__((optimize(3), always_inline)) inline s32 SWI_Div(const uint32_t dividend, const uint32_t divisor)
+ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_Div(const uint32_t dividend, const uint32_t divisor)
 {
     register uint32_t divid_ asm("r0") = (uint32_t)dividend;
     register uint32_t divis_ asm("r1") = (uint32_t)divisor;
@@ -29,7 +35,7 @@ static __attribute__((optimize(3), always_inline)) inline s32 SWI_Div(const uint
     return divid_;
 }
 
-static __attribute__((optimize(3), always_inline)) inline s32 SWI_DivDivMod(const uint32_t dividend, const uint32_t divisor, int* mod)
+ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_DivDivMod(const uint32_t dividend, const uint32_t divisor, int* mod)
 {
     register uint32_t divid_ asm("r0") = (uint32_t)dividend;
     register uint32_t divis_ asm("r1") = (uint32_t)divisor;

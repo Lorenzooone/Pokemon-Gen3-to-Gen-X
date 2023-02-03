@@ -1,5 +1,6 @@
 #include <gba.h>
 #include "graphics_handler.h"
+#include "useful_qualifiers.h"
 
 #define MAX_SIZE_POKEMON_SPRITE 0x400
 #define GRAPHICS_BUFFER_SHIFT 10
@@ -10,7 +11,7 @@
 void convert_3bpp_forward_odd(const u8*, u32*, u16);
 void convert_3bpp_forward_even(const u8*, u32*, u16);
 
-IWRAM_CODE __attribute__ ((optimize(3))) void load_pokemon_sprite_gfx(const u32* src, u32* dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
+IWRAM_CODE MAX_OPTIMIZE void load_pokemon_sprite_gfx(const u32* src, u32* dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
     u32 zero = 0;
     
     u32 buffer[2][MAX_SIZE_POKEMON_SPRITE>>2];
@@ -70,7 +71,7 @@ void convert_xbpp(u8* src, u32* dst, u16 src_size, u8* colors, u8 is_forward, u8
     }
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_even(const u8* src, u32* dst, u16 src_size) {
+IWRAM_CODE MAX_OPTIMIZE void convert_3bpp_forward_even(const u8* src, u32* dst, u16 src_size) {
     // This is soooo slow, even with all of this. 50k cycles more than 4bpp
     u16 num_rows = Div(src_size, 3);
     if(DivMod(src_size, 3))
@@ -88,7 +89,7 @@ IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_even(const u8
     }
 }
 
-IWRAM_CODE __attribute__ ((optimize(3))) void convert_3bpp_forward_odd(const u8* src, u32* dst, u16 src_size) {
+IWRAM_CODE MAX_OPTIMIZE void convert_3bpp_forward_odd(const u8* src, u32* dst, u16 src_size) {
     // This is soooo slow, even with all of this. 50k cycles more than 4bpp
     u16 num_rows = Div(src_size, 3);
     if(DivMod(src_size, 3))

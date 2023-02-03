@@ -3,5 +3,6 @@ build/
 *.gba
 *.sav
 *.py
-__pychache__/
+settings.sh
+__pycache__/
 

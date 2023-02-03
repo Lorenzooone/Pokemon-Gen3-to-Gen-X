@@ -16,6 +16,14 @@
 #define SUMMARY_LINE_MAX_SIZE 18
 #define PRINTABLE_INVALID_STRINGS 3
 
+void print_pokemon_base_info(u8, struct gen3_mon_data_unenc*, u8);
+void print_bottom_info(void);
+void print_pokemon_page1(struct gen3_mon_data_unenc*);
+void print_pokemon_page2(struct gen3_mon_data_unenc*);
+void print_pokemon_page3(struct gen3_mon_data_unenc*);
+void print_pokemon_page4(struct gen3_mon_data_unenc*);
+void print_pokemon_page5(struct gen3_mon_data_unenc*);
+
 const char* person_strings[] = {"You", "Other"};
 const char* game_strings[] = {"RS", "FRLG", "E"};
 const char* unidentified_string = "Unidentified";
@@ -32,6 +40,8 @@ const char* offer_strings[] = {" Sending ", "Receiving"};
 const char* invalid_strings[][PRINTABLE_INVALID_STRINGS] = {{"      TRADE REJECTED!", "The Pokémon offered by the", "other player has issues!"}, {"      TRADE REJECTED!", "The trade would leave you", "with no usable Pokémon!"}};
 
 const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
+typedef void (*print_info_functions_t)(struct gen3_mon_data_unenc*);
+print_info_functions_t print_info_functions[PAGES_TOTAL] = {print_pokemon_page1, print_pokemon_page2, print_pokemon_page3, print_pokemon_page4, print_pokemon_page5};
 
 void print_game_info(struct game_data_t* game_data, int index) {
     PRINT_FUNCTION("\n Game: ");
@@ -401,10 +411,6 @@ void print_pokemon_page5(struct gen3_mon_data_unenc* mon) {
         }
     }
 }
-
-typedef void (*print_info_functions_t)(struct gen3_mon_data_unenc*);
-
-print_info_functions_t print_info_functions[PAGES_TOTAL] = {print_pokemon_page1, print_pokemon_page2, print_pokemon_page3, print_pokemon_page4, print_pokemon_page5};
 
 void print_pokemon_pages(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 page_num) {
     if(!update)

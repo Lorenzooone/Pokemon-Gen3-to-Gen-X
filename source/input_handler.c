@@ -2,6 +2,7 @@
 #include "input_handler.h"
 #include "options_handler.h"
 #include "communicator.h"
+#include "useful_qualifiers.h"
 
 u8 handle_input_multiboot_menu(u16 keys) {
     if(keys & KEY_A)
@@ -9,7 +10,7 @@ u8 handle_input_multiboot_menu(u16 keys) {
     return 0;
 }
 
-u8 handle_input_info_menu(struct game_data_t* game_data, u8* cursor_y_pos, u8 cursor_x_pos, u16 keys, u8* curr_mon, u8 curr_gen, u8* curr_page) {
+u8 handle_input_info_menu(struct game_data_t* game_data, u8* cursor_y_pos, u8 cursor_x_pos, u16 keys, u8* curr_mon, u8 UNUSED(curr_gen), u8* curr_page) {
     
     u8* options = get_options_trade(cursor_x_pos);
     u8 num_options = get_options_num_trade(cursor_x_pos);
@@ -87,7 +88,7 @@ u8 handle_input_info_menu(struct game_data_t* game_data, u8* cursor_y_pos, u8 cu
     return 0;
 }
 
-u8 handle_input_trading_menu(u8* cursor_y_pos, u8* cursor_x_pos, u16 keys, u8 curr_gen, u8 is_own) {
+u8 handle_input_trading_menu(u8* cursor_y_pos, u8* cursor_x_pos, u16 keys, u8 UNUSED(curr_gen), u8 is_own) {
     
     u8* options[2];
     u8 num_options[2];
@@ -324,7 +325,7 @@ u8 handle_input_trade_options(u16 keys, u8* cursor_x_pos) {
     return 0;
 }
 
-u8 handle_input_trade_setup(u16 keys, u8 curr_gen) {
+u8 handle_input_trade_setup(u16 keys, u8 UNUSED(curr_gen)) {
 
     if(keys & KEY_B) {
         if((get_start_state_raw() != START_TRADE_PAR) || (get_transferred(0) == 0)) {

@@ -8,6 +8,8 @@
 #define timeout 0x1000
 #define BANK_SIZE 0x10000
 
+void bank_check(u32);
+
 u8 current_bank;
 
 void init_bank(){

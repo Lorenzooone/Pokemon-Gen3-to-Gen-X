@@ -1,6 +1,8 @@
 #ifndef PARTY_HANDLER__
 #define PARTY_HANDLER__
 
+#include "useful_qualifiers.h"
+
 #define TOTAL_GENS 3
 #define FIRST_GEN 1
 
@@ -27,8 +29,12 @@
 #define M_GENDER 0
 #define F_GENDER 1
 #define U_GENDER 2
+#define M_INDEX 1
+#define F_INDEX 6
+#define U_INDEX 7
 #define NIDORAN_M_GENDER_INDEX 8
 #define NIDORAN_F_GENDER_INDEX 9
+#define TOTAL_GENDER_KINDS 10
 
 #define NO_POKERUS 0
 #define HAS_POKERUS 1
@@ -63,6 +69,7 @@
 #define RAIKOU_SPECIES 243
 #define SUICUNE_SPECIES 245
 #define DEOXYS_SPECIES 410
+#define EGG_SPECIES 412
 
 #define DEOXYS_FORMS_POS 442
 #define MR_MIME_OLD_NAME_POS 445
@@ -133,7 +140,7 @@ struct mail_gen3 {
     u16 species;
     u16 item;
     u16 unk;
-} __attribute__ ((packed));
+} PACKED;
 
 struct special_met_data_gen2 {
     u8 location;
@@ -219,7 +226,7 @@ struct gen3_mon {
     u8 mail_id;
     u16 curr_hp;
     u16 stats[GEN2_STATS_TOTAL];
-} __attribute__ ((packed)) __attribute__ ((aligned(4)));
+} PACKED ALIGNED(4);
 
 struct gen2_mon_data {
     u8 species;
@@ -241,7 +248,7 @@ struct gen2_mon_data {
     u8 unused;
     u16 curr_hp;
     u16 stats[GEN2_STATS_TOTAL];
-} __attribute__ ((packed));
+} PACKED;
 
 struct gen2_mon {
     struct gen2_mon_data data;
@@ -267,7 +274,7 @@ struct gen1_mon_data {
     u8 pps[MOVES_SIZE];
     u8 level;
     u16 stats[GEN1_STATS_TOTAL];
-} __attribute__ ((packed));
+} PACKED;
 
 struct gen1_mon {
     struct gen1_mon_data data;
@@ -292,11 +299,22 @@ struct gen1_party {
     struct gen1_mon mons[PARTY_SIZE];
 };
 
+void init_enc_positions(void);
+
 void process_gen3_data(struct gen3_mon*, struct gen3_mon_data_unenc*, u8, u8);
-u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_unenc*, u32);
-u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_unenc*, u32);
-u8 gen2_to_gen3(struct gen2_mon_data*, struct gen3_mon_data_unenc*, u8, u8*, u8*, u8);
-u8 gen1_to_gen3(struct gen1_mon_data*, struct gen3_mon_data_unenc*, u8, u8*, u8*, u8);
+
+u8 get_index_key(u32);
+u8 get_nature(u32);
+u16 get_mon_index(int, u32, u8, u8);
+u8 get_unown_letter_gen3(u32);
+const u8* get_pokemon_name(int, u32, u8, u8);
+u8 has_mail(struct gen3_mon*, struct gen3_mon_growth*, u8);
+s32 get_proper_exp(struct gen3_mon*, struct gen3_mon_growth*, u8);
+u8 to_valid_level(u8);
+u16 get_possible_abilities_pokemon(int, u32, u8, u8);
+u8 get_pokemon_gender_gen3(int, u32, u8, u8);
+u16 calc_stats_gen3(u16, u32, u8, u8, u8, u8, u8);
+void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc*, struct gen3_mon*);
 
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);
 u16 get_mon_index_raw(struct gen3_mon_data_unenc*);
@@ -327,11 +345,10 @@ const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
 const u8* get_ability_name_raw(struct gen3_mon_data_unenc*);
 const u8* get_ribbon_name(struct gen3_mon_misc*, u8);
 const u8* get_ribbon_rank_name(struct gen3_mon_misc*, u8);
-u32 get_proper_exp_raw(struct gen3_mon_data_unenc*);
-u32 get_level_exp_mon_index(u16, u8);
-u8 get_pokemon_gender_gen2(u8, u8, u8, u8);
+s32 get_proper_exp_raw(struct gen3_mon_data_unenc*);
+s32 get_level_exp_mon_index(u16, u8);
 u8 get_pokemon_gender_kind_gen3(int, u32, u8, u8);
-u8 get_pokemon_gender_kind_gen2(u8, u8, u8);
+void recalc_stats_gen3(struct gen3_mon_data_unenc*, struct gen3_mon*);
 void clean_mail_gen3(struct mail_gen3*, struct gen3_mon* mon);
 u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, const u16**, u8);
 

@@ -1,7 +1,12 @@
 #include <gba.h>
 #include "options_handler.h"
 
-u8 options_main[3];
+void set_valid_options_main(struct game_data_t*);
+void fill_options_main_array(struct game_data_t*);
+int prepare_trade_options_num(u8*);
+void fill_trade_options(u8*, struct game_data_t*, u8);
+
+u8 options_main[MAIN_OPTIONS_NUM];
 u8 valid_options_main;
 u8 options_trade[2][PARTY_SIZE];
 u8 num_options_trade[2];
@@ -12,7 +17,7 @@ u8 is_valid_for_gen(struct game_data_t* game_data, u8 gen) {
     if(gen == 2)
         return (game_data->party_2.total > 0);
     u8 found = 0;
-    for(int i = 0; i < game_data->party_3.total; i++)
+    for(u32 i = 0; i < game_data->party_3.total; i++)
         if(game_data->party_3_undec[i].is_valid_gen3) {
             found = 1;
             break;
@@ -72,11 +77,13 @@ u8 get_number_of_higher_ordered_options(u8* options, u8 curr_option, u8 limit) {
 u8 get_number_of_lower_ordered_options(u8* options, u8 curr_option, u8 limit) {
     u8 curr_num = 0;
     u8 lowest_found = curr_option;
-    for(int i = limit-1; i >= 0; i--)
-        if(options[i] < lowest_found) {
-            curr_num++;
-            lowest_found = options[i];
-        }
+    u8 start = limit-1;
+    if(limit) 
+        for(int i = start; i >= 0; i--)
+            if(options[i] < lowest_found) {
+                curr_num++;
+                lowest_found = options[i];
+            }
     return curr_num;
 }
 

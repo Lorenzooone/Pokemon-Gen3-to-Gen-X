@@ -2,7 +2,7 @@
 #include "bin_table_handler.h"
 
 const u8* get_table_pointer(const u8* table, u16 entry){
-    u16* table_16 = (u16*)table;
+    const u16* table_16 = (const u16*)table;
     u16 initial_offset;
     u32 offset = 0;
     u8 offset_table_pos = 2;
@@ -30,7 +30,7 @@ const u8* get_table_pointer(const u8* table, u16 entry){
 }
 
 const u8* search_table_for_index(const u8* table, u16 index){
-    u16* table_16 = (u16*)table;
+    const u16* table_16 = (const u16*)table;
     u16 initial_offset;
     u32 offset = 0;
     u8 offset_table_pos = 2;

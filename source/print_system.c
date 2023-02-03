@@ -5,13 +5,12 @@
 #include "text_handler.h"
 #include "graphics_handler.h"
 #include "sprite_handler.h"
+#include "useful_qualifiers.h"
 
 #include "text_gen3_to_general_int_bin.h"
 #include "amiga_font_c_bin.h"
 #include "jp_font_c_bin.h"
 #include "window_graphics_bin.h"
-
-#define ALWAYS_INLINE __attribute__((always_inline)) static inline
 
 #define BASE_COLOUR RGB8(58,110,165)
 #define FONT_COLOUR RGB5(31,31,31)
@@ -38,6 +37,22 @@
 #define CPUFASTSET_FILL (0x1000000)
 
 #define NUM_DIGITS 12
+
+void set_arrangements(u8);
+void process_arrangements(void);
+void enable_screens(void);
+void set_screens_positions(void);
+static void base_flush(void);
+void new_line(void);
+u8 write_char(u16);
+void write_above_char(u16);
+int sub_printf(u8*);
+int sub_printf_gen3(u8*, u8, u8);
+int prepare_base_10(int, u8*);
+int prepare_base_16(int, u8*);
+int digits_print(u8*, int, u8, u8);
+int write_base_10(int, int, u8);
+int write_base_16(int, int, u8);
 
 u8 x_pos;
 u8 y_pos;
@@ -151,8 +166,8 @@ void init_text_system() {
     convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
     
     // Set window tiles
-    for(int i = 0; i < (window_graphics_bin_size>>2); i++)
-        *((u32*)(FONT_POS+(2*TILE_SIZE)+(i<<2))) = ((u32*)window_graphics_bin)[i];
+    for(u32 i = 0; i < (window_graphics_bin_size>>2); i++)
+        *((u32*)(FONT_POS+(2*TILE_SIZE)+(i<<2))) = ((const u32*)window_graphics_bin)[i];
 }
 
 void set_updated_screen() {

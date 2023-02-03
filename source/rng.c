@@ -1,18 +1,20 @@
 #include <gba.h>
 #include "rng.h"
-
-#define ALWAYS_INLINE __attribute__((always_inline)) static inline
+#include "useful_qualifiers.h"
 
 #define FACTOR_0 0x4C957F2D
 #define FACTOR_1 0x5851F42D
 #define INCREMENT_0 1
 #define INCREMENT_1 0
 
+static void u64_add(u32*, u32*, u32, u32);
+void u64_mul(u32*, u32*, u32, u32);
+
 static u32 curr_seed_0;
 static u32 curr_seed_1;
 static u8 advances_enabled;
 
-ALWAYS_INLINE __attribute__((optimize(3))) void u64_add(u32* src0_0_p, u32* src0_1_p, u32 src1_0, u32 src1_1)
+ALWAYS_INLINE MAX_OPTIMIZE void u64_add(u32* src0_0_p, u32* src0_1_p, u32 src1_0, u32 src1_1)
 {
     u32 src0_0 = *src0_0_p;
     u32 src0_1 = *src0_1_p;
@@ -25,7 +27,7 @@ ALWAYS_INLINE __attribute__((optimize(3))) void u64_add(u32* src0_0_p, u32* src0
     }
 }
 
-IWRAM_CODE __attribute__((target("arm"), noinline)) void u64_mul(u32* src0_0_p, u32* src0_1_p, u32 src1_0, u32 src1_1)
+IWRAM_CODE ARM_TARGET MAX_OPTIMIZE void u64_mul(u32* src0_0_p, u32* src0_1_p, u32 src1_0, u32 src1_1)
 {
     register uint32_t src0_0_ asm("r0") = (uint32_t)(*src0_0_p);
     register uint32_t src0_1_ asm("r1") = (uint32_t)(*src0_1_p);

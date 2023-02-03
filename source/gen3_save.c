@@ -1,6 +1,7 @@
 #include <gba.h>
 #include "save.h"
 #include "gen3_save.h"
+#include "gen_converter.h"
 #include "text_handler.h"
 
 #define MAGIC_NUMBER 0x08012025
@@ -24,6 +25,16 @@
 #define FRLG_PARTY 0x34
 
 #define VALID_MAPS 36
+
+u32 read_section_id(int, int);
+void read_game_data_trainer_info(int, struct game_data_t*);
+void register_dex_entry(struct game_data_t*, struct gen3_mon_data_unenc*);
+void handle_mail_trade(struct game_data_t*, u8, u8);
+void process_party_data(struct game_data_t*);
+void read_party(int, struct game_data_t*);
+u32 read_slot_index(int);
+u8 validate_slot(int);
+u8 get_slot(void);
 
 const u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
 const u16 pokedex_extra_pos_1 [] = {0x938, 0x5F8, 0x988};
@@ -51,7 +62,7 @@ void init_game_data(struct game_data_t* game_data) {
 }
 
 u32 read_section_id(int slot, int section_pos) {
-    if(slot != 0)
+    if(slot)
         slot = 1;
     if(section_pos < 0)
         section_pos = 0;
@@ -62,7 +73,7 @@ u32 read_section_id(int slot, int section_pos) {
 }
 
 void read_game_data_trainer_info(int slot, struct game_data_t* game_data) {
-    if(slot != 0)
+    if(slot)
         slot = 1;
 
     for(int i = 0; i < SECTION_TOTAL; i++)
@@ -97,7 +108,7 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
     mail_id = get_mail_id_raw(&game_data[1].party_3_undec[other_mon]);
     if((mail_id != GEN3_NO_MAIL) && (mail_id < PARTY_SIZE)) {
         u8 is_mail_free[PARTY_SIZE] = {1,1,1,1,1,1};
-        for(int i = 0; i < game_data[0].party_3.total; i++) {
+        for(u32 i = 0; i < game_data[0].party_3.total; i++) {
             u8 inner_mail_id = get_mail_id_raw(&game_data[0].party_3_undec[i]);
             if((inner_mail_id != GEN3_NO_MAIL) && (inner_mail_id < PARTY_SIZE))
                 is_mail_free[inner_mail_id] = 0;
@@ -110,7 +121,7 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
             }
         u8* dst = (u8*)&game_data[0].mails_3[target];
         u8* src = (u8*)&game_data[1].mails_3[mail_id];
-        for(int i = 0; i < sizeof(struct mail_gen3); i++)
+        for(u32 i = 0; i < sizeof(struct mail_gen3); i++)
             dst[i] = src[i];
         game_data[1].party_3_undec[other_mon].src->mail_id = target;
     }
@@ -123,11 +134,11 @@ u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, const u16
 
     u8* dst = (u8*)&game_data[0].party_3.mons[own_mon];
     u8* src = (u8*)&game_data[1].party_3.mons[other_mon];
-    for(int i = 0; i < sizeof(struct gen3_mon); i++)
+    for(u32 i = 0; i < sizeof(struct gen3_mon); i++)
         dst[i] = src[i];
     dst = (u8*)&game_data[0].party_3_undec[own_mon];
     src = (u8*)&game_data[1].party_3_undec[other_mon];
-    for(int i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
+    for(u32 i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
         dst[i] = src[i];
     game_data[0].party_3_undec[own_mon].src = &game_data[0].party_3.mons[own_mon];
     for(int i = 0; i < GIFT_RIBBONS; i++)
@@ -164,14 +175,14 @@ void process_party_data(struct game_data_t* game_data) {
         game_data->party_3.total = PARTY_SIZE;
     u8 curr_slot = 0;
     u8 found = 0;
-    for(int i = 0; i < game_data->party_3.total; i++) {
+    for(u32 i = 0; i < game_data->party_3.total; i++) {
         process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
         if(game_data->party_3_undec[i].is_valid_gen3)
             found = 1;
     }
     if (!found)
         game_data->party_3.total = 0;
-    for(int i = 0; i < game_data->party_3.total; i++)
+    for(u32 i = 0; i < game_data->party_3.total; i++)
         if(gen3_to_gen2(&game_data->party_2.mons[curr_slot], &game_data->party_3_undec[i], game_data->trainer_id)) {
             curr_slot++;
             game_data->party_3_undec[i].is_valid_gen2 = 1;
@@ -180,7 +191,7 @@ void process_party_data(struct game_data_t* game_data) {
             game_data->party_3_undec[i].is_valid_gen2 = 0;
     game_data->party_2.total = curr_slot;
     curr_slot = 0;
-    for(int i = 0; i < game_data->party_3.total; i++)
+    for(u32 i = 0; i < game_data->party_3.total; i++)
         if(gen3_to_gen1(&game_data->party_1.mons[curr_slot], &game_data->party_3_undec[i], game_data->trainer_id)) {
             curr_slot++;
             game_data->party_3_undec[i].is_valid_gen1 = 1;
@@ -191,7 +202,7 @@ void process_party_data(struct game_data_t* game_data) {
 }
 
 void read_party(int slot, struct game_data_t* game_data) {
-    if(slot != 0)
+    if(slot)
         slot = 1;
     
     read_game_data_trainer_info(slot, game_data);
@@ -214,14 +225,14 @@ void read_party(int slot, struct game_data_t* game_data) {
 }
 
 u32 read_slot_index(int slot) {
-    if(slot != 0)
+    if(slot)
         slot = 1;
     
     return read_int_save((slot * SAVE_SLOT_SIZE) + SAVE_SLOT_INDEX_POS);
 }
 
 u8 validate_slot(int slot) {
-    if(slot != 0)
+    if(slot)
         slot = 1;
     
     u16 valid_sections = 0;

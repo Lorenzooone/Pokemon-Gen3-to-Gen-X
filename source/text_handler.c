@@ -1,6 +1,7 @@
 #include <gba.h>
 #include "text_handler.h"
 #include "bin_table_handler.h"
+#include "useful_qualifiers.h"
 
 #include "trainer_names_bin.h"
 #include "text_gen3_to_gen12_int_bin.h"
@@ -18,6 +19,15 @@
 #define GENERIC_Z 0x7A
 #define GENERIC_TO_UPPER 0x20
 #define GEN12_TRAINER 0x5D
+
+u8 text_general_count_question(const u8*, u8, u8, u8);
+u8 text_general_size(const u8*, u8, u8);
+void text_general_conversion(const u8*, u8*, u8, u8, u8, u8, const u8*);
+u8 text_general_is_same(const u8*, const u8*, u8, u8, u8);
+void text_general_copy(const u8*, u8*, u8, u8, u8);
+void text_general_concat(const u8*, const u8*, u8*, u8, u8, u8, u8);
+void text_general_replace(u8*, u8, u8, u8, u8);
+void text_general_terminator_fill(u8*, u8, u8);
 
 u8 text_general_count_question(const u8* src, u8 src_size, u8 terminator, u8 question) {
     int counter = 0;
@@ -205,14 +215,14 @@ u8 text_gen2_size(const u8* src, u8 src_size) {
     return text_general_size(src, src_size, GEN2_EOL);
 }
 
-void text_generic_to_gen3(const u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_src, u8 jp_dst) {
+void text_generic_to_gen3(const u8* src, u8* dst, u8 src_size, u8 dst_size, u8 UNUSED(jp_src), u8 jp_dst) {
     if(jp_dst)
         text_general_conversion(src, dst, src_size, dst_size, GENERIC_EOL, GEN3_EOL, text_general_to_gen3_jp_bin);
     else
         text_general_conversion(src, dst, src_size, dst_size, GENERIC_EOL, GEN3_EOL, text_general_to_gen3_int_bin);
 }
 
-void text_gen3_to_generic(const u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_src, u8 jp_dst) {
+void text_gen3_to_generic(const u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_src, u8 UNUSED(jp_dst)) {
     if(jp_src)
         text_general_conversion(src, dst, src_size, dst_size, GEN3_EOL, GENERIC_EOL, text_gen3_to_general_jp_bin);
     else
@@ -230,7 +240,7 @@ void text_gen3_to_gen12(const u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_
         text_general_conversion(src, dst, src_size, dst_size, GEN3_EOL, GEN2_EOL, text_gen3_to_gen12_int_bin);
 }
 
-void text_gen12_to_gen3(const u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_src, u8 jp_dst) {
+void text_gen12_to_gen3(const u8* src, u8* dst, u8 src_size, u8 dst_size, u8 jp_src, u8 UNUSED(jp_dst)) {
     if(src[0] == GEN12_TRAINER)
         text_gen3_copy(get_table_pointer(trainer_names_bin, jp_src), dst, src_size, dst_size);
     else {
