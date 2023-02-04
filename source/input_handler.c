@@ -28,13 +28,13 @@ u8 handle_input_info_menu(struct game_data_t* game_data, u8* cursor_y_pos, u8 cu
         return 1;
     }
     
-    if(*curr_page > PAGES_TOTAL) {
-        *curr_page = PAGES_TOTAL;
+    if(game_data[cursor_x_pos].party_3_undec[*curr_mon].is_egg && (page != FIRST_PAGE)) {
+        *curr_page = FIRST_PAGE;
         return 1;
     }
     
-    if(game_data[cursor_x_pos].party_3_undec[*curr_mon].is_egg && (page != FIRST_PAGE)) {
-        *curr_page = FIRST_PAGE;
+    if(*curr_page > PAGES_TOTAL) {
+        *curr_page = PAGES_TOTAL;
         return 1;
     }
 
@@ -81,6 +81,60 @@ u8 handle_input_info_menu(struct game_data_t* game_data, u8* cursor_y_pos, u8 cu
             *cursor_y_pos += 1;
         *curr_mon = options[*cursor_y_pos];
         if(game_data[cursor_x_pos].party_3_undec[*curr_mon].is_egg)
+            *curr_page = FIRST_PAGE;
+        return 1;
+    }
+    
+    return 0;
+}
+
+u8 handle_input_offer_info_menu(struct game_data_t* game_data, u8* cursor_y_pos, const u8** party_selected_mons, u16 keys, u8* curr_page) {
+    
+    if(keys & KEY_B)
+        return CANCEL_INFO;
+    
+    u8 page = *curr_page;
+    
+    if(*curr_page < FIRST_PAGE) {
+        *curr_page = FIRST_PAGE;
+        return 1;
+    }
+    
+    if(game_data[*cursor_y_pos].party_3_undec[*party_selected_mons[*cursor_y_pos]].is_egg && (page != FIRST_PAGE)) {
+        *curr_page = FIRST_PAGE;
+        return 1;
+    }
+    
+    if(*curr_page > PAGES_TOTAL) {
+        *curr_page = PAGES_TOTAL;
+        return 1;
+    }
+
+    if(keys & KEY_LEFT) {
+        if(game_data[*cursor_y_pos].party_3_undec[*party_selected_mons[*cursor_y_pos]].is_egg) {
+            *curr_page = FIRST_PAGE;
+            return 0;
+        }
+        page -= 1;
+        if(page >= FIRST_PAGE) {
+            *curr_page -= 1;
+            return 1;
+        }
+    }
+    else if(keys & KEY_RIGHT) {
+        if(game_data[*cursor_y_pos].party_3_undec[*party_selected_mons[*cursor_y_pos]].is_egg) {
+            *curr_page = FIRST_PAGE;
+            return 0;
+        }
+        page += 1;
+        if(page <= PAGES_TOTAL) {
+            *curr_page += 1;
+            return 1;
+        }
+    }
+    else if((keys & KEY_UP) || (keys & KEY_DOWN)) {
+        *cursor_y_pos ^= 1;
+        if(game_data[*cursor_y_pos].party_3_undec[*party_selected_mons[*cursor_y_pos]].is_egg)
             *curr_page = FIRST_PAGE;
         return 1;
     }

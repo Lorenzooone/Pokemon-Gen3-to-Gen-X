@@ -17,6 +17,7 @@
 
 u8 handle_input_multiboot_menu(u16);
 u8 handle_input_info_menu(struct game_data_t*, u8*, u8, u16, u8*, u8, u8*);
+u8 handle_input_offer_info_menu(struct game_data_t*, u8*, const u8**, u16, u8*);
 u8 handle_input_trading_menu(u8*, u8*, u16, u8, u8);
 u8 handle_input_main_menu(u8*, u16, u8*, u8*, u8*, u8*);
 u8 handle_input_trade_options(u16, u8*);

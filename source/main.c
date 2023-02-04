@@ -40,7 +40,7 @@ void cursor_update_trading_menu(u8, u8);
 void cursor_update_main_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
-void offer_init(struct game_data_t*, u8, u8, u8*, u8*);
+void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
 void waiting_init(void);
 void invalid_init(u8);
 void waiting_offer_init(u8, u8);
@@ -51,12 +51,12 @@ void trade_options_init(u8, u8*);
 void trade_menu_init(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
 void start_trade_init(struct game_data_t*, u8, u8, u8, u8, u8*);
 void main_menu_init(struct game_data_t*, u8, u8, u8, u8*);
-void info_menu_init(struct game_data_t*, u8, u8, u8*);
+void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void conclude_trade(struct game_data_t*, u8, u8, u8, u8*);
 void return_to_trade_menu(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -153,7 +153,7 @@ void cursor_update_offer_options(u8 cursor_y_pos, u8 cursor_x_pos) {
     update_cursor_y(BASE_Y_CURSOR_OFFER_OPTIONS + (BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS * cursor_y_pos));
 }
 
-void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cursor_y_pos, u8* cursor_x_pos) {
+void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cursor_y_pos, u8* cursor_x_pos, u8 reset) {
     curr_state = OFFER_MENU;
     set_screen(BASE_SCREEN);
     reset_sprites_to_party();
@@ -166,8 +166,10 @@ void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cur
     print_offer_options_screen(game_data, own_mon, other_mon);
     enable_screen(OFFER_WINDOW_SCREEN);
     enable_screen(OFFER_OPTIONS_WINDOW_SCREEN);
-    *cursor_x_pos = 0;
-    *cursor_y_pos = 0;
+    if(reset) {
+        *cursor_x_pos = 0;
+        *cursor_y_pos = 0;
+    }
     cursor_update_offer_options(*cursor_y_pos, *cursor_x_pos);
     prepare_flush();
 }
@@ -280,8 +282,11 @@ void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mast
     prepare_flush();
 }
 
-void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* curr_page) {
-    curr_state = INFO_MENU;
+void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* curr_page, u8 is_offer) {
+    if(is_offer)
+        curr_state = OFFER_INFO_MENU;
+    else
+        curr_state = INFO_MENU;
     *curr_page = 1;
     set_screen(INFO_SCREEN);
     disable_all_sprites();
@@ -360,6 +365,7 @@ int main(void)
     u8 curr_mon = 0;
     u8 other_mon = 0;
     u8 curr_page = 0;
+    const u8* party_selected_mons[2] = {&curr_mon, &other_mon};
     
     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
     
@@ -397,7 +403,7 @@ int main(void)
                         u8 is_invalid = is_invalid_offer(game_data, curr_mon, result);
                         if(!is_invalid) {
                             other_mon = result;
-                            offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos);
+                            offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos, 1);
                         }
                         else {
                             is_invalid -= 1;
@@ -454,14 +460,14 @@ int main(void)
                     if(returned_val == CANCEL_TRADING)
                         main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                     else if(returned_val)
-                        info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page);
+                        info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                 }
                 else {
                     if(returned_val == CANCEL_TRADING)
                         waiting_offer_init(1, cursor_y_pos);
                     else if(returned_val) {
                         if(cursor_x_pos && curr_gen ==3)
-                            info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page);
+                            info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else
                             trade_options_init(cursor_x_pos, &submenu_cursor_x_pos);
                     }
@@ -474,6 +480,14 @@ int main(void)
                     return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                 else
                     print_pokemon_pages(returned_val, curr_mon != prev_val, &game_data[cursor_x_pos].party_3_undec[curr_mon], curr_page);
+                break;
+            case OFFER_INFO_MENU:
+                prev_val = submenu_cursor_y_pos;
+                returned_val = handle_input_offer_info_menu(game_data, &submenu_cursor_y_pos, party_selected_mons, keys, &curr_page) ;
+                if(returned_val == CANCEL_INFO)
+                    offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos, 0);
+                else
+                    print_pokemon_pages(returned_val, submenu_cursor_y_pos != prev_val, &game_data[submenu_cursor_y_pos].party_3_undec[*party_selected_mons[submenu_cursor_y_pos]], curr_page);
                 break;
             case MULTIBOOT:
                 if(handle_input_multiboot_menu(keys))
@@ -490,7 +504,7 @@ int main(void)
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     else {
                         if(!submenu_cursor_x_pos)
-                            info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page);
+                            info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else if(!cursor_x_pos)
                             waiting_offer_init(0, cursor_y_pos);
                         else {
@@ -511,11 +525,9 @@ int main(void)
                 returned_val = handle_input_offer_options(keys, &submenu_cursor_y_pos, &submenu_cursor_x_pos);
                 if(returned_val) {
                     if(returned_val >= OFFER_INFO_DISPLAY) {
-                        returned_val -= OFFER_INFO_DISPLAY;
-                        if(returned_val)
-                            returned_val = 1;
-                        // TODO: Print the summaries here
-                        
+                        if(submenu_cursor_y_pos)
+                            submenu_cursor_y_pos = 1;
+                        info_menu_init(game_data, submenu_cursor_y_pos, *party_selected_mons[submenu_cursor_y_pos], &curr_page, 1);
                     }
                     else
                         waiting_accept_init(returned_val-1);
