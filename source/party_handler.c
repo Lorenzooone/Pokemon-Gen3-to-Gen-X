@@ -10,6 +10,7 @@
 #include "fast_pokemon_methods.h"
 #include "optimized_swi.h"
 #include "useful_qualifiers.h"
+#include <stddef.h>
 
 #include "pokemon_gender_bin.h"
 #include "pokemon_names_bin.h"
@@ -671,16 +672,16 @@ void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mo
     u8 index = get_index_key(dst->pid);
     
     u8 pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3);
-    for(u32 i = 0; i < sizeof(struct gen3_mon_growth); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->growth))[i];
     pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3);
-    for(u32 i = 0; i < sizeof(struct gen3_mon_attacks); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_attacks); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->attacks))[i];
     pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3);
-    for(u32 i = 0; i < sizeof(struct gen3_mon_evs); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_evs); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->evs))[i];
     pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3);
-    for(u32 i = 0; i < sizeof(struct gen3_mon_misc); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_misc); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->misc))[i];
     
     encrypt_data(dst);
@@ -707,13 +708,13 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     struct gen3_mon_evs* evs = (struct gen3_mon_evs*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3)));;
     struct gen3_mon_misc* misc = (struct gen3_mon_misc*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3)));;
     
-    for(u32 i = 0; i < sizeof(struct gen3_mon_growth); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)(&dst->growth))[i] = ((u8*)growth)[i];
-    for(u32 i = 0; i < sizeof(struct gen3_mon_attacks); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_attacks); i++)
         ((u8*)(&dst->attacks))[i] = ((u8*)attacks)[i];
-    for(u32 i = 0; i < sizeof(struct gen3_mon_evs); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_evs); i++)
         ((u8*)(&dst->evs))[i] = ((u8*)evs)[i];
-    for(u32 i = 0; i < sizeof(struct gen3_mon_misc); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_misc); i++)
         ((u8*)(&dst->misc))[i] = ((u8*)misc)[i];
     
     // Species checks

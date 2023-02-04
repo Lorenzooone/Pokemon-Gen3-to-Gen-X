@@ -11,6 +11,7 @@
 #include "fast_pokemon_methods.h"
 #include "optimized_swi.h"
 #include "useful_qualifiers.h"
+#include <stddef.h>
 
 #include "pokemon_moves_pp_bin.h"
 #include "item_gen3_to_12_bin.h"
@@ -622,7 +623,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
         return 0;
     
     // Reset data structure
-    for(u32 i = 0; i < sizeof(struct gen2_mon); i++)
+    for(size_t i = 0; i < sizeof(struct gen2_mon); i++)
         ((u8*)dst_data)[i] = 0;
     
     // Start setting data
@@ -725,7 +726,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
         return 0;
     
     // Reset data structure
-    for(u32 i = 0; i < sizeof(struct gen1_mon); i++)
+    for(size_t i = 0; i < sizeof(struct gen1_mon); i++)
         ((u8*)dst_data)[i] = 0;
     
     // Start setting data
@@ -778,7 +779,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     u8 is_egg = 0;
     
     // Reset everything
-    for(u32 i = 0; i < sizeof(struct gen3_mon); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon); i++)
         ((u8*)(dst))[i] = 0;
     
     data_dst->is_valid_gen3 = 0;
@@ -815,13 +816,13 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
         dst->ot_id = generate_ot(dst->ot_id, dst->ot_name);
     
     // Reset everything
-    for(u32 i = 0; i < sizeof(struct gen3_mon_growth); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)(&data_dst->growth))[i] = 0;
-    for(u32 i = 0; i < sizeof(struct gen3_mon_attacks); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_attacks); i++)
         ((u8*)(&data_dst->attacks))[i] = 0;
-    for(u32 i = 0; i < sizeof(struct gen3_mon_evs); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_evs); i++)
         ((u8*)(&data_dst->evs))[i] = 0;
-    for(u32 i = 0; i < sizeof(struct gen3_mon_misc); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_misc); i++)
         ((u8*)(&data_dst->misc))[i] = 0;
     
     // Set species, exp, level and item
@@ -874,7 +875,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     u8 no_restrictions = 1;
     
     // Reset everything
-    for(u32 i = 0; i < sizeof(struct gen3_mon); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon); i++)
         ((u8*)(dst))[i] = 0;
     
     data_dst->is_valid_gen3 = 0;
@@ -911,13 +912,13 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
         dst->ot_id = generate_ot(dst->ot_id, dst->ot_name);
     
     // Reset everything
-    for(u32 i = 0; i < sizeof(struct gen3_mon_growth); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)(&data_dst->growth))[i] = 0;
-    for(u32 i = 0; i < sizeof(struct gen3_mon_attacks); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_attacks); i++)
         ((u8*)(&data_dst->attacks))[i] = 0;
-    for(u32 i = 0; i < sizeof(struct gen3_mon_evs); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_evs); i++)
         ((u8*)(&data_dst->evs))[i] = 0;
-    for(u32 i = 0; i < sizeof(struct gen3_mon_misc); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_misc); i++)
         ((u8*)(&data_dst->misc))[i] = 0;
     
     // Set species, exp, level and item

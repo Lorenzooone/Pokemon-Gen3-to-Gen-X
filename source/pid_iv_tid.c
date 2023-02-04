@@ -7,6 +7,7 @@
 #include "optimized_swi.h"
 #include "print_system.h"
 #include "useful_qualifiers.h"
+#include <stddef.h>
 
 #include "shiny_unown_banned_tsv_bin.h"
 #include "shiny_unown_banned_tsv_letter_table_bin.h"
@@ -54,7 +55,7 @@ void init_unown_tsv() {
 ALWAYS_INLINE MAX_OPTIMIZE u8 is_bad_tsv(u16 tsv) {
     tsv = (tsv >> 3) << 3;
     const u32* shiny_unown_banned_tsv_bin_32 = (const u32*)shiny_unown_banned_tsv_bin;
-    for(u32 i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
+    for(size_t i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
         if(tsv == (shiny_unown_banned_tsv_bin_32[i] & 0xFFFF))
             return 1;
     }
@@ -70,7 +71,7 @@ ALWAYS_INLINE MAX_OPTIMIZE void get_letter_valid_natures(u16 tsv, u8 letter, u8*
     if(letter_kind == 0xF)
         return;
     const u32* shiny_unown_banned_tsv_bin_32 = (const u32*)shiny_unown_banned_tsv_bin;
-    for(u32 i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
+    for(size_t i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
         if(tsv == (shiny_unown_banned_tsv_bin_32[i] & 0xFFFF)) {
             u8 letter_kind_table = (shiny_unown_banned_tsv_bin_32[i]>>0x14)&0xF;
             u8 letter_dist_table = (shiny_unown_banned_tsv_bin_32[i]>>0x10)&0xF;

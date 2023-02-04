@@ -1,5 +1,4 @@
 #include <gba.h>
-
 #include "multiboot_handler.h"
 #include "graphics_handler.h"
 #include "party_handler.h"
@@ -18,6 +17,7 @@
 #include "communicator.h"
 #include "sio.h"
 #include "vcount_basic.h"
+#include <stddef.h>
 //#include "save.h"
 
 #include "ewram_speed_check_bin.h"
@@ -94,7 +94,7 @@ IWRAM_CODE void vblank_update_function() {
 }
 
 IWRAM_CODE void find_optimal_ewram_settings() {
-    u32 size = ewram_speed_check_bin_size>>2;
+    size_t size = ewram_speed_check_bin_size>>2;
     const u32* ewram_speed_check = (const u32*) ewram_speed_check_bin;
     u32 test_data[size];
     
@@ -107,7 +107,7 @@ IWRAM_CODE void find_optimal_ewram_settings() {
         return;
     
     // Prepare data to test against
-    for(u32 i = 0; i < size; i++)
+    for(size_t i = 0; i < size; i++)
         test_data[i] = ewram_speed_check[i];
     
     // Detetmine minimum number of stable waitcycles
@@ -115,7 +115,7 @@ IWRAM_CODE void find_optimal_ewram_settings() {
         REG_MEMORY_CONTROLLER &= ~(0xF<<24);
         REG_MEMORY_CONTROLLER |= (15-i-MIN_WAITCYCLE)<<24;
         u8 failed = 0;
-        for(u32 j = 0; (!failed) && (j < size); j++)
+        for(size_t j = 0; (!failed) && (j < size); j++)
             if(test_data[j] != ewram_speed_check[j])
                 failed = 1;
         if(!failed)

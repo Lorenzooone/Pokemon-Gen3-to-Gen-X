@@ -5,6 +5,7 @@
 #include "vcount_basic.h"
 #include "print_system.h"
 #include "useful_qualifiers.h"
+#include <stddef.h>
 
 #define GEN2_ENTER_STATES_NUM 4
 #define GEN2_START_STATES_NUM 5
@@ -81,8 +82,8 @@ u8 syn_transmitted;
 u8 has_transmitted_syn;
 volatile u8 next_long_pause = 0;
 int last_transfer_counter;
-u32 buffer_counter;
-u32 buffer_counter_out;
+size_t buffer_counter;
+size_t buffer_counter_out;
 u8 start_state_updated;
 enum START_TRADE_STATE start_state;
 enum TRADING_STATE trading_state;
@@ -155,7 +156,7 @@ u16 get_transferred(u8 index) {
 }
 
 void init_received_gen3() {
-    for(u32 i = 0; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++)
+    for(size_t i = 0; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++)
         received_gen3[i] = 0;
     buffer_counter = 0;
     own_end_gen3 = -1;
@@ -191,7 +192,7 @@ u8 set_received_gen3(u16 index) {
 }
 
 u16 get_first_not_received_gen3() {
-    for(u32 i = 0; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++)
+    for(size_t i = 0; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++)
         for(int j = 0; j < 8; j++) {
             if(((i<<3) + j) >= (sizeof(struct gen3_trade_data)>>1))
                 return sizeof(struct gen3_trade_data)>>1;
@@ -208,7 +209,7 @@ u16 get_not_received_length_gen3(u16 index) {
     int j_pos = index & 7;
     int j = j_pos;
     int total = 0;
-    for(u32 i = i_pos; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++) {
+    for(size_t i = i_pos; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++) {
         for(; j < 8; j++) {
             if(((i<<3) + j) >= (sizeof(struct gen3_trade_data)>>1))
                 return total;

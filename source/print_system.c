@@ -6,6 +6,7 @@
 #include "graphics_handler.h"
 #include "sprite_handler.h"
 #include "useful_qualifiers.h"
+#include <stddef.h>
 
 #include "text_gen3_to_general_int_bin.h"
 #include "amiga_font_c_bin.h"
@@ -166,7 +167,7 @@ void init_text_system() {
     convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
     
     // Set window tiles
-    for(u32 i = 0; i < (window_graphics_bin_size>>2); i++)
+    for(size_t i = 0; i < (window_graphics_bin_size>>2); i++)
         *((u32*)(FONT_POS+(2*TILE_SIZE)+(i<<2))) = ((const u32*)window_graphics_bin)[i];
 }
 

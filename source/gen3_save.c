@@ -1,8 +1,10 @@
 #include <gba.h>
 #include "save.h"
 #include "gen3_save.h"
+#include "party_handler.h"
 #include "gen_converter.h"
 #include "text_handler.h"
+#include <stddef.h>
 
 #define MAGIC_NUMBER 0x08012025
 #define INVALID_SLOT 2
@@ -108,7 +110,7 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
     mail_id = get_mail_id_raw(&game_data[1].party_3_undec[other_mon]);
     if((mail_id != GEN3_NO_MAIL) && (mail_id < PARTY_SIZE)) {
         u8 is_mail_free[PARTY_SIZE] = {1,1,1,1,1,1};
-        for(u32 i = 0; i < game_data[0].party_3.total; i++) {
+        for(gen3_party_total_t i = 0; i < game_data[0].party_3.total; i++) {
             u8 inner_mail_id = get_mail_id_raw(&game_data[0].party_3_undec[i]);
             if((inner_mail_id != GEN3_NO_MAIL) && (inner_mail_id < PARTY_SIZE))
                 is_mail_free[inner_mail_id] = 0;
@@ -121,7 +123,7 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
             }
         u8* dst = (u8*)&game_data[0].mails_3[target];
         u8* src = (u8*)&game_data[1].mails_3[mail_id];
-        for(u32 i = 0; i < sizeof(struct mail_gen3); i++)
+        for(size_t i = 0; i < sizeof(struct mail_gen3); i++)
             dst[i] = src[i];
         game_data[1].party_3_undec[other_mon].src->mail_id = target;
     }
@@ -134,11 +136,11 @@ u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, const u16
 
     u8* dst = (u8*)&game_data[0].party_3.mons[own_mon];
     u8* src = (u8*)&game_data[1].party_3.mons[other_mon];
-    for(u32 i = 0; i < sizeof(struct gen3_mon); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon); i++)
         dst[i] = src[i];
     dst = (u8*)&game_data[0].party_3_undec[own_mon];
     src = (u8*)&game_data[1].party_3_undec[other_mon];
-    for(u32 i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
         dst[i] = src[i];
     game_data[0].party_3_undec[own_mon].src = &game_data[0].party_3.mons[own_mon];
     for(int i = 0; i < GIFT_RIBBONS; i++)
@@ -175,14 +177,14 @@ void process_party_data(struct game_data_t* game_data) {
         game_data->party_3.total = PARTY_SIZE;
     u8 curr_slot = 0;
     u8 found = 0;
-    for(u32 i = 0; i < game_data->party_3.total; i++) {
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++) {
         process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
         if(game_data->party_3_undec[i].is_valid_gen3)
             found = 1;
     }
     if (!found)
         game_data->party_3.total = 0;
-    for(u32 i = 0; i < game_data->party_3.total; i++)
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
         if(gen3_to_gen2(&game_data->party_2.mons[curr_slot], &game_data->party_3_undec[i], game_data->trainer_id)) {
             curr_slot++;
             game_data->party_3_undec[i].is_valid_gen2 = 1;
@@ -191,7 +193,7 @@ void process_party_data(struct game_data_t* game_data) {
             game_data->party_3_undec[i].is_valid_gen2 = 0;
     game_data->party_2.total = curr_slot;
     curr_slot = 0;
-    for(u32 i = 0; i < game_data->party_3.total; i++)
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
         if(gen3_to_gen1(&game_data->party_1.mons[curr_slot], &game_data->party_3_undec[i], game_data->trainer_id)) {
             curr_slot++;
             game_data->party_3_undec[i].is_valid_gen1 = 1;

@@ -2,6 +2,7 @@
 #include "sprite_handler.h"
 #include "graphics_handler.h"
 #include "print_system.h"
+#include <stddef.h>
 
 #include "sprite_cursor_bin.h"
 #include "item_icon_bin.h"
@@ -78,7 +79,7 @@ IWRAM_CODE void update_normal_oam() {
     if(updated_shadow_oam) {
         u32* oam_ptr = (u32*)OAM;
         u32* shadow_oam_ptr = (u32*)shadow_oam;
-        for(u32 i = 0; i < ((sizeof(OBJATTR)*OAM_ENTITIES)>>2); i++)
+        for(size_t i = 0; i < ((sizeof(OBJATTR)*OAM_ENTITIES)>>2); i++)
             oam_ptr[i] = shadow_oam_ptr[i];
         updated_shadow_oam = 0;
     }
@@ -140,10 +141,10 @@ void set_palette_3bpp(u8* colors, int index, int palette) {
 void init_cursor(){
     sprite_pointers[__sprite_counter] = (const u8*)sprite_cursor_gfx;
     u16* vram_pos = (u16*)get_vram_pos();
-    for(u32 i = 0; i < (sprite_cursor_bin_size>>1); i++)
+    for(size_t i = 0; i < (sprite_cursor_bin_size>>1); i++)
         vram_pos[i] = sprite_cursor_gfx[i];
     vram_pos = (u16*)(get_vram_pos() + SPRITE_ALT_DISTANCE);
-    for(u32 i = 0; i < (sprite_cursor_bin_size>>1); i++)
+    for(size_t i = 0; i < (sprite_cursor_bin_size>>1); i++)
         vram_pos[i] = sprite_cursor_gfx[i];
     for(int i = 0; i < TOTAL_BG; i++) {
         set_attributes(OFF_SCREEN_SPRITE, 0, (32*__sprite_counter) | ((3-i)<<10));
@@ -157,18 +158,18 @@ void init_cursor(){
 }
 
 void init_oam_palette(){
-    for(u32 i = 0; i < (sprite_palettes_bin_size>>1); i++)
+    for(size_t i = 0; i < (sprite_palettes_bin_size>>1); i++)
         SPRITE_PALETTE[i] = sprite_palettes_bin_16[i];
-    for(u32 i = 0; i < (item_icon_palette_bin_size>>1); i++)
+    for(size_t i = 0; i < (item_icon_palette_bin_size>>1); i++)
         SPRITE_PALETTE[i+(sprite_palettes_bin_size>>1)] = item_icon_palette_bin_16[i];
 }
 
 void init_item_icon(){
     u16* vram_pos = (u16*)(get_vram_pos() + sprite_cursor_bin_size);
-    for(u32 i = 0; i < (item_icon_bin_size>>1); i++)
+    for(size_t i = 0; i < (item_icon_bin_size>>1); i++)
         vram_pos[i] = item_icon_gfx[i];
     vram_pos = (u16*)(get_vram_pos() + SPRITE_ALT_DISTANCE + sprite_cursor_bin_size);
-    for(u32 i = 0; i < (item_icon_bin_size>>1); i++)
+    for(size_t i = 0; i < (item_icon_bin_size>>1); i++)
         vram_pos[i] = item_icon_gfx[i];
 }
 

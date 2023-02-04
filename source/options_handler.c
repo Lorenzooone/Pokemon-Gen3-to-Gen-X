@@ -1,4 +1,5 @@
 #include <gba.h>
+#include "party_handler.h"
 #include "options_handler.h"
 
 void set_valid_options_main(struct game_data_t*);
@@ -17,7 +18,7 @@ u8 is_valid_for_gen(struct game_data_t* game_data, u8 gen) {
     if(gen == 2)
         return (game_data->party_2.total > 0);
     u8 found = 0;
-    for(u32 i = 0; i < game_data->party_3.total; i++)
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
         if(game_data->party_3_undec[i].is_valid_gen3) {
             found = 1;
             break;

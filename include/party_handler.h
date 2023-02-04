@@ -133,6 +133,8 @@
 #define JAPANESE_LANGUAGE 1
 #define ENGLISH_LANGUAGE 2
 
+typedef u32 gen3_party_total_t;
+
 struct mail_gen3 {
     u16 words[MAIL_WORDS_SIZE];
     u8 ot_name[OT_NAME_GEN3_SIZE+1];
@@ -285,7 +287,7 @@ struct gen1_mon {
 };
 
 struct gen3_party {
-    u32 total;
+    gen3_party_total_t total;
     struct gen3_mon mons[PARTY_SIZE];
 };
 

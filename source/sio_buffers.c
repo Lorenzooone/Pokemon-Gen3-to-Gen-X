@@ -5,6 +5,7 @@
 #include "party_handler.h"
 #include "gen_converter.h"
 #include "gen3_save.h"
+#include <stddef.h>
 
 #include "default_gift_ribbons_bin.h"
 
@@ -12,11 +13,11 @@
 
 void prepare_number_of_sizes(void);
 u8 get_number_of_buffers(void);
-void copy_bytes(const void*, void*, int, u8, u8);
+void copy_bytes(const void*, void*, size_t, u8, u8);
 void prepare_random_data_gen12(struct random_data_t*);
-void prepare_patch_set(u8*, u8*, u32, int, u32, int);
-void apply_patch_set(u8*, u8*, u32, int, u32, int);
-void prepare_mail_gen2(u8*, int, u8*, u8, u32);
+void prepare_patch_set(u8*, u8*, size_t, int, size_t, int);
+void apply_patch_set(u8*, u8*, size_t, int, size_t, int);
+void prepare_mail_gen2(u8*, size_t, u8*, size_t, u32);
 #if !(EACH_DIFFERENT)
 void buffer_loader(struct game_data_t*, u32*, u16*, u8);
 #else
@@ -63,10 +64,10 @@ u16 get_buffer_size(int index) {
     return buffer_sizes[index];
 }
 
-void copy_bytes(const void* src, void* dst, int size, u8 src_offset, u8 dst_offset) {
+void copy_bytes(const void* src, void* dst, size_t size, u8 src_offset, u8 dst_offset) {
     const u8* src_data = (const u8*)src;
     u8* dst_data = (u8*)dst;
-    for(int i = 0; i < size; i++)
+    for(size_t i = 0; i < size; i++)
         dst_data[dst_offset+i] = src_data[src_offset+i];
 }
 
@@ -75,14 +76,14 @@ void prepare_random_data_gen12(struct random_data_t* random_data) {
         random_data->data[i] = DEFAULT_FILLER;
 }
 
-void prepare_patch_set(u8* buffer, u8* patch_set_buffer, u32 size, int start_pos, u32 patch_set_size, int base_pos) {
-    u32 cursor_data = base_pos;
+void prepare_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, int start_pos, size_t patch_set_size, int base_pos) {
+    size_t cursor_data = base_pos;
     
-    for(u32 i = 0; i < patch_set_size; i++)
+    for(size_t i = 0; i < patch_set_size; i++)
         patch_set_buffer[i] = 0;
     
     u32 base = start_pos;
-    for(u32 i = 0; i < size; i++) {
+    for(size_t i = 0; i < size; i++) {
         if(buffer[start_pos + i] == NO_ACTION_BYTE) {
             buffer[start_pos + i] = 0xFF;
             patch_set_buffer[cursor_data++] = start_pos + i + 1 -base;
@@ -107,9 +108,9 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, u32 size, int start_pos
         patch_set_buffer[cursor_data] = 0xFF;
 }
 
-void apply_patch_set(u8* buffer, u8* patch_set_buffer, u32 size, int start_pos, u32 patch_set_size, int base_pos) {    
-    u32 base = 0;
-    for(u32 i = base_pos; i < patch_set_size; i++) {
+void apply_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, int start_pos, size_t patch_set_size, int base_pos) {    
+    size_t base = 0;
+    for(size_t i = base_pos; i < patch_set_size; i++) {
         if(patch_set_buffer[i]) {
             if(patch_set_buffer[i] == 0xFF) {
                 base += NO_ACTION_BYTE-1;
@@ -123,8 +124,8 @@ void apply_patch_set(u8* buffer, u8* patch_set_buffer, u32 size, int start_pos, 
     }
 }
 
-void prepare_mail_gen2(u8* buffer, int size, u8* patch_set_buffer, u8 patch_set_buffer_size, u32 start_pos) {
-    for(int i = 0; i < size; i++)
+void prepare_mail_gen2(u8* buffer, size_t size, u8* patch_set_buffer, size_t patch_set_buffer_size, u32 start_pos) {
+    for(size_t i = 0; i < size; i++)
         buffer[i] = 0;
     prepare_patch_set(buffer, patch_set_buffer, size, start_pos, patch_set_buffer_size, 0);
 }
@@ -454,7 +455,7 @@ u8 are_checksum_same_gen3(struct gen3_trade_data* td) {
     u32 checksum = 0;
     for(int i = 0; i < PARTY_SIZE; i++) {
         u32* mail_buf = (u32*)&td->mails_3[i];
-        for(u32 j = 0; j < (sizeof(struct mail_gen3)>>2); j++)
+        for(size_t j = 0; j < (sizeof(struct mail_gen3)>>2); j++)
             checksum += mail_buf[j];
     }
     
@@ -464,7 +465,7 @@ u8 are_checksum_same_gen3(struct gen3_trade_data* td) {
     checksum = 0;
     
     u32* party_buf = (u32*)&td->party_3;
-    for(u32 i = 0; i < (sizeof(struct gen3_party)>>2); i++)
+    for(size_t i = 0; i < (sizeof(struct gen3_party)>>2); i++)
         checksum += party_buf[i];
     
     if(td->checksum_party != checksum)
@@ -473,7 +474,7 @@ u8 are_checksum_same_gen3(struct gen3_trade_data* td) {
     checksum = 0;
     u32* buffer = (u32*)td;
     
-    for(u32 i = 0; i < ((sizeof(struct gen3_trade_data) - 4)>>2); i++)
+    for(size_t i = 0; i < ((sizeof(struct gen3_trade_data) - 4)>>2); i++)
         checksum += buffer[i];
     
     if(td->final_checksum != checksum)
@@ -489,7 +490,7 @@ void prepare_gen3_trade_data(struct game_data_t* game_data, u32* buffer, u16* si
     for(int i = 0; i < PARTY_SIZE; i++) {
         copy_bytes(&game_data->mails_3[i], &td->mails_3[i], sizeof(struct mail_gen3), 0, 0);
         u32* mail_buf = (u32*)&td->mails_3[i];
-        for(u32 j = 0; j < (sizeof(struct mail_gen3)>>2); j++)
+        for(size_t j = 0; j < (sizeof(struct mail_gen3)>>2); j++)
             checksum += mail_buf[i];
     }
     
@@ -498,7 +499,7 @@ void prepare_gen3_trade_data(struct game_data_t* game_data, u32* buffer, u16* si
     
     copy_bytes(&game_data->party_3, &td->party_3, sizeof(struct gen3_party), 0, 0);
     u32* party_buf = (u32*)&td->party_3;
-    for(u32 i = 0; i < (sizeof(struct gen3_party)>>2); i++)
+    for(size_t i = 0; i < (sizeof(struct gen3_party)>>2); i++)
         checksum += party_buf[i];
     
     td->checksum_party = checksum;
@@ -518,7 +519,7 @@ void prepare_gen3_trade_data(struct game_data_t* game_data, u32* buffer, u16* si
     
     td->trainer_id = game_data->trainer_id;
     
-    for(u32 i = 0; i < ((sizeof(struct gen3_trade_data) - 4)>>2); i++)
+    for(size_t i = 0; i < ((sizeof(struct gen3_trade_data) - 4)>>2); i++)
         checksum += buffer[i];
     
     td->final_checksum = checksum;
@@ -579,10 +580,10 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     game_data->game_identifier.game_is_jp = is_jp;
     
     for(int i = 0; i < PARTY_SIZE; i++)
-        for(u32 j = 0; j < sizeof(struct mail_gen3); j++)
+        for(size_t j = 0; j < sizeof(struct mail_gen3); j++)
             ((u8*)(&game_data->mails_3[i]))[j] = 0;
     
-    for(u32 i = 0; i < sizeof(struct gen3_party); i++)
+    for(size_t i = 0; i < sizeof(struct gen3_party); i++)
         ((u8*)(&game_data->party_3))[i] = 0;
     
     copy_bytes(default_gift_ribbons_bin, game_data->giftRibbons, GIFT_RIBBONS, 0, 0);
@@ -604,7 +605,7 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
         game_data->party_3.total = PARTY_SIZE;
     
     u8 found = 0;
-    for(u32 i = 0; i < game_data->party_3.total; i++) {
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++) {
         game_data->party_3_undec[i].src = &game_data->party_3.mons[i];
         u8 conversion_success = 0;
         if(curr_gen == 2)
@@ -644,7 +645,7 @@ void read_gen3_trade_data(struct game_data_t* game_data, u32* buffer) {
         game_data->party_3.total = PARTY_SIZE;
     
     u8 found = 0;
-    for(u32 i = 0; i < game_data->party_3.total; i++) {
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++) {
         process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
         if(game_data->party_3_undec[i].is_valid_gen3)
             found = 1;
