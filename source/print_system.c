@@ -308,12 +308,11 @@ int sub_printf_gen3(u8* string, size_t size_max, u8 is_jp) {
     size_t curr_pos = 0;
     while((*string) != GEN3_EOL) {
         if(is_jp) {
-            // TODO: Fix the above characters' positions, then remove the swaps
             u8 character = *(string++);
             if((character >= GEN3_FIRST_TICKS_START && character <= GEN3_FIRST_TICKS_END) || (character >= GEN3_SECOND_TICKS_START && character <= GEN3_SECOND_TICKS_END))
-                write_above_char((GENERIC_TICKS_CHAR+FONT_TILES)|VSWAP_TILE|HSWAP_TILE);
+                write_above_char(GENERIC_TICKS_CHAR+FONT_TILES);
             else if((character >= GEN3_FIRST_CIRCLE_START && character <= GEN3_FIRST_CIRCLE_END) || (character >= GEN3_SECOND_CIRCLE_START && character <= GEN3_SECOND_CIRCLE_END))
-                write_above_char((GENERIC_CIRCLE_CHAR+FONT_TILES)|VSWAP_TILE|HSWAP_TILE);
+                write_above_char(GENERIC_CIRCLE_CHAR+FONT_TILES);
             if(write_char(character+FONT_TILES))
                 return 0;
         }
