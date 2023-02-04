@@ -48,7 +48,7 @@ void new_line(void);
 u8 write_char(u16);
 void write_above_char(u16);
 int sub_printf(u8*);
-int sub_printf_gen3(u8*, u8, u8);
+int sub_printf_gen3(u8*, size_t, u8);
 int prepare_base_10(int, u8*);
 int prepare_base_16(int, u8*);
 int digits_print(u8*, int, u8, u8);
@@ -57,7 +57,7 @@ int write_base_16(int, int, u8);
 
 u8 x_pos;
 u8 y_pos;
-u16* screen;
+screen_t* screen;
 u8 screen_num;
 u8 loaded_screen_num;
 
@@ -70,7 +70,7 @@ u8 screen_positions[TOTAL_BG][2];
 void set_arrangements(u8 bg_num){
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
-    BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((u32)get_screen(bg_num))-VRAM)>>3);
+    BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((uintptr_t)get_screen(bg_num))-VRAM)>>3);
 }
 
 void process_arrangements() {
@@ -143,7 +143,7 @@ void init_text_system() {
     set_screen(0);
     
     // This is for the first frame
-    for(int i = 0; i < (TILE_SIZE>>2); i++)
+    for(size_t i = 0; i < (TILE_SIZE>>2); i++)
         *((u32*)(FONT_POS+(i<<2))) = 0x22222222;
     
     default_reset_screen();
@@ -159,7 +159,7 @@ void init_text_system() {
     base_flush();
     
     // Set empty tile
-    for(int i = 0; i < (TILE_SIZE>>2); i++)
+    for(size_t i = 0; i < (TILE_SIZE>>2); i++)
         *((u32*)(FONT_POS+TILE_SIZE+(i<<2))) = 0;
 
     // Load japanese font
@@ -234,10 +234,10 @@ u8 get_screen_num(){
 	return screen_num;
 }
 
-u16* get_screen(u8 bg_num){
+screen_t* get_screen(u8 bg_num){
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
-	return (u16*)(ARRANGEMENT_POS+(SCREEN_SIZE*(bg_num+(TOTAL_BG*buffer_screen[bg_num]))));
+	return (screen_t*)(ARRANGEMENT_POS+(SCREEN_SIZE*(bg_num+(TOTAL_BG*buffer_screen[bg_num]))));
 }
 
 void set_screen(u8 bg_num){
@@ -304,8 +304,8 @@ int sub_printf(u8* string) {
     return 0;
 }
 
-int sub_printf_gen3(u8* string, u8 size_max, u8 is_jp) {
-    u8 curr_pos = 0;
+int sub_printf_gen3(u8* string, size_t size_max, u8 is_jp) {
+    size_t curr_pos = 0;
     while((*string) != GEN3_EOL) {
         if(is_jp) {
             // TODO: Fix the above characters' positions, then remove the swaps
@@ -449,7 +449,7 @@ int fast_printf(const char * format, ... ) {
                 write_base_16(va_arg(va, int), 0, 0);
                 break;
             case '\x05':
-                sub_printf_gen3(va_arg(va, u8*), va_arg(va, int), va_arg(va, int));
+                sub_printf_gen3(va_arg(va, u8*), va_arg(va, size_t), va_arg(va, int));
                 break;
             case '\x09':
                 write_base_10(va_arg(va, int), va_arg(va, int), ' ');

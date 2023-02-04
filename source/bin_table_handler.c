@@ -1,10 +1,11 @@
 #include <gba.h>
 #include "bin_table_handler.h"
+#include <stddef.h>
 
 const u8* get_table_pointer(const u8* table, u16 entry){
     const u16* table_16 = (const u16*)table;
-    u16 initial_offset;
-    u32 offset = 0;
+    size_t initial_offset;
+    size_t offset = 0;
     u8 offset_table_pos = 2;
     u8 size_initial_offset = ((table[0] >> 0)&1)+1;
     u8 size_offsets = ((table[0] >> 1)&1)+1;
@@ -31,8 +32,8 @@ const u8* get_table_pointer(const u8* table, u16 entry){
 
 const u8* search_table_for_index(const u8* table, u16 index){
     const u16* table_16 = (const u16*)table;
-    u16 initial_offset;
-    u32 offset = 0;
+    size_t initial_offset;
+    size_t offset = 0;
     u8 offset_table_pos = 2;
     u8 size_initial_offset = ((table[0] >> 0)&1)+1;
     u8 size_offsets = ((table[0] >> 1)&1)+1;

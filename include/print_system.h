@@ -16,12 +16,19 @@
 
 #define TOTAL_BG 4
 
-#define TILE_SIZE 0x20
+#define DEFAULT_BPP 4
+#define BITS_PER_BYTE 8
+#define TILE_X_PIXELS 8
+#define TILE_Y_PIXELS 8
+#define DEFAULT_TILE_ROW_SIZE ((DEFAULT_BPP*TILE_X_PIXELS)/BITS_PER_BYTE)
+#define TILE_SIZE (DEFAULT_TILE_ROW_SIZE*TILE_Y_PIXELS)
 
 #define REGULAR_FILL 0
 #define BLANK_FILL 1
 
 int fast_printf(const char *, ...);
+
+typedef u16 screen_t;
 
 void init_numbers(void);
 void default_reset_screen(void);
@@ -32,7 +39,7 @@ void enable_screen(u8);
 void disable_screen(u8);
 void disable_all_screens_but_current(void);
 void set_bg_pos(u8, int, int);
-u16* get_screen(u8 bg_num);
+screen_t* get_screen(u8 bg_num);
 u8 get_screen_num(void);
 void set_screen(u8);
 void init_text_system(void);

@@ -18,7 +18,7 @@
 #define SPRITE_ALT_DISTANCE (SPRITE_BASE_TILE_SIZE*TILE_SIZE)
 
 #define SPRITE_SIZE (2*SPRITE_ALT_DISTANCE)
-#define OVRAM_START ((u32)OBJ_BASE_ADR)
+#define OVRAM_START ((uintptr_t)OBJ_BASE_ADR)
 #define OVRAM_SIZE 0x8000
 #define OVRAM_END (OVRAM_START+OVRAM_SIZE)
 #define POSSIBLE_SPRITES (OVRAM_SIZE/SPRITE_SIZE)
@@ -29,7 +29,7 @@
 #define OFF_SCREEN_SPRITE SCREEN_HEIGHT
 
 u8 check_for_same_address(const u8*);
-u32 get_vram_pos(void);
+uintptr_t get_vram_pos(void);
 void set_updated_shadow_oam(void);
 void inc_inner_sprite_counter(void);
 u8 get_sprite_counter(void);
@@ -114,8 +114,8 @@ u8 get_first_variable_palette(){
     return ((sprite_palettes_bin_size + item_icon_palette_bin_size)>>5);
 }
 
-u32 get_vram_pos(){
-    u32 vram_pos = OVRAM_START+(__sprite_counter*SPRITE_SIZE);
+uintptr_t get_vram_pos(){
+    uintptr_t vram_pos = OVRAM_START+(__sprite_counter*SPRITE_SIZE);
     if(vram_pos >= OVRAM_END)
         vram_pos = OVRAM_END - SPRITE_SIZE;
     return vram_pos;

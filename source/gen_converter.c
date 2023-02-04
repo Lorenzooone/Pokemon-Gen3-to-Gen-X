@@ -158,12 +158,12 @@ u8 convert_moves_of_gen3(struct gen3_mon_attacks* attacks, u8 pp_bonuses, u8* mo
     
     u8 used_slots = 0;
     
-    for(int i = 0; i < MOVES_SIZE; i++)
+    for(size_t i = 0; i < MOVES_SIZE; i++)
     {
         moves[i] = 0;
         pps[i] = 0;
     }
-    for(int i = 0; i < MOVES_SIZE; i++) {
+    for(size_t i = 0; i < MOVES_SIZE; i++) {
         u16 move = attacks->moves[i];
         if((move > 0) && (move <= last_valid_move)) {
             u8 base_pp = pokemon_moves_pp_bin[move];
@@ -190,7 +190,7 @@ u8 convert_moves_to_gen3(struct gen3_mon_attacks* attacks, struct gen3_mon_growt
     
     u8 used_slots = 0;
 
-    for(int i = 0; i < MOVES_SIZE; i++) {
+    for(size_t i = 0; i < MOVES_SIZE; i++) {
         u16 move = moves[i];
         if((move > 0) && (move <= last_valid_move)) {
             u8 base_pp = pokemon_moves_pp_bin[move];
@@ -546,7 +546,7 @@ void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8*
     }
     
     // Handle bad naming conversions (? >= half the name) and empty names
-    s32 question_marks_count = text_gen2_count_question(nickname, STRING_GEN2_INT_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
+    size_t question_marks_count = text_gen2_count_question(nickname, STRING_GEN2_INT_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
     if((question_marks_count >= (text_gen2_size(nickname, STRING_GEN2_INT_CAP) >> 1)) || (text_gen2_size(nickname, STRING_GEN2_INT_CAP) == 0))
         text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
     // For the japanese nickname too
@@ -594,7 +594,7 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     }
     else {
         // Handle bad naming conversions (? >= half the name) and empty names
-        s32 question_marks_count = text_gen3_count_question(dst->nickname, NICKNAME_GEN3_SIZE) - text_gen2_count_question(nickname, name_cap);    
+        size_t question_marks_count = text_gen3_count_question(dst->nickname, NICKNAME_GEN3_SIZE) - text_gen2_count_question(nickname, name_cap);    
         if((question_marks_count >= (text_gen3_size(dst->nickname, NICKNAME_GEN3_SIZE) >> 1)) || (text_gen3_size(dst->nickname, NICKNAME_GEN3_SIZE) == 0))
             text_gen12_to_gen3(get_pokemon_name_gen2(species, 0, is_jp, gen2_buffer), dst->nickname, name_cap, NICKNAME_GEN3_SIZE, is_jp, is_jp);
     }

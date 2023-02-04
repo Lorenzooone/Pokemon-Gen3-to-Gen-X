@@ -63,7 +63,7 @@ void determine_game_with_save(struct game_identity* identifier, u8 slot, u8 sect
         if((game_code != FRLG_GAME_CODE) && (game_code != RS_GAME_CODE)) {
             u8 found = 0;
             for(int i = RS_END_BATTLE_TOWER; i < total_bytes; i++)
-                if((*(vu8*)((slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + i))) {
+                if(read_byte_save((slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + i)) {
                     found = 1;
                     break;
                 }

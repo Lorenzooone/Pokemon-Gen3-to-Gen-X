@@ -302,7 +302,7 @@ void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 has_i
 
 void load_pokemon_sprite_raw(struct gen3_mon_data_unenc* data_src, u16 y, u16 x){
     if(!data_src->is_valid_gen3)
-        return;
+        load_pokemon_sprite(0, 0, 0, 0, has_item_raw(data_src), has_mail_raw(data_src), y, x);
 
     load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, has_item_raw(data_src), has_mail_raw(data_src), y, x);
 }
@@ -323,7 +323,7 @@ u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks){
     u8 previous_moves[MOVES_SIZE];
     u8 curr_slot = 0;
     
-    for(int i = 0; i < MOVES_SIZE; i++) {
+    for(size_t i = 0; i < MOVES_SIZE; i++) {
         if((attacks->moves[i] != 0) && (attacks->moves[i] <= LAST_VALID_GEN_3_MOVE)) {
             u8 found = 0;
             for(int j = 0; j < curr_slot; j++)
@@ -475,13 +475,13 @@ u16 get_dex_index_raw(struct gen3_mon_data_unenc* data_src){
 u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
     // Decrypt the data
     u32 key = src->pid ^ src->ot_id;
-    for(int i = 0; i < (ENC_DATA_SIZE>>2); i++)
+    for(size_t i = 0; i < (ENC_DATA_SIZE>>2); i++)
         decrypted_dst[i] = src->enc_data[i] ^ key;
     
     // Validate the data
     u16* decrypted_dst_16 = (u16*)decrypted_dst;
     u16 checksum = 0;
-    for(int i = 0; i < (ENC_DATA_SIZE>>1); i++)
+    for(size_t i = 0; i < (ENC_DATA_SIZE>>1); i++)
         checksum += decrypted_dst_16[i];
     if(checksum != src->checksum)
         return 0;
@@ -492,13 +492,13 @@ u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst) {
 void encrypt_data(struct gen3_mon* dst) {
     // Prepare the checksum
     u16 checksum = 0;
-    for(int i = 0; i < (ENC_DATA_SIZE>>1); i++)
+    for(size_t i = 0; i < (ENC_DATA_SIZE>>1); i++)
         checksum += ((u16*)dst->enc_data)[i];
     dst->checksum = checksum;
     
     // Encrypt the data
     u32 key = dst->pid ^ dst->ot_id;
-    for(int i = 0; i < (ENC_DATA_SIZE>>2); i++)
+    for(size_t i = 0; i < (ENC_DATA_SIZE>>2); i++)
         dst->enc_data[i] = dst->enc_data[i] ^ key;
 }
 
@@ -671,7 +671,7 @@ void recalc_stats_gen3(struct gen3_mon_data_unenc* data_dst, struct gen3_mon* ds
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mon* dst) {
     u8 index = get_index_key(dst->pid);
     
-    u8 pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3);
+    size_t pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3);
     for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)dst->enc_data)[pos_data+i] = ((u8*)(&src->growth))[i];
     pos_data = (ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3);
@@ -703,10 +703,10 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     u8 index = get_index_key(src->pid);
     
     // Makes the compiler happy
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3)));
-    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3)));
-    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3)));;
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)(((u32)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3)));;
+    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3)));
+    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3)));
+    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3)));;
+    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3)));;
     
     for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)(&dst->growth))[i] = ((u8*)growth)[i];
@@ -790,9 +790,9 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
 }
 
 void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){
-    for(int i = 0; i < MAIL_WORDS_SIZE; i++)
+    for(size_t i = 0; i < MAIL_WORDS_SIZE; i++)
         mail->words[i] = 0;
-    for(int i = 0; i < OT_NAME_GEN3_SIZE+1; i++)
+    for(size_t i = 0; i < OT_NAME_GEN3_SIZE+1; i++)
         mail->ot_name[i] = GEN3_EOL;
     mail->ot_id = 0;
     mail->species = BULBASAUR_SPECIES;

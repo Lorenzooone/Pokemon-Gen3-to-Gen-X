@@ -9,6 +9,7 @@
 #include "sio_buffers.h"
 #include "communicator.h"
 #include "window_handler.h"
+#include <stddef.h>
 
 #define NUM_LINES 10
 #define MAIN_MENU_DISTANCE_FROM_BORDER 2
@@ -97,7 +98,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
     u8* options[2];
     for(int i = 0; i < 2; i++)
         options[i] = get_options_trade(i);
-    for(int i = 0; i < PARTY_SIZE; i++) {
+    for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++) {
         set_text_y(2+(3 * i));
         for(int j = 0; j < num_parties; j++) {
             // These two values are for debug only - They should be j and i
@@ -181,7 +182,7 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
             set_text_y(curr_text_y++);
             set_text_x(OFFER_WINDOW_X*i);
             //PRINT_FUNCTION("MOVES:");
-            for(int j = 0; j < MOVES_SIZE; j++) {
+            for(size_t j = 0; j < MOVES_SIZE; j++) {
                 set_text_y(curr_text_y++);
                 set_text_x(OFFER_WINDOW_X*i);
                 PRINT_FUNCTION("\x01", get_move_name_gen3(&mon->attacks, j));
@@ -381,7 +382,7 @@ void print_pokemon_page3(struct gen3_mon_data_unenc* mon) {
     PRINT_FUNCTION("\nMOVES");
     set_text_x(18);
     PRINT_FUNCTION("PP UP\n");
-    for(int i = 0; i < (MOVES_SIZE); i++){
+    for(size_t i = 0; i < (MOVES_SIZE); i++){
         PRINT_FUNCTION("\n \x11\x03\n", get_move_name_gen3(&mon->attacks, i), 19, (mon->growth.pp_bonuses >> (2*i)) & 3);
     }
     

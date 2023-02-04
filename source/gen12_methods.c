@@ -26,7 +26,7 @@ u8 has_legal_moves_gen12(u8* moves, u8 is_gen2) {
     
     u8 previous_moves[MOVES_SIZE];
     u8 curr_slot = 0;
-    for(int i = 0; i < MOVES_SIZE; i++) {
+    for(size_t i = 0; i < MOVES_SIZE; i++) {
         if((moves[i] != 0) && (moves[i] <= last_valid_move)) {
             for(int j = 0; j < curr_slot; j++)
                 if(moves[i] == previous_moves[j])

@@ -7,7 +7,8 @@
 #include <stddef.h>
 
 #define MAGIC_NUMBER 0x08012025
-#define INVALID_SLOT 2
+#define NUM_SLOTS 2
+#define INVALID_SLOT NUM_SLOTS
 #define SAVE_SLOT_INDEX_POS 0xDFFC
 #define SECTION_ID_POS 0xFF4
 #define CHECKSUM_POS 0xFF6
@@ -59,8 +60,11 @@ void init_game_data(struct game_data_t* game_data) {
     game_data->party_2.total = 0;
     game_data->party_3.total = 0;
     
-    for(int i = 0; i < (OT_NAME_GEN3_SIZE+1); i++)
+    for(size_t i = 0; i < (OT_NAME_GEN3_SIZE+1); i++)
         game_data->trainer_name[i] = GEN3_EOL;
+    
+    for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++)
+        game_data->party_3_undec[i].is_valid_gen3 = 0;
 }
 
 u32 read_section_id(int slot, int section_pos) {
@@ -81,7 +85,7 @@ void read_game_data_trainer_info(int slot, struct game_data_t* game_data) {
     for(int i = 0; i < SECTION_TOTAL; i++)
         if(read_section_id(slot, i) == SECTION_TRAINER_INFO_ID) {
             copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), game_data->trainer_name, OT_NAME_GEN3_SIZE+1);
-            game_data->trainer_gender = *(vu8*)((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 8);
+            game_data->trainer_gender = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 8);
             game_data->trainer_id = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 10);
             copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_0, game_data->pokedex_owned, DEX_BYTES);
             copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_0 + DEX_BYTES, game_data->pokedex_seen, DEX_BYTES);
@@ -116,7 +120,7 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
                 is_mail_free[inner_mail_id] = 0;
         }
         u8 target = PARTY_SIZE-1;
-        for(int i = 0; i < PARTY_SIZE; i++)
+        for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++)
             if(is_mail_free[i]) {
                 target = i;
                 break;
@@ -160,7 +164,7 @@ u8 is_invalid_offer(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
     // Check that the receiving party has at least one active mon
     if(game_data[1].party_3_undec[other_mon].is_egg) {
         u8 found_normal = 0;
-        for(int i = 0; i < PARTY_SIZE; i++) {
+        for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++) {
             if((i != own_mon) && (game_data[0].party_3_undec[i].is_valid_gen3) && (!game_data[0].party_3_undec[i].is_egg)) {
                 found_normal = 1;
                 break;
@@ -272,7 +276,7 @@ u8 get_slot(){
     u32 last_valid_save_index = 0;
     u8 slot = INVALID_SLOT;
 
-    for(int i = 0; i < 2; i++) {
+    for(int i = 0; i < NUM_SLOTS; i++) {
         u32 current_save_index = read_slot_index(i);
         if((current_save_index >= last_valid_save_index) && validate_slot(i)) {
             slot = i;

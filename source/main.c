@@ -95,7 +95,7 @@ IWRAM_CODE void vblank_update_function() {
 
 IWRAM_CODE void find_optimal_ewram_settings() {
     size_t size = ewram_speed_check_bin_size>>2;
-    const u32* ewram_speed_check = (const u32*) ewram_speed_check_bin;
+    const u32* ewram_speed_check = (const u32*)ewram_speed_check_bin;
     u32 test_data[size];
     
     // Check for unsupported (DS)
@@ -363,6 +363,7 @@ int main(void)
     
     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
     
+    //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 0, 0);
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     scanKeys();
     keys = keysDown();

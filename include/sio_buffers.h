@@ -4,6 +4,7 @@
 #include "party_handler.h"
 #include "gen3_save.h"
 #include "useful_qualifiers.h"
+#include <stddef.h>
 
 // We oversize it to have some wiggle room
 #define BUFFER_SIZE 0x500
@@ -151,7 +152,7 @@ void read_comm_buffer(struct game_data_t*, int, u8);
 u8 are_checksum_same_gen3(struct gen3_trade_data*);
 u32* get_communication_buffer(u8);
 u8 get_number_of_buffers(void);
-u16 get_buffer_size(int);
-u16* get_buffer_sizes(void);
+size_t get_buffer_size(int);
+size_t* get_buffer_sizes(void);
 
 #endif

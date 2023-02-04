@@ -32,7 +32,7 @@ void init_transfer_data(void);
 u8 get_offer(u8, u8, u8);
 u8 get_accept(u8, u8);
 int communicate_buffer(u8, u8);
-int check_if_continue(u8, const u8*, const u8*, u32, int, int, u8);
+int check_if_continue(u8, const u8*, const u8*, size_t, int, int, u8);
 int process_data_arrived_gen1(u8, u8);
 int process_data_arrived_gen2(u8, u8);
 u32 prepare_out_data_gen3(void);
@@ -75,7 +75,7 @@ const u8 gen1_start_trade_start_trade_procedure_next[NUMBER_OF_ENTITIES][GEN1_ST
 u8 stored_curr_gen;
 u8* out_buffer;
 u8* in_buffer;
-u16* transfer_sizes;
+size_t* transfer_sizes;
 u16 base_pos;
 u8 sizes_index;
 u8 syn_transmitted;
@@ -322,7 +322,7 @@ IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
         in_buffer[buffer_counter + base_pos] = data;
         last_transfer_counter = 0;
         buffer_counter++;
-        if((buffer_counter == (transfer_sizes[sizes_index])) || ((!is_master) && (sizes_index == get_number_of_buffers()-1) && (buffer_counter == ((u32)(transfer_sizes[sizes_index]-base_pos_out))))) {
+        if((buffer_counter == (transfer_sizes[sizes_index])) || ((!is_master) && (sizes_index == get_number_of_buffers()-1) && (buffer_counter == (transfer_sizes[sizes_index]-base_pos_out)))) {
             base_pos += transfer_sizes[sizes_index];
             sizes_index++;
             reset_transfer_data_between_sync();
@@ -343,7 +343,7 @@ IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
     return out_buffer[buffer_counter_out - 1 + base_pos];
 }
 
-IWRAM_CODE int check_if_continue(u8 data, const u8* sends, const u8* recvs, u32 size, int new_state, int new_send, u8 filter) {
+IWRAM_CODE int check_if_continue(u8 data, const u8* sends, const u8* recvs, size_t size, int new_state, int new_send, u8 filter) {
     if((filter) && (data >= 0x10))
         data = data & 0xF0;
     if(data == recvs[buffer_counter]) {
