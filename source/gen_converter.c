@@ -30,6 +30,11 @@
 #define UNOWN_I_LETTER 8
 #define UNOWN_V_LETTER 21
 
+#define ROAMER_ROUTES_START_RSE 16
+#define ROAMER_ROUTES_END_RSE 49
+#define ROAMER_ROUTES_START_FRLG 101
+#define ROAMER_ROUTES_END_FRLG 125
+
 u16 swap_endian_short(u16);
 u32 swap_endian_int(u32);
 u8 validate_converting_mon_of_gen1(u8, struct gen1_mon_data*);
@@ -43,7 +48,11 @@ void convert_exp_nature_of_gen3(struct gen3_mon*, struct gen3_mon_growth*, u8*, 
 u8 get_exp_nature(struct gen3_mon*, struct gen3_mon_growth*, u8, u8*);
 void convert_evs_of_gen3(struct gen3_mon_evs*, u16*);
 void convert_evs_to_gen3(struct gen3_mon_evs*, u16*);
-u16 convert_ivs_of_gen3(struct gen3_mon_misc*, u16, u32, u8, u8, u8, u8);
+u8 get_encounter_type_gen3(u16);
+u8 are_roamer_ivs(struct gen3_mon_misc*);
+u8 is_roamer_frlg(u16, u8, u8);
+u8 is_roamer_rse(u16, u8, u8);
+u16 convert_ivs_of_gen3(struct gen3_mon_misc*, u16, u32, u8, u8, u8, u8, u8);
 void set_ivs(struct gen3_mon_misc*, u32);
 void set_origin_pid_iv(struct gen3_mon*, struct gen3_mon_misc*, u16, u16, u8, u8, u8, u8);
 u8 are_trainers_same(struct gen3_mon*, u8);
@@ -304,9 +313,32 @@ void convert_evs_to_gen3(struct gen3_mon_evs* evs, u16* UNUSED(old_evs)) {
         evs->evs[i] = 0;
 }
 
-u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2) {
-    if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (species > LAST_VALID_GEN_1_MON)))
-        return 0;
+u8 get_encounter_type_gen3(u16 pure_species) {
+    if(pure_species > LAST_VALID_GEN_3_MON)
+        pure_species = 0;
+    return (encounter_types_bin[pure_species>>2]>>(2*(pure_species&3)))&3;
+}
+
+u8 are_roamer_ivs(struct gen3_mon_misc* misc) {
+    return (misc->atk_ivs <= 7) && (misc->def_ivs == 0) && (misc->spa_ivs == 0) && (misc->spd_ivs == 0) && (misc->spe_ivs == 0);
+}
+
+u8 is_roamer_frlg(u16 species, u8 origin_game, u8 met_location) {
+    return ((species >= RAIKOU_SPECIES) && (species <= SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_FRLG) && (met_location <= ROAMER_ROUTES_END_FRLG));
+}
+
+u8 is_roamer_rse(u16 species, u8 origin_game, u8 met_location) {
+    if((species == LATIAS_SPECIES) && ((origin_game == S_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)))
+        return 1;
+    if((species == LATIOS_SPECIES) && ((origin_game == R_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)))
+        return 1;
+    return 0;
+}
+
+u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2, u8 skip_checks) {
+    if(!skip_checks)
+        if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (species > LAST_VALID_GEN_1_MON)))
+            return 0;
     
     // Prepare gender related data
     u8 gender_threshold = get_gender_thresholds_gen12(gender_kind);
@@ -322,7 +354,7 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     
     // Handle roamers losing IVs when caught
     u8 origin_game = (misc->origins_info>>7)&0xF;
-    if(((species >= RAIKOU_SPECIES) && (species <= SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID))) {
+    if((get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location) || is_roamer_rse(species, origin_game, misc->met_location))) {
         u32 real_ivs = 0;
         if(get_roamer_ivs(pid, misc->hp_ivs, misc->atk_ivs, &real_ivs)){
             atk_ivs = ((real_ivs >> 5) & 0x1F) >> 1;
@@ -331,7 +363,7 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
             spe_ivs = ((real_ivs >> 15) & 0x1F) >> 1;
         }
     }
-    
+
     // Unown letter
     if((is_gen2) && (species == UNOWN_SPECIES)) {
         u8 letter = get_unown_letter_gen3(pid);
@@ -415,7 +447,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
         ot_gender = trainer_gender;
     }
 
-    u8 encounter_type = (encounter_types_bin[species>>2]>>(2*(species&3)))&3;
+    u8 encounter_type = get_encounter_type_gen3(species);
     u8 is_shiny = is_shiny_gen2_unfiltered(wanted_ivs);
     u32 ivs = 0;
     const u8* searchable_table = egg_locations_bin;
@@ -668,7 +700,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
         dst->evs[i] = evs_container[i];
     
     // Assign IVs
-    dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 1);
+    dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 1, 0);
     
     // Is this really how it works...?
     dst->pokerus = misc->pokerus;
@@ -775,7 +807,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
         dst->evs[i] = evs_container[i];
     
     // Assign IVs
-    dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 0);
+    dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 0, 0);
     
     // Defaults
     dst->bad_level = 0;
