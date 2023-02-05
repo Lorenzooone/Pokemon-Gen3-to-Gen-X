@@ -307,11 +307,15 @@ void convert_evs_to_gen3(struct gen3_mon_evs* evs, u16* UNUSED(old_evs)) {
 u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2) {
     if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (species > LAST_VALID_GEN_1_MON)))
         return 0;
+    
+    // Prepare gender related data
+    u8 gender_threshold = get_gender_thresholds_gen12(gender_kind);
+    u8 gender_useless_ivs = get_gender_useless_atk_ivs_gen12(gender_kind);
         
     // Assign IVs
     // Keep in mind: Unown letter, gender and shinyness
     // Hidden Power calculations are too restrictive
-    u8 atk_ivs = misc->atk_ivs >> 1;
+    u8 atk_ivs = (((misc->atk_ivs >> 1)>>gender_useless_ivs) | ((misc->atk_ivs >> 1)<<gender_useless_ivs)) & 0xF;
     u8 def_ivs = misc->def_ivs >> 1;
     u8 spa_ivs = (misc->spa_ivs + misc->spd_ivs) >> 2;
     u8 spe_ivs = misc->spe_ivs >> 1;
@@ -347,12 +351,26 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     }
     
     // Gender
-    // TODO: Remake this to offer a more fair conversion
-    if(gender != U_GENDER && gender_kind != M_INDEX && gender_kind != F_INDEX) {
-        if(gender == F_GENDER && atk_ivs >= get_gender_thresholds_gen12(gender_kind))
-            atk_ivs = get_gender_thresholds_gen12(gender_kind) - 1;
-        else if(gender == M_GENDER && atk_ivs < get_gender_thresholds_gen12(gender_kind))
-            atk_ivs = get_gender_thresholds_gen12(gender_kind);
+    if((gender_threshold > 0) && (gender_threshold < 16)) {
+        if(gender == F_GENDER) {
+            if(atk_ivs >= gender_threshold) {
+                u8 is_power_of_2 = 0;
+                for(int i = 0; i < 4; i++)
+                    if(gender_threshold == (1 << i)) {
+                        is_power_of_2 = 1;
+                        break;
+                    }
+                if(is_power_of_2)
+                   atk_ivs &= (gender_threshold - 1);
+                else {
+                    if(is_shiny && (gender_useless_ivs > (4-2)))
+                        gender_useless_ivs = 4-2;
+                    atk_ivs &= ~(1<<(4-gender_useless_ivs));
+                }
+            }
+        }
+        else
+            atk_ivs |= gender_threshold;
     }
     
     // Shinyness
@@ -362,6 +380,7 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
         spa_ivs = 10;
         spe_ivs = 10;
     }
+
     if(!is_shiny && is_shiny_gen2(atk_ivs, def_ivs, spa_ivs, spe_ivs))
         spe_ivs = 11;
     

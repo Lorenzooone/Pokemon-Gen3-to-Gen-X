@@ -32,7 +32,6 @@ u8 search_unown_pid_masks(u32, u8, u32*, u32*);
 void _generate_unown_shiny_info(u8, u16, u8, u32*, u32*, u32);
 
 // Nidoran M is special, it has to have 0x8000 set in the lower PID
-u8 gender_useful_atk_ivs[] = {3, 4, 1, 2, 2, 1, 4, 4, 4, 4};
 u16 gender_values[] = {0x7F, 0, 0x1F, 0x3F, 0xBF, 0xDF, 0, 0, 0x7FFF, 0};
 const u8 wanted_nature_shiny_table[NUM_NATURES] = {0, 1, 2, 3, 4, 5, 6, 7, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x15, 0x16, 0x17, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45};
 
@@ -123,7 +122,7 @@ IWRAM_CODE MAX_OPTIMIZE u32 generate_ot(u16 tid, u8* name) {
 
 IWRAM_CODE MAX_OPTIMIZE void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 gender, u8 gender_kind, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
     // Worst case: 0, 0x2113, 0, 0, 0, 34
-    u8 atk_ivs = ((((wanted_ivs>>4) & 0xF)<<(4-gender_useful_atk_ivs[gender_kind])) & 0xF)<<1;
+    u8 atk_ivs = ((((wanted_ivs>>4) & 0xF)<<get_gender_useless_atk_ivs_gen12(gender_kind)) & 0xF)<<1;
     u8 def_ivs = ((wanted_ivs) & 0xF)<<1;
     u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
     u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
@@ -158,7 +157,7 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs
                         u32 seed = (k<<31) | (new_spe_ivs << 16) | (new_spa_ivs << 21) | (new_spd_ivs << 26) | l;
                         
                         u16 generated_ivs = get_prev_seed(seed) >> 16;
-                        u8 new_atk_ivs = (((generated_ivs >> 5)&0x1F)>>(1+(4-gender_useful_atk_ivs[gender_kind]))) << (1+(4-gender_useful_atk_ivs[gender_kind]));
+                        u8 new_atk_ivs = (((generated_ivs >> 5)&0x1F)>>(1+get_gender_useless_atk_ivs_gen12(gender_kind))) << (1+get_gender_useless_atk_ivs_gen12(gender_kind));
                         u8 new_def_ivs = (((generated_ivs >> 10)&0x1F)>>1) << 1;
                         
                         if(new_atk_ivs == atk_ivs && new_def_ivs == def_ivs) {

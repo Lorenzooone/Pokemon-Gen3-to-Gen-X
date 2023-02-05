@@ -347,13 +347,13 @@ u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks){
 u8 get_pokemon_gender_gen3(int index, u32 pid, u8 is_egg, u8 deoxys_form){
     u8 gender_kind = get_pokemon_gender_kind_gen3(index, pid, is_egg, deoxys_form);
     switch(gender_kind){
-        case M_INDEX:
+        case M_GENDER_INDEX:
         case NIDORAN_M_GENDER_INDEX:
             return M_GENDER;
-        case F_INDEX:
+        case F_GENDER_INDEX:
         case NIDORAN_F_GENDER_INDEX:
             return F_GENDER;
-        case U_INDEX:
+        case U_GENDER_INDEX:
             return U_GENDER;
         default:
             if((pid & 0xFF) >= gender_thresholds_gen3[gender_kind])

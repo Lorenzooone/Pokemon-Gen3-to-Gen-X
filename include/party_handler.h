@@ -29,9 +29,9 @@
 #define M_GENDER 0
 #define F_GENDER 1
 #define U_GENDER 2
-#define M_INDEX 1
-#define F_INDEX 6
-#define U_INDEX 7
+#define M_GENDER_INDEX 1
+#define F_GENDER_INDEX 6
+#define U_GENDER_INDEX 7
 #define NIDORAN_M_GENDER_INDEX 8
 #define NIDORAN_F_GENDER_INDEX 9
 #define TOTAL_GENDER_KINDS 10

@@ -15,6 +15,7 @@
 
 u8 stat_index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
 u8 gender_thresholds_gen12[TOTAL_GENDER_KINDS] = {8, 0, 2, 4, 12, 14, 16, 17, 0, 16};
+u8 gender_useful_atk_ivs[TOTAL_GENDER_KINDS] = {3, 4, 1, 2, 2, 1, 4, 4, 4, 4};
 
 const struct stats_gen_23* stats_table_gen2 = (const struct stats_gen_23*)pokemon_stats_bin;
 const struct stats_gen_1* stats_table_gen1 = (const struct stats_gen_1*)pokemon_stats_gen1_bin;
@@ -160,6 +161,12 @@ u8 get_gender_thresholds_gen12(u8 gender_kind) {
     return gender_thresholds_gen12[gender_kind];
 }
 
+u8 get_gender_useless_atk_ivs_gen12(u8 gender_kind) {
+    if(gender_kind >= TOTAL_GENDER_KINDS)
+        gender_kind = 0;
+    return 4-gender_useful_atk_ivs[gender_kind];
+}
+
 u8 get_pokemon_gender_kind_gen2(u8 index, u8 is_egg, u8 curr_gen) {
     if(curr_gen == 1)
         return pokemon_gender_bin[get_mon_index_gen2_1(index)];
@@ -183,13 +190,13 @@ const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp, u8* buffer) {
 u8 get_pokemon_gender_gen2(u8 index, u8 atk_ivs, u8 is_egg, u8 curr_gen) {
     u8 gender_kind = get_pokemon_gender_kind_gen2(index, is_egg, curr_gen);
     switch(gender_kind){
-        case M_INDEX:
+        case M_GENDER_INDEX:
         case NIDORAN_M_GENDER_INDEX:
             return M_GENDER;
-        case F_INDEX:
+        case F_GENDER_INDEX:
         case NIDORAN_F_GENDER_INDEX:
             return F_GENDER;
-        case U_INDEX:
+        case U_GENDER_INDEX:
             return U_GENDER;
         default:
             if(atk_ivs >= get_gender_thresholds_gen12(gender_kind))
