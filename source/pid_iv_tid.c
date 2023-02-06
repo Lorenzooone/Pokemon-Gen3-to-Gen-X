@@ -14,6 +14,26 @@
     
 #define TEST_WORST_CASE 0
 
+#define GBA3_MULT 0x41C64E6D
+#define GBA3_ADD 0x00006073
+#define GBA3_RMULT 0xEEB9EB65
+#define GBA3_RADD 0x0A3561A1
+#define COLO_MULT 0x000343FD
+#define COLO_ADD 0x00269EC3
+#define COLO_RMULT 0xB9B33155
+#define COLO_RADD 0xA170F641
+
+#define GBA3_MOD 0x000067D3
+#define GBA3_PAT 0x00000D3E
+#define GBA3_INC 0x00004034
+
+#define COLO_BASE_0 0x43FABC02
+#define COLO_BASE_1 3
+#define COLO_MOD_FULL 0x25B2C
+#define COLO_DIV_FULL 0x4E64
+#define COLO_MOD_PART 0x12D96
+#define COLO_DIV_PART 0x2732
+
 #define NUM_SEEDS 0x10000
 #define NUM_DIFFERENT_PSV (0x10000>>3)
 #define NUM_DIFFERENT_UNOWN_PSV (0x10000>>5)
@@ -22,6 +42,11 @@ static u8 is_bad_tsv(u16);
 static void get_letter_valid_natures(u16, u8, u8*);
 static u32 get_prev_seed(u32);
 static u32 get_next_seed(u32);
+static u32 get_prev_seed_colo(u32);
+static u32 get_next_seed_colo(u32);
+u8 get_seed_gba3(u32*, u32, u32);
+u8 get_seed_colo(u32*, u32, u32);
+u8 get_seed_ivs_colo(u32*, u32, u32);
 void _generate_egg_info(u8, u16, u16, u8, u8, u32*, u32*, u32);
 void _generate_egg_shiny_info(u8, u16, u8, u8, u32*, u32*, u32);
 void _generate_static_info(u8, u16, u16, u32*, u32*, u32);
@@ -86,11 +111,102 @@ ALWAYS_INLINE MAX_OPTIMIZE void get_letter_valid_natures(u16 tsv, u8 letter, u8*
 }
 
 ALWAYS_INLINE MAX_OPTIMIZE u32 get_prev_seed(u32 seed) {
-    return (seed-0x6073) * 0xEEB9EB65;
+    return (seed*GBA3_RMULT)+GBA3_RADD;
 }
 
 ALWAYS_INLINE MAX_OPTIMIZE u32 get_next_seed(u32 seed) {
-    return ((seed*0x41C64E6D)+0x6073);
+    return (seed*GBA3_MULT)+GBA3_ADD;
+}
+
+ALWAYS_INLINE MAX_OPTIMIZE u32 get_prev_seed_colo(u32 seed) {
+    return (seed*COLO_RMULT)+COLO_RADD;
+}
+
+ALWAYS_INLINE MAX_OPTIMIZE u32 get_next_seed_colo(u32 seed) {
+    return (seed*COLO_MULT)+COLO_ADD;
+}
+
+//https://github.com/StarfBerry/poke-scripts/blob/f641f3eab264e2caf1ee7c3c0e5553a9d8086921/RNG/LCG_Reversal.py#L19-L93
+IWRAM_CODE MAX_OPTIMIZE u8 get_seed_gba3(u32* possible_seeds, u32 first, u32 second) {
+    first <<= 16;
+    second <<= 16;
+    u32 diff = (second-(first*GBA3_MULT))>>16;
+    u32 low = SWI_DivMod((((diff*GBA3_MOD)+GBA3_INC)>>16)*GBA3_PAT, GBA3_MOD);
+    
+    // Max iterations = 3
+    u8 found_values = 0;
+    do
+    {
+        u32 seed = first | low;
+        if((get_next_seed(seed)&0xFFFF0000) == second)
+            possible_seeds[found_values++] = get_prev_seed(seed);
+        low += GBA3_MOD;
+    } while(low < 0x10000);
+    
+    return found_values;
+}
+
+//https://crypto.stackexchange.com/questions/10608/how-to-attack-a-fixed-lcg-with-partial-output/10629#10629
+IWRAM_CODE MAX_OPTIMIZE u8 get_seed_colo(u32* possible_seeds, u32 first, u32 second) {
+    first <<= 16;
+    second <<= 16;
+    u32 t = second - (first*COLO_MULT) - (COLO_ADD-0xFFFF);
+    u32 k_max = COLO_BASE_1;
+    if(t > COLO_BASE_0)
+        k_max -= 1;
+    
+    u16 t_div = 0;
+    while(t >= 0x80000000) {
+        t -= (COLO_DIV_PART*COLO_MULT);
+        t_div += COLO_DIV_PART;
+    }
+    u32 t_mod = SWI_DivMod(t, COLO_MULT);
+
+    // Max iterations = 4
+    u8 found_values = 0;
+    for(u8 k = 0; k <= k_max; k++) {
+        if(t_mod < 0x10000)
+            possible_seeds[found_values++] = get_prev_seed_colo(first|t_div);
+        t_div += COLO_DIV_FULL;
+        t_mod += COLO_MOD_FULL;
+        if(t_mod >= COLO_MULT) {
+            t_div += 1;
+            t_mod -= COLO_MULT;
+        }
+    }
+    
+    return found_values;
+}
+
+//https://crypto.stackexchange.com/questions/10608/how-to-attack-a-fixed-lcg-with-partial-output/10629#10629
+IWRAM_CODE MAX_OPTIMIZE u8 get_seed_ivs_colo(u32* possible_seeds, u32 first, u32 second) {
+    first <<= 16;
+    second <<= 16;
+    u32 t = (second - (first*COLO_MULT) - (COLO_ADD-0xFFFF))&0x7FFFFFFF;
+    u32 k_max = COLO_BASE_1 << 1;
+    if(t > COLO_BASE_0)
+        k_max -= 1;
+    
+    u16 t_div = 0;
+    u32 t_mod = SWI_DivMod(t, COLO_MULT);
+
+    // Max iterations = 7
+    u8 found_values = 0;
+    for(u8 k = 0; k <= k_max; k++) {
+        if(t_mod < 0x10000) {
+            u32 seed = get_prev_seed_colo(first|t_div);
+            possible_seeds[found_values++] = seed;
+            possible_seeds[found_values++] = 0x80000000^seed; // Top bit flip
+        }
+        t_div += COLO_DIV_PART;
+        t_mod += COLO_MOD_PART;
+        if(t_mod >= COLO_MULT) {
+            t_div += 1;
+            t_mod -= COLO_MULT;
+        }
+    }
+    
+    return found_values;
 }
 
 IWRAM_CODE MAX_OPTIMIZE u32 generate_ot(u16 tid, u8* name) {
