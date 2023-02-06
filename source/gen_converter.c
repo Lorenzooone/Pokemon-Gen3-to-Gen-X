@@ -34,6 +34,8 @@
 #define ROAMER_ROUTES_END_RSE 49
 #define ROAMER_ROUTES_START_FRLG 101
 #define ROAMER_ROUTES_END_FRLG 125
+#define ROAMER_LEVEL_RSE 40
+#define ROAMER_LEVEL_FRLG 50
 
 u16 swap_endian_short(u16);
 u32 swap_endian_int(u32);
@@ -50,8 +52,8 @@ void convert_evs_of_gen3(struct gen3_mon_evs*, u16*);
 void convert_evs_to_gen3(struct gen3_mon_evs*, u16*);
 u8 get_encounter_type_gen3(u16);
 u8 are_roamer_ivs(struct gen3_mon_misc*);
-u8 is_roamer_frlg(u16, u8, u8);
-u8 is_roamer_rse(u16, u8, u8);
+u8 is_roamer_frlg(u16, u8, u8, u8);
+u8 is_roamer_rse(u16, u8, u8, u8);
 u16 convert_ivs_of_gen3(struct gen3_mon_misc*, u16, u32, u8, u8, u8, u8, u8);
 void set_ivs(struct gen3_mon_misc*, u32);
 void set_origin_pid_iv(struct gen3_mon*, struct gen3_mon_misc*, u16, u16, u8, u8, u8, u8);
@@ -323,14 +325,14 @@ u8 are_roamer_ivs(struct gen3_mon_misc* misc) {
     return (misc->atk_ivs <= 7) && (misc->def_ivs == 0) && (misc->spa_ivs == 0) && (misc->spd_ivs == 0) && (misc->spe_ivs == 0);
 }
 
-u8 is_roamer_frlg(u16 species, u8 origin_game, u8 met_location) {
-    return ((species >= RAIKOU_SPECIES) && (species <= SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_FRLG) && (met_location <= ROAMER_ROUTES_END_FRLG));
+u8 is_roamer_frlg(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
+    return ((species >= RAIKOU_SPECIES) && (species <= SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_FRLG) && (met_location <= ROAMER_ROUTES_END_FRLG)) && (met_level == ROAMER_LEVEL_FRLG);
 }
 
-u8 is_roamer_rse(u16 species, u8 origin_game, u8 met_location) {
-    if((species == LATIAS_SPECIES) && ((origin_game == S_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)))
+u8 is_roamer_rse(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
+    if((species == LATIAS_SPECIES) && ((origin_game == S_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)) && (met_level == ROAMER_LEVEL_RSE))
         return 1;
-    if((species == LATIOS_SPECIES) && ((origin_game == R_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)))
+    if((species == LATIOS_SPECIES) && ((origin_game == R_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)) && (met_level == ROAMER_LEVEL_RSE))
         return 1;
     return 0;
 }
@@ -354,7 +356,8 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     
     // Handle roamers losing IVs when caught
     u8 origin_game = (misc->origins_info>>7)&0xF;
-    if((get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location) || is_roamer_rse(species, origin_game, misc->met_location))) {
+    u8 met_level = (misc->origins_info)&0x7F;
+    if((get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location, met_level) || is_roamer_rse(species, origin_game, misc->met_location, met_level))) {
         u32 real_ivs = 0;
         if(get_roamer_ivs(pid, misc->hp_ivs, misc->atk_ivs, &real_ivs)){
             atk_ivs = ((real_ivs >> 5) & 0x1F) >> 1;
