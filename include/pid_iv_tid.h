@@ -1,7 +1,7 @@
 #ifndef PID_IV_TID__
 #define PID_IV_TID__
 
-void worst_case_conversion_tester(u32*);
+void worst_case_conversion_tester(vu32*);
 void init_unown_tsv(void);
 
 u8 get_roamer_ivs(u32, u8, u8, u32*);
