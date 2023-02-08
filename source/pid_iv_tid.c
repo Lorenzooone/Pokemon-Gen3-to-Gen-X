@@ -28,6 +28,9 @@
 #define GBA3_MOD 0x000067D3
 #define GBA3_PAT 0x00000D3E
 #define GBA3_INC 0x00004034
+#define GBA3_RMOD 0x00007ED7
+#define GBA3_RPAT 0x000071A4
+#define GBA3_RINC 0x79C8A584 // Any value in 0x79C8A584 - 0x79C8BFCB works
 
 #define COLO_BASE_0 0x43FABC02
 #define COLO_BASE_1 3
@@ -35,6 +38,8 @@
 #define COLO_DIV_FULL 0x4E64
 #define COLO_MOD_PART 0x12D96
 #define COLO_DIV_PART 0x2732
+
+#define STATIC_IV_MASK (((0xF<<10) | (0xF<<5))<<(16+1))
 
 #define NUM_SEEDS 0x10000
 #define NUM_DIFFERENT_PSV (0x10000>>3)
@@ -396,6 +401,8 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
     u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
     u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
     
+    u32 base_second_ivs = ((atk_ivs<<5) | (def_ivs<<10))<<16;
+    
     u8 limit = ((spa_ivs+1) * 2);
     if(limit > 0x20)
         limit = 0x20;
@@ -420,18 +427,17 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
             for(int u = 0; u < 2; u++) {
                 u8 new_spe_ivs = spe_ivs + (u^base_spe);
                 for(int k = 0; k < 2; k++) {
+                    u32 seed_base = (k<<31) | (new_spe_ivs << 16) | (new_spa_ivs << 21) | (new_spd_ivs << 26);
                     for(int l = 0; l < NUM_SEEDS; l++) {
                         u32 pid = 0;
                         u32 ivs = 0;
-                        u32 seed = (k<<31) | (new_spe_ivs << 16) | (new_spa_ivs << 21) | (new_spd_ivs << 26) | l;
+                        u32 seed = seed_base | l;
                         
-                        u16 generated_ivs = get_prev_seed(seed) >> 16;
-                        u8 new_atk_ivs = (((generated_ivs >> 5)&0x1F)>>1) << 1;
-                        u8 new_def_ivs = (((generated_ivs >> 10)&0x1F)>>1) << 1;
+                        seed = get_prev_seed(seed);
                         
-                        if(new_atk_ivs == atk_ivs && new_def_ivs == def_ivs) {
-                            ivs = (generated_ivs & 0x7FFF) | (((seed>>16) & 0x7FFF)<<15);
-                            seed = get_prev_seed(seed);
+                        if((seed & STATIC_IV_MASK) == base_second_ivs) {
+                            u16 generated_ivs = seed >> 16;
+                            ivs = (generated_ivs & 0x7FFF) | (((seed_base>>16) & 0x7FFF)<<15);
                             seed = get_prev_seed(seed);
                             pid |= seed & 0xFFFF0000;
                             seed = get_prev_seed(seed);
@@ -835,6 +841,7 @@ void worst_case_conversion_tester(vu32* counter) {
     u32 max_counter = 0;
     u32 pid, ivs;
     
+    VBlankIntrWait();
     curr_counter = *counter;
     
     _generate_egg_info(0, 0x2113, 0, 0, 0, &pid, &ivs, 34);
@@ -843,6 +850,7 @@ void worst_case_conversion_tester(vu32* counter) {
     
     PRINT_FUNCTION("\nMax time 1 a: 0x\x04\n", max_counter);
     
+    VBlankIntrWait();
     curr_counter = *counter;
     
     _generate_static_info(6, 0x132A, 0xA30E, &pid, &ivs, 0);
@@ -851,6 +859,7 @@ void worst_case_conversion_tester(vu32* counter) {
     
     PRINT_FUNCTION("Max time 2 a: 0x\x04\n", max_counter);
     
+    VBlankIntrWait();
     curr_counter = *counter;
     
     _generate_unown_info(00, 03, 0x11, 0xD788, &pid, &ivs, 0x53070000);
@@ -859,6 +868,7 @@ void worst_case_conversion_tester(vu32* counter) {
     
     PRINT_FUNCTION("Max time 4 p: 0x\x04\n", max_counter);
     
+    VBlankIntrWait();
     curr_counter = *counter;
     
     _generate_egg_shiny_info(0, 0x0, 1, 0, &pid, &ivs, 0);
@@ -867,6 +877,7 @@ void worst_case_conversion_tester(vu32* counter) {
     
     PRINT_FUNCTION("Max time 1 s: 0x\x04\n", max_counter);
     
+    VBlankIntrWait();
     curr_counter = *counter;
     
     _generate_static_shiny_info(0, 0x2088, &pid, &ivs, 0x36810000);
@@ -875,6 +886,7 @@ void worst_case_conversion_tester(vu32* counter) {
     
     PRINT_FUNCTION("Max time 2 s: 0x\x04\n", max_counter);
     
+    VBlankIntrWait();
     curr_counter = *counter;
     
     _generate_unown_shiny_info(5, 0x4FF8, 5, &pid, &ivs, 0x8FC00000);
