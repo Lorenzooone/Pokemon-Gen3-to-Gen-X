@@ -50,10 +50,10 @@ void write_above_char(u16);
 int sub_printf(u8*);
 int sub_printf_gen3(u8*, size_t, u8);
 int prepare_base_10(int, u8*);
-int prepare_base_16(int, u8*);
+int prepare_base_16(u32, u8*);
 int digits_print(u8*, int, u8, u8);
 int write_base_10(int, int, u8);
-int write_base_16(int, int, u8);
+int write_base_16(u32, int, u8);
 
 u8 x_pos;
 u8 y_pos;
@@ -376,7 +376,7 @@ int prepare_base_10(int number, u8* digits) {
     return pos;
 }
 
-int prepare_base_16(int number, u8* digits) {
+int prepare_base_16(u32 number, u8* digits) {
     for(int i = 0; i < NUM_DIGITS; i++)
         digits[i] = 0;
     
@@ -419,7 +419,7 @@ int write_base_10(int number, int max, u8 sub) {
     return digits_print(digits, max, sub, start_pos);
 }
 
-int write_base_16(int number, int max, u8 sub) {
+int write_base_16(u32 number, int max, u8 sub) {
     u8 digits[NUM_DIGITS];
     u8 start_pos = prepare_base_16(number, digits);
     
@@ -445,7 +445,7 @@ int fast_printf(const char * format, ... ) {
                 write_base_10(va_arg(va, int), 0, 0);
                 break;
             case '\x04':
-                write_base_16(va_arg(va, int), 0, 0);
+                write_base_16(va_arg(va, u32), 0, 0);
                 break;
             case '\x05':
                 sub_printf_gen3(va_arg(va, u8*), va_arg(va, size_t), va_arg(va, int));
@@ -457,10 +457,10 @@ int fast_printf(const char * format, ... ) {
                 write_base_10(va_arg(va, int), va_arg(va, int), '0');
                 break;
             case '\x0C':
-                write_base_16(va_arg(va, int), va_arg(va, int), ' ');
+                write_base_16(va_arg(va, u32), va_arg(va, int), ' ');
                 break;
             case '\x0D':
-                write_base_16(va_arg(va, int), va_arg(va, int), '0');
+                write_base_16(va_arg(va, u32), va_arg(va, int), '0');
                 break;
             case '\x11':
                 curr_x_pos = x_pos;
@@ -478,7 +478,7 @@ int fast_printf(const char * format, ... ) {
                 break;
             case '\x14':
                 curr_x_pos = x_pos;
-                write_base_16(va_arg(va, int), 0, 0);
+                write_base_16(va_arg(va, u32), 0, 0);
                 x_pos = curr_x_pos + va_arg(va, int);
                 if(x_pos >= X_LIMIT)
                     new_line();

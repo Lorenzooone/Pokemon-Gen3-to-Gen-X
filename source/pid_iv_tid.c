@@ -13,6 +13,8 @@
 #include "shiny_unown_banned_tsv_letter_table_bin.h"
 #include "mod_nature_pure_increases_bin.h"
 #include "mod_nature_bases_bin.h"
+//#include "gba3_bad_diffs_bin.h"
+//#include "rgba3_bad_diffs_bin.h"
     
 #define TEST_WORST_CASE 0
 
@@ -53,6 +55,8 @@ static u32 get_next_seed(u32);
 static u32 get_prev_seed_colo(u32);
 static u32 get_next_seed_colo(u32);
 u8 get_seed_gba3(u32*, u32, u32);
+u8 iterate_reverse_low_masked_ivs_gba3(u32*, u32, u32, u32, u8);
+u8 get_reverse_masked_ivs_gba3(u32*, u32, u32);
 u8 get_seed_colo(u32*, u32, u32);
 u8 get_seed_ivs_colo(u32*, u32, u32);
 void _generate_egg_info(u8, u16, u16, u8, u8, u32*, u32*, u32);
@@ -141,11 +145,12 @@ ALWAYS_INLINE MAX_OPTIMIZE u32 get_next_seed_colo(u32 seed) {
 IWRAM_CODE MAX_OPTIMIZE u8 get_seed_gba3(u32* possible_seeds, u32 first, u32 second) {
     first <<= 16;
     second <<= 16;
+    
     u32 diff = (second-(first*GBA3_MULT))>>16;
     u32 low = SWI_DivMod((((diff*GBA3_MOD)+GBA3_INC)>>16)*GBA3_PAT, GBA3_MOD);
     
-    // Max iterations = 3
     u8 found_values = 0;
+    // Max iterations = 3
     do
     {
         u32 seed = first | low;
@@ -153,6 +158,39 @@ IWRAM_CODE MAX_OPTIMIZE u8 get_seed_gba3(u32* possible_seeds, u32 first, u32 sec
             possible_seeds[found_values++] = get_prev_seed(seed);
         low += GBA3_MOD;
     } while(low < NUM_SEEDS);
+    
+    return found_values;
+}
+
+IWRAM_CODE MAX_OPTIMIZE u8 iterate_reverse_low_masked_ivs_gba3(u32* possible_seeds, u32 low, u32 first, u32 second_target, u8 found_values) {
+    do
+    {
+        u32 seed = first | low;
+        if((get_prev_seed(seed)&STATIC_IV_MASK) == second_target) {
+            seed = get_next_seed(seed);
+            possible_seeds[found_values++] = seed;
+            possible_seeds[found_values++] = 0x80000000^seed;
+        }
+        low += GBA3_RMOD;
+    } while(low < NUM_SEEDS);
+    
+    return found_values;
+}
+
+// Reversed because the filter is more lax this way
+IWRAM_CODE MAX_OPTIMIZE u8 get_reverse_masked_ivs_gba3(u32* possible_seeds, u32 first, u32 second) {
+    first <<= 16;
+    second <<= 16;
+    u32 second_target = second & STATIC_IV_MASK;
+    
+    u32 diff = (second-(first*GBA3_RMULT))>>16;
+    u32 low0 = SWI_DivMod((((diff*GBA3_RMOD)+GBA3_RINC)>>16)*GBA3_RPAT, GBA3_RMOD);
+    u32 low1 = SWI_DivMod(((((diff^0x8000)*GBA3_RMOD)+GBA3_RINC)>>16)*GBA3_RPAT, GBA3_RMOD);
+    
+    u8 found_values = 0;
+    // Max iterations = 3 * 2
+    found_values = iterate_reverse_low_masked_ivs_gba3(possible_seeds, low0, first, second_target, found_values);
+    found_values = iterate_reverse_low_masked_ivs_gba3(possible_seeds, low1, first, second_target, found_values);
     
     return found_values;
 }
@@ -201,7 +239,7 @@ IWRAM_CODE MAX_OPTIMIZE u8 get_seed_ivs_colo(u32* possible_seeds, u32 first, u32
     u16 t_div = 0;
     u32 t_mod = SWI_DivMod(t, COLO_MULT);
 
-    // Max iterations = 7
+    // Max iterations = 7 * 2
     u8 found_values = 0;
     for(u8 k = 0; k <= k_max; k++) {
         if(t_mod < NUM_SEEDS) {
@@ -401,7 +439,7 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
     u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
     u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
     
-    u32 base_second_ivs = ((atk_ivs<<5) | (def_ivs<<10))<<16;
+    u32 base_second_ivs = (atk_ivs<<5) | (def_ivs<<10);
     
     u8 limit = ((spa_ivs+1) * 2);
     if(limit > 0x20)
@@ -426,38 +464,40 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
                 continue;
             for(int u = 0; u < 2; u++) {
                 u8 new_spe_ivs = spe_ivs + (u^base_spe);
-                for(int k = 0; k < 2; k++) {
-                    u32 seed_base = (k<<31) | (new_spe_ivs << 16) | (new_spa_ivs << 21) | (new_spd_ivs << 26);
-                    for(int l = 0; l < NUM_SEEDS; l++) {
-                        u32 pid = 0;
-                        u32 ivs = 0;
-                        u32 seed = seed_base | l;
-                        
-                        seed = get_prev_seed(seed);
-                        
-                        if((seed & STATIC_IV_MASK) == base_second_ivs) {
-                            u16 generated_ivs = seed >> 16;
-                            ivs = (generated_ivs & 0x7FFF) | (((seed_base>>16) & 0x7FFF)<<15);
-                            seed = get_prev_seed(seed);
-                            pid |= seed & 0xFFFF0000;
-                            seed = get_prev_seed(seed);
-                            pid |= (seed & 0xFFFF0000)>>16;
-                            u16 shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
-                            u8 nature = get_nature_fast(pid);
-                            if((nature == wanted_nature) && (shiny_pid >= 8)) {
-                                *dst_pid = pid;
-                                *dst_ivs = ivs;
-                                return;
+                u32 seed_base = (new_spe_ivs) | (new_spa_ivs << 5) | (new_spd_ivs << 10);
+                for(int k = 0; k < 31; k++)
+                    for(int l = 0; l < 2; l++)
+                        for(int m = 0; m < 2; m++) {
+                            u32 possible_seeds[3*2*2];
+                            u8 num_found = get_reverse_masked_ivs_gba3(possible_seeds, seed_base, base_second_ivs | k | (l<<5) | (m<<10));
+                            for(int n = 0; n < num_found; n++) {
+                                u32 seed = possible_seeds[n];
+                                
+                                seed = get_prev_seed(seed);
+                                u32 generated_ivs = ((seed>>16) & 0x7FFF) << 15;
+                                seed = get_prev_seed(seed);
+                                u32 ivs = generated_ivs | ((seed>>16) & 0x7FFF);
+                                seed = get_prev_seed(seed);
+                                u32 pid = seed & 0xFFFF0000;
+                                seed = get_prev_seed(seed);
+                                pid |= seed >> 16;
+                                u16 shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
+                                u8 nature = get_nature_fast(pid);
+                                if((nature == wanted_nature) && (shiny_pid >= 8)) {
+                                    *dst_pid = pid;
+                                    *dst_ivs = ivs;
+                                    return;
+                                }
                             }
                         }
-                    }
-                    pass_counter++;
-                }
+                pass_counter++;
             }
         }
         if(initial_spa == i)
             initial_spa += (limit-start);
     }
+    *dst_pid = 0;
+    *dst_ivs = 0;
 }
 
 IWRAM_CODE MAX_OPTIMIZE void generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
@@ -857,7 +897,7 @@ void worst_case_conversion_tester(vu32* counter) {
     
     max_counter = ((*counter)-curr_counter);
     
-    PRINT_FUNCTION("Max time 2 a: 0x\x04\n", max_counter);
+    PRINT_FUNCTION("Max time 2 p: 0x\x04\n", max_counter);
     
     VBlankIntrWait();
     curr_counter = *counter;
