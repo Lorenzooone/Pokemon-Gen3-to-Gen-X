@@ -187,12 +187,14 @@ void wait_for_vblank_if_needed() {
 }
 
 void enable_screen(u8 bg_num){
+    wait_for_vblank_if_needed();
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     enabled_screen[bg_num] = 1;
 }
 
 void disable_screen(u8 bg_num){
+    wait_for_vblank_if_needed();
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     enabled_screen[bg_num] = 0;
