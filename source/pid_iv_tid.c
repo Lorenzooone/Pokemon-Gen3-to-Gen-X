@@ -48,6 +48,7 @@
 #define NUM_DIFFERENT_UNOWN_PSV (0x10000>>5)
 #define NUM_DIFFERENT_NON_SHINY_UNOWN_PSV (0x10000>>4)
 
+u32 normalize_position(u32, u32*, s32, u32);
 static u8 is_bad_tsv(u16);
 static void get_letter_valid_natures(u16, u8, u8*);
 static u32 get_prev_seed(u32);
@@ -64,8 +65,8 @@ void _generate_egg_shiny_info(u8, u16, u8, u8, u32*, u32*, u32);
 void _generate_static_info(u8, u16, u16, u32*, u32*, u32);
 void _generate_static_shiny_info(u8, u16, u32*, u32*, u32);
 void _generate_unown_info(u8, u8, u8, u16, u32*, u32*, u32);
-u8 search_specific_low_pid(u32, u32*, u32*, u32, u8);
-u8 search_unown_pid_masks(u32, u8, u32*, u32*, u32);
+u8 search_specific_low_pid(u32, u32*, u32*, u8, u8);
+u8 search_unown_pid_masks(u32, u8, u32*, u32*, u8);
 void _generate_unown_shiny_info(u8, u16, u8, u32*, u32*, u32);
 
 // Nidoran M is special, it has to have 0x8000 set in the lower PID
@@ -87,6 +88,25 @@ void init_unown_tsv() {
             pos += NUM_UNOWN_LETTERS_GEN3;
         }
     }
+}
+
+IWRAM_CODE MAX_OPTIMIZE u32 normalize_position(u32 pos, u32* initial_pos, s32 base_increment, u32 limit) {
+        if((s32)(pos + base_increment) < 0)
+            pos += limit;
+        if(pos + base_increment >= limit)
+            pos += base_increment - limit;
+        else
+            pos += base_increment;
+        if(pos == (*initial_pos)) {
+            pos += 1;
+            *initial_pos += 1;
+            if((*initial_pos) >= limit)
+                (*initial_pos) -= limit;
+            if(pos >= limit)
+                pos -= limit;
+        }
+    
+    return pos;
 }
 
 ALWAYS_INLINE MAX_OPTIMIZE u8 is_bad_tsv(u16 tsv) {
@@ -452,7 +472,12 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
     
     u8 base_spe = (start_seed >> 0) & 1;
     u8 base_spd = (start_seed >> 1) & 1;
-    u8 initial_spa = SWI_DivMod(start_seed>>2, (limit-start));
+    u8 initial_spa = SWI_DivMod(start_seed>>16, (limit-start));
+    u8 base_atk = (start_seed >> 2) & 1;
+    u8 base_def = (start_seed >> 3) & 1;
+    u8 base_hp = (start_seed >> 4) & 0x1F;
+    s32 base_increment = (((start_seed >> 10) & 0xF)+1);
+    base_increment *= (-1 + (2 * ((start_seed>>9)&1)));
     
     for(int i = 0; i < (limit-start); i++) {
         for(int j = 0; j < 2; j++) {
@@ -465,11 +490,13 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
             for(int u = 0; u < 2; u++) {
                 u8 new_spe_ivs = spe_ivs + (u^base_spe);
                 u32 seed_base = (new_spe_ivs) | (new_spa_ivs << 5) | (new_spd_ivs << 10);
-                for(int k = 0; k < 31; k++)
+                u32 initial_hps = base_hp;
+                u32 hps = base_hp;
+                for(int k = 0; k < 0x20; k++) {
                     for(int l = 0; l < 2; l++)
                         for(int m = 0; m < 2; m++) {
                             u32 possible_seeds[3*2*2];
-                            u8 num_found = get_reverse_masked_ivs_gba3(possible_seeds, seed_base, base_second_ivs | k | (l<<5) | (m<<10));
+                            u8 num_found = get_reverse_masked_ivs_gba3(possible_seeds, seed_base, base_second_ivs | hps | ((l^base_atk)<<5) | ((m^base_def)<<10));
                             for(int n = 0; n < num_found; n++) {
                                 u32 seed = possible_seeds[n];
                                 
@@ -490,6 +517,8 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
                                 }
                             }
                         }
+                    hps = normalize_position(hps, &initial_hps, base_increment, 0x20);
+                }
                 pass_counter++;
             }
         }
@@ -505,48 +534,19 @@ IWRAM_CODE MAX_OPTIMIZE void generate_static_info(u8 wanted_nature, u16 wanted_i
 }
 
 IWRAM_CODE MAX_OPTIMIZE void _generate_static_shiny_info(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 given_seed) {
-    // Worst case: 0, 0x2088, (base_increment = 1, initial_pos = 0x6D0, set TEST_WORST_CASE to 1 to test it, with seed 0x36810000)
-    s32 base_increment;
-    u16 initial_pos;
+    // Worst case: 0, 0x2088, 0x36810000
     u16 high_pid;
     u16 low_pid;
     u8 nature;
-    u32 generating_seed = get_next_seed(given_seed);
-    #if TEST_WORST_CASE
-    base_increment = (1 << ((given_seed >> 16) & 3))*(-1 + (2 * ((given_seed>>18)&1)));
-    initial_pos = given_seed >> 19;
-    #else
-    base_increment = (1 << ((generating_seed >> 16) & 3))*(-1 + (2 * ((generating_seed>>18)&1)));
-    initial_pos = generating_seed >> 19;
-    #endif
-    u16 pos = initial_pos;
-    generating_seed = get_next_seed(generating_seed);
     
-    for(int i = 0; i < NUM_DIFFERENT_PSV; i++) {
-
-        generating_seed = get_next_seed(generating_seed); 
-        low_pid = generating_seed >> 16;
-        generating_seed = get_next_seed(generating_seed);
-        high_pid = generating_seed >> 16;
-        
-        u16 shiny_pid = (high_pid ^ low_pid ^ tsv);
-        
-        nature = get_nature_fast((high_pid<<16) | low_pid);
-        
-        if((shiny_pid < 8) && (nature == wanted_nature)) {
-            generating_seed = get_next_seed(generating_seed); 
-            u16 generated_ivs = (generating_seed >> 16)&0x7FFF;
-            generating_seed = get_next_seed(generating_seed);
-            *dst_pid = low_pid | (high_pid<<16);
-            *dst_ivs = generated_ivs | (((generating_seed>>16)&0x7FFF)<<15);
-            return;
-        }
-        
+    s32 base_increment = (1 << ((given_seed >> 16) & 3))*(-1 + (2 * ((given_seed>>18)&1)));
+    u32 initial_pos = given_seed >> 19;
+    u8 base_pos_search_pid = given_seed & 0xFF;
+    u32 pos = initial_pos;
+    
+    for(int i = 0; i < NUM_DIFFERENT_PSV; i++) {        
         high_pid = pos<<3;
-        
         low_pid = (high_pid ^ tsv);
-        
-        nature = get_nature_fast((high_pid<<16) | low_pid);
         
         low_pid = low_pid & 0xFFF8;
         high_pid = high_pid & 0xFFF8;
@@ -558,23 +558,10 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_shiny_info(u8 wanted_nature, u16 t
         low_pid |= (wanted_nature_shiny_table[nature_diff] & 0x7);
         high_pid |= ((wanted_nature_shiny_table[nature_diff]>>4) & 0x7);
         
-        if(search_specific_low_pid((high_pid<<16) | low_pid, dst_pid, dst_ivs, generating_seed, 0))
+        if(search_specific_low_pid((high_pid<<16) | low_pid, dst_pid, dst_ivs, base_pos_search_pid, 0))
             return;
 
-        if(pos + base_increment < 0)
-            pos += NUM_DIFFERENT_PSV;
-        if(pos + base_increment >= NUM_DIFFERENT_PSV)
-            pos += base_increment - NUM_DIFFERENT_PSV;
-        else
-            pos += base_increment;
-        if(pos == initial_pos) {
-            pos += 1;
-            initial_pos += 1;
-            if(initial_pos >= NUM_DIFFERENT_PSV)
-                initial_pos -= NUM_DIFFERENT_PSV;            
-            if(pos >= NUM_DIFFERENT_PSV)
-                pos -= NUM_DIFFERENT_PSV;
-        }
+        pos = normalize_position(pos, &initial_pos, base_increment, NUM_DIFFERENT_PSV);
     }
 }
 
@@ -592,31 +579,27 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_unown_info(u8 wanted_nature, u8 letter, u
     u16 high_pid;
     u16 low_pid;
     
-    u32 generating_seed = get_next_seed(start_seed);
-    #if TEST_WORST_CASE
     s32 base_increment = (((start_seed >> 16) & 0x7)*2);
     if(base_increment == 0)
         base_increment += 1;
-    base_increment*=(-1 + (2 * ((start_seed>>19)&1)));
-    u16 initial_pos = start_seed >> 20;
-    #else
-    s32 base_increment = (((generating_seed >> 16) & 0x7)*2);
-    if(base_increment == 0)
-        base_increment += 1;
-    base_increment*=(-1 + (2 * ((generating_seed>>19)&1)));
-    u16 initial_pos = generating_seed >> 20;
-    #endif
-    u16 pos = initial_pos;
-    generating_seed = get_next_seed(generating_seed);
+    base_increment *= (-1 + (2 * ((start_seed>>19)&1)));
+    u32 initial_pos = start_seed >> 20;
+    u32 pos = initial_pos;
 
-    u8 max_iters = 0x100 / NUM_UNOWN_LETTERS_GEN3;
-    if(letter >= (0x100 % NUM_UNOWN_LETTERS_GEN3))
-        max_iters += 1;
+    // Only a byte determines the Unown letter
+    u8 max_letter_iters = 0x100 / NUM_UNOWN_LETTERS_GEN3;
+    if(letter < (0x100 % NUM_UNOWN_LETTERS_GEN3))
+        max_letter_iters += 1;
+    
+    u8 base_letter_iter = SWI_DivMod(start_seed & 0x3F, max_letter_iters);
+    u8 base_nature_pure_increase = SWI_DivMod((start_seed>>8) & 0xFF, (mod_nature_pure_increases_bin_size>>1));
 
     for(int iter = 0; iter < NUM_DIFFERENT_NON_SHINY_UNOWN_PSV; iter++) {
         low_pid = ((pos&0x3F)<<2) | (((pos>>6)&0x3F)<<(2+8));
-        for(int letter_value = letter; letter_value < 0x100; letter_value += NUM_UNOWN_LETTERS_GEN3) {
-            u16 converted_low_pid_flag = letter_value;
+
+        u8 chosen_letter_iter = base_letter_iter;
+        for(int i = 0; i < max_letter_iters; i++) {
+            u16 converted_low_pid_flag = letter + (NUM_UNOWN_LETTERS_GEN3 * chosen_letter_iter);
             u16 converted_high_pid_flag = ((converted_low_pid_flag >> 4)&3) | (((converted_low_pid_flag >> 6)&3)<<8);
             converted_low_pid_flag = ((converted_low_pid_flag >> 0)&3) | (((converted_low_pid_flag >> 2)&3)<<8);
             u16 inside_low_pid = low_pid | converted_low_pid_flag;
@@ -627,53 +610,53 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_unown_info(u8 wanted_nature, u8 letter, u
                 wanted_xor_mod = NUM_NATURES + wanted_nature - base_xor_mod;
             
             u8 base_val = mod_nature_bases_bin[wanted_xor_mod];
-            for(size_t i = 0; i < (mod_nature_pure_increases_bin_size>>1); i++) {
-                u32 new_high_value = mod_nature_pure_increases_16[i] + base_val;
+            size_t chosen_nature_pure_increase = base_nature_pure_increase;
+            for(size_t j = 0; j < (mod_nature_pure_increases_bin_size>>1); j++) {
+                u32 new_high_value = mod_nature_pure_increases_16[chosen_nature_pure_increase] + base_val;
                 if(!(new_high_value & 0xFFFF0303)) {   
                     high_pid = converted_high_pid_flag + new_high_value;
                     if((inside_low_pid ^ tsv ^ high_pid) >= 8) {
 
                         u32 possible_seeds[3];
                         u8 num_found = get_seed_gba3(possible_seeds, high_pid, inside_low_pid);
-
-                        for(int chosen_seed = 0; chosen_seed < num_found; chosen_seed++) {
-                            u32 seed = possible_seeds[chosen_seed];
-                            // First PID
-                            seed = get_next_seed(seed);
-                            // Second PID
-                            seed = get_next_seed(seed);
-                            // Low IVs
-                            seed = get_next_seed(seed);
-                            u16 generated_ivs = (seed>>16)&0x7FFF;
-                            // High IVs
-                            seed = get_next_seed(seed);
-                            *dst_pid = (high_pid << 16) | inside_low_pid;
-                            *dst_ivs = generated_ivs | (((seed>>16)&0x7FFF)<<15);
-                            u8 new_atk_ivs = ((generated_ivs>>5) & 0x12);
-                            u8 new_def_ivs = ((generated_ivs>>10) & 0x12);
-                            u8 new_spe_ivs = ((seed>>16) & 0x12);
-                            u8 new_spa_ivs = ((((((seed>>16) >> 5) & 0x1F) + (((seed>>16) >> 10) & 0x1F))>>1) & 0x12);
-                            if((new_atk_ivs == atk_ivs) && (new_def_ivs == def_ivs) && (new_spe_ivs == spe_ivs) && (new_spa_ivs == spa_ivs))
-                                return;
+                        
+                        if(num_found) {
+                            u8 chosen_seed = SWI_DivMod((start_seed >> 6) & 3, num_found);
+                            for(int k = 0; k < num_found; k++) {
+                                u32 seed = possible_seeds[chosen_seed];
+                                // First PID
+                                seed = get_next_seed(seed);
+                                // Second PID
+                                seed = get_next_seed(seed);
+                                // Low IVs
+                                seed = get_next_seed(seed);
+                                u16 generated_ivs = (seed>>16)&0x7FFF;
+                                // High IVs
+                                seed = get_next_seed(seed);
+                                *dst_pid = (high_pid << 16) | inside_low_pid;
+                                *dst_ivs = generated_ivs | (((seed>>16)&0x7FFF)<<15);
+                                u8 new_atk_ivs = ((generated_ivs>>5) & 0x12);
+                                u8 new_def_ivs = ((generated_ivs>>10) & 0x12);
+                                u8 new_spe_ivs = ((seed>>16) & 0x12);
+                                u8 new_spa_ivs = ((((((seed>>16) >> 5) & 0x1F) + (((seed>>16) >> 10) & 0x1F))>>1) & 0x12);
+                                if((new_atk_ivs == atk_ivs) && (new_def_ivs == def_ivs) && (new_spe_ivs == spe_ivs) && (new_spa_ivs == spa_ivs))
+                                    return;
+                                chosen_seed++;
+                                if(chosen_seed >= num_found)
+                                    chosen_seed = 0;
+                            }
                         }
                     }
                 }
+                chosen_nature_pure_increase++;
+                if(chosen_nature_pure_increase >= (mod_nature_pure_increases_bin_size>>1))
+                    chosen_nature_pure_increase = 0;
             }
+            chosen_letter_iter++;
+            if(chosen_letter_iter >= max_letter_iters)
+                chosen_letter_iter = 0;
         }
-        if(pos + base_increment < 0)
-            pos += NUM_DIFFERENT_NON_SHINY_UNOWN_PSV;
-        if(pos + base_increment >= NUM_DIFFERENT_NON_SHINY_UNOWN_PSV)
-            pos = pos + base_increment - NUM_DIFFERENT_NON_SHINY_UNOWN_PSV;
-        else
-            pos += base_increment;
-        if(pos == initial_pos) {
-            pos += 1;
-            initial_pos += 1;
-            if(initial_pos >= NUM_DIFFERENT_NON_SHINY_UNOWN_PSV)
-                initial_pos -= NUM_DIFFERENT_NON_SHINY_UNOWN_PSV;
-            if(pos >= NUM_DIFFERENT_NON_SHINY_UNOWN_PSV)
-                pos -= NUM_DIFFERENT_NON_SHINY_UNOWN_PSV;
-        }
+        pos = normalize_position(pos, &initial_pos, base_increment, NUM_DIFFERENT_NON_SHINY_UNOWN_PSV);
     }
 }
 
@@ -687,7 +670,7 @@ IWRAM_CODE MAX_OPTIMIZE void generate_unown_info(u8 wanted_nature, u16 wanted_iv
     _generate_unown_info(wanted_nature, letter, rest_of_ivs, tsv, dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE MAX_OPTIMIZE u8 search_specific_low_pid(u32 pid, u32* dst_pid, u32* dst_ivs, u32 generating_seed, u8 is_swapped) {
+IWRAM_CODE MAX_OPTIMIZE u8 search_specific_low_pid(u32 pid, u32* dst_pid, u32* dst_ivs, u8 base_pos, u8 is_swapped) {
     
     u32 possible_seeds[3];
     u8 num_found = 0;
@@ -697,7 +680,7 @@ IWRAM_CODE MAX_OPTIMIZE u8 search_specific_low_pid(u32 pid, u32* dst_pid, u32* d
         num_found = get_seed_gba3(possible_seeds, pid & 0xFFFF, pid >> 16);
         
     if(num_found) {
-        u8 chosen_pos = SWI_DivMod(get_next_seed(generating_seed)>>16, num_found);
+        u8 chosen_pos = SWI_DivMod(base_pos, num_found);
         u32 seed = possible_seeds[chosen_pos];
         // First PID
         seed = get_next_seed(seed);
@@ -716,7 +699,7 @@ IWRAM_CODE MAX_OPTIMIZE u8 search_specific_low_pid(u32 pid, u32* dst_pid, u32* d
     return 0;
 }
 
-IWRAM_CODE MAX_OPTIMIZE u8 search_unown_pid_masks(u32 pid, u8 wanted_nature, u32* dst_pid, u32* dst_ivs, u32 generating_seed) {
+IWRAM_CODE MAX_OPTIMIZE u8 search_unown_pid_masks(u32 pid, u8 wanted_nature, u32* dst_pid, u32* dst_ivs, u8 base_pos) {
     for(int i = 0; i < 0x20; i++)
         for(int j = 0; j < 0x80; j++) {
             u32 mask = 0;
@@ -732,7 +715,7 @@ IWRAM_CODE MAX_OPTIMIZE u8 search_unown_pid_masks(u32 pid, u8 wanted_nature, u32
                     mask += 0x01000100 << (3+k);
             u8 xor_mod_change = get_nature_fast(pid ^ mask);
             if(xor_mod_change == wanted_nature)
-                if(search_specific_low_pid(pid ^ mask, dst_pid, dst_ivs, generating_seed, 1))
+                if(search_specific_low_pid(pid ^ mask, dst_pid, dst_ivs, base_pos, 1))
                     return 1;
         }
     return 0;  
@@ -742,51 +725,19 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_unown_shiny_info(u8 wanted_nature, u16 ts
     // Worst case: 5, 0x4FF8, 5, 0x8FC00000
     u16 high_pid;
     u16 low_pid;
-    u8 nature;
-    u16 shiny_pid;
-    u32 pid = 0;
     
     u8 tsv_flag = ((tsv>>8)&3);
     u8 num_valid_values = unown_tsv_numbers[tsv_flag][letter];
     
-    u32 generating_seed = get_next_seed(given_seed);
-    #if TEST_WORST_CASE
     s32 base_increment = (((given_seed >> 16) & 0xF)*2);
     if(base_increment == 0)
         base_increment += 1;
-    base_increment*=(-1 + (2 * ((given_seed>>20)&1)));
-    u16 initial_pos = given_seed >> 21;
-    #else
-    s32 base_increment = (((generating_seed >> 16) & 0xF)*2);
-    if(base_increment == 0)
-        base_increment += 1;
-    base_increment*=(-1 + (2 * ((generating_seed>>20)&1)));
-    u16 initial_pos = generating_seed >> 21;
-    #endif
-    u16 pos = initial_pos;
-    generating_seed = get_next_seed(generating_seed);
+    base_increment *= (-1 + (2 * ((given_seed>>20)&1)));
+    u32 initial_pos = given_seed >> 21;
+    u8 base_pos_search_pid = given_seed & 0xFF;
+    u32 pos = initial_pos;
     
     for(int iter = 0; iter < NUM_DIFFERENT_UNOWN_PSV; iter++) {
-        generating_seed = get_next_seed(generating_seed); 
-        low_pid = generating_seed >> 16;
-        generating_seed = get_next_seed(generating_seed); 
-        high_pid = generating_seed >> 16;
-        
-        shiny_pid = (high_pid ^ low_pid ^ tsv);
-        
-        pid = (high_pid<<16) | low_pid;
-        nature = get_nature_fast(pid);
-        
-        // Basically, asking for a miracle
-        if((nature == wanted_nature) && (get_unown_letter_gen3_fast(pid) == letter) && (shiny_pid < 8)) {
-            generating_seed = get_next_seed(generating_seed); 
-            u16 generated_ivs = (generating_seed >> 16)&0x7FFF;
-            generating_seed = get_next_seed(generating_seed);
-            *dst_pid = pid;
-            *dst_ivs = generated_ivs | (((generating_seed>>16)&0x7FFF)<<15);
-            return;
-        }
-        
         low_pid = ((pos << 3) & 0xF8) | (((pos>>5)<<(8+2)));
         
         for(int j = 0; j < num_valid_values; j++) {
@@ -813,24 +764,11 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_unown_shiny_info(u8 wanted_nature, u16 ts
                     new_low = (new_low & 0x0303) | ((old_new_high) & 0xFCFC);
                 }
                 
-                if(search_unown_pid_masks((new_high<<16) | new_low, wanted_nature, dst_pid, dst_ivs, generating_seed))
+                if(search_unown_pid_masks((new_high<<16) | new_low, wanted_nature, dst_pid, dst_ivs, base_pos_search_pid))
                     return;
             }
         }
-        if(pos + base_increment < 0)
-            pos += NUM_DIFFERENT_UNOWN_PSV;
-        if(pos + base_increment >= NUM_DIFFERENT_UNOWN_PSV)
-            pos = pos + base_increment - NUM_DIFFERENT_UNOWN_PSV;
-        else
-            pos += base_increment;
-        if(pos == initial_pos) {
-            pos += 1;
-            initial_pos += 1;
-            if(initial_pos >= NUM_DIFFERENT_UNOWN_PSV)
-                initial_pos -= NUM_DIFFERENT_UNOWN_PSV;
-            if(pos >= NUM_DIFFERENT_UNOWN_PSV)
-                pos -= NUM_DIFFERENT_UNOWN_PSV;
-        }
+        pos = normalize_position(pos, &initial_pos, base_increment, NUM_DIFFERENT_UNOWN_PSV);
     }
 }
 
