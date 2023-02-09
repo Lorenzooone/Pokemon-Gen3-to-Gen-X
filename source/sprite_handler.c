@@ -237,6 +237,7 @@ void raw_update_cursor_x(u16 cursor_x){
 }
 
 void update_cursor_base_x(u16 cursor_x){
+    wait_for_vblank_if_needed();
     cursor_base_x = cursor_x;
 }
 
@@ -261,6 +262,7 @@ void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
 }
 
 void reset_sprites_to_cursor(){
+    wait_for_vblank_if_needed();
     __sprite_counter = cursor_sprite+1;
     __inner_sprite_counter = inner_cursor_sprite+1;
     reset_sprites(__inner_sprite_counter);
@@ -288,6 +290,7 @@ void enable_all_sprites(){
 }
 
 void reset_sprites_to_party(){
+    wait_for_vblank_if_needed();
     __sprite_counter = __party_sprite_counter;
     __inner_sprite_counter = __party_inner_sprite_counter;
     reset_sprites(__party_inner_sprite_counter);

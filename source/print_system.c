@@ -222,6 +222,7 @@ u8 get_loaded_priority() {
 }
 
 void set_bg_pos(u8 bg_num, int x, int y){
+    wait_for_vblank_if_needed();
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     if(x < 0)
