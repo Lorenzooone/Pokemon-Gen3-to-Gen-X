@@ -349,7 +349,7 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     // Assign IVs
     // Keep in mind: Unown letter, gender and shinyness
     // Hidden Power calculations are too restrictive
-    u8 atk_ivs = (((misc->atk_ivs >> 1)>>gender_useless_ivs) | ((misc->atk_ivs >> 1)<<gender_useless_ivs)) & 0xF;
+    u8 atk_ivs = ((((misc->atk_ivs >> 1)>>gender_useless_ivs) & ((1<<(4-gender_useless_ivs))-1)) | ((misc->atk_ivs >> 1)<<(4-gender_useless_ivs))) & 0xF;
     u8 def_ivs = misc->def_ivs >> 1;
     u8 spa_ivs = (misc->spa_ivs + misc->spd_ivs) >> 2;
     u8 spe_ivs = misc->spe_ivs >> 1;
@@ -453,6 +453,8 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
     u8 encounter_type = get_encounter_type_gen3(species);
     u8 is_shiny = is_shiny_gen2_unfiltered(wanted_ivs);
     u32 ivs = 0;
+    u8 ability = 0;
+    u8 is_ability_set = 0;
     const u8* searchable_table = egg_locations_bin;
     u8 find_in_table = 0;
     
@@ -467,12 +469,23 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
             find_in_table = 1;
             break;
         case ROAMER_ENCOUNTER:
-            if(!is_shiny)
-                generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
-            else
-                generate_static_shiny_info(wanted_nature, tsv, &dst->pid, &ivs);
-            // Roamers only get the first byte of their IVs
-            ivs &= 0xFF;
+            // Prefer Colosseum/XD encounter, if possible
+            if(are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+                chosen_version = COLOSSEUM_CODE;
+                if(!is_shiny)
+                    generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
+                else
+                    generate_generic_genderless_shadow_shiny_info_colo(wanted_nature, tsv, &dst->pid, &ivs, &ability);
+                is_ability_set = 1;
+            }
+            else {
+                if(!is_shiny)
+                    generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
+                else
+                    generate_static_shiny_info(wanted_nature, tsv, &dst->pid, &ivs);
+                // Roamers only get the first byte of their IVs
+                ivs &= 0xFF;
+            }
             searchable_table = encounters_roamers_bin;
             find_in_table = 1;
             break;
@@ -510,6 +523,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
             met_level = possible_met_data[3+(3*chosen_entry)];
         }
     }
+    
     misc->met_location = met_location;
     misc->origins_info = ((ot_gender&1)<<15) | ((POKEBALL_ID&0xF)<<11) | ((chosen_version&0xF)<<7) | ((met_level&0x7F)<<0);
     
@@ -517,7 +531,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
     set_ivs(misc, ivs);
     
     // Set ability
-    if(dst->pid & 1) {
+    if((is_ability_set && ability) || ((!is_ability_set) && (dst->pid & 1))) {
         u16 abilities = get_possible_abilities_pokemon(species, dst->pid, 0, 0);
         u8 abilities_same = (abilities&0xFF) == ((abilities>>8)&0xFF);
         if(!abilities_same)

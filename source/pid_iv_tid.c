@@ -1099,7 +1099,7 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_generic_genderless_shiny_info(20, 0x71D8, &pid, &ivs, &ability, 0x806A0000, _generator_generic_genderless_shadow_shiny_info_colo);
+    _generate_generic_genderless_shiny_info(1, 0xD840, &pid, &ivs, &ability, 0xE07A0000, _generator_generic_genderless_shadow_shiny_info_colo);
 
     max_counter = ((*counter)-curr_counter);
     
