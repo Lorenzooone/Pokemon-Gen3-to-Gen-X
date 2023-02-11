@@ -229,6 +229,7 @@ IWRAM_CODE MAX_OPTIMIZE u8 get_seed_colo(u32* possible_seeds, u32 first, u32 sec
         t -= (COLO_DIV_PART*COLO_MULT);
         t_div += COLO_DIV_PART;
     }
+    t_div += SWI_Div(t, COLO_MULT);
     u32 t_mod = SWI_DivMod(t, COLO_MULT);
 
     // Max iterations = 4
@@ -256,7 +257,7 @@ IWRAM_CODE MAX_OPTIMIZE u8 get_seed_ivs_colo(u32* possible_seeds, u32 first, u32
     if(t > COLO_BASE_0)
         k_max -= 1;
     
-    u16 t_div = 0;
+    u16 t_div = SWI_Div(t, COLO_MULT);
     u32 t_mod = SWI_DivMod(t, COLO_MULT);
 
     // Max iterations = 7
@@ -480,14 +481,14 @@ IWRAM_CODE MAX_OPTIMIZE void _convert_roamer_to_colo_info(u8 wanted_nature, u16 
     // Worst case: 6, 12706, 0xA30E, 0
     u8 def_ivs = ((wanted_ivs) & 0xF)<<1;
     u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
-    u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
+    u8 spa_ivs = ((wanted_ivs>>9) & 0x7)<<2;
     
     u32 base_first_ivs = hp_ivs | (atk_ivs<<5) | (def_ivs<<10);
     
     u32 pass_counter = 0;
     
     u8 min_sum = (spa_ivs*2);
-    u8 limit_sum = (spa_ivs*2) + 4;
+    u8 limit_sum = (spa_ivs*2) + 8;
     u8 limit = limit_sum;
     if(limit > 0x20)
         limit = 0x20;
@@ -496,9 +497,9 @@ IWRAM_CODE MAX_OPTIMIZE void _convert_roamer_to_colo_info(u8 wanted_nature, u16 
         start = 0;
     
     u8 base_spe = (start_seed >> 0) & 1;
-    u8 base_spd = (start_seed >> 1) & 3;
+    u8 base_spd = (start_seed >> 1) & 7;
     u8 initial_spa = SWI_DivMod(start_seed>>16, (limit-start));
-    u8 base_def = (start_seed >> 3) & 1;
+    u8 base_def = (start_seed >> 4) & 1;
     
     for(int i = 0; i < (limit-start); i++) {
         u8 new_spa_ivs = start + (initial_spa-i);
@@ -1062,7 +1063,7 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_generic_genderless_info(3, 0x6419, 0x9B22, &pid, &ivs, &ability, 21, _generator_generic_shadow_info_colo);
+    _generate_generic_genderless_info(3, 0x6419, 0x9B22, &pid, &ivs, &ability, 0x20001, _generator_generic_shadow_info_colo);
     
     max_counter = ((*counter)-curr_counter);
     
@@ -1098,8 +1099,8 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_generic_genderless_shiny_info(1, 0x1B08, &pid, &ivs, &ability, 0xE07A0000, _generator_generic_genderless_shadow_shiny_info_colo);
-    
+    _generate_generic_genderless_shiny_info(20, 0x71D8, &pid, &ivs, &ability, 0x806A0000, _generator_generic_genderless_shadow_shiny_info_colo);
+
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time 3 s: 0x\x04\n", max_counter);
@@ -1116,8 +1117,8 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _convert_roamer_to_colo_info(6, 0x132A, 0, 0, 0xA30E, &pid, &ivs, &ability, 0);
-    
+    _convert_roamer_to_colo_info(2, 0xAA82, 0xE, 0x10, 0x52E7, &pid, &ivs, &ability, 0x50006);
+
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time conv p: 0x\x04\n", max_counter);
@@ -1125,9 +1126,9 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    ability = 0;
-    _generate_generic_genderless_shiny_info(0, 0x2088, &pid, &ivs, &ability, 0x36810000, _generator_shiny_roamer_to_colo_info);
-    
+    ability = 0xF6;
+    _generate_generic_genderless_shiny_info(4, 0xC090, &pid, &ivs, &ability, 0xC30B0000, _generator_shiny_roamer_to_colo_info);
+
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time conv s: 0x\x04\n", max_counter);
