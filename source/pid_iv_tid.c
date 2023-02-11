@@ -329,25 +329,32 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs
     
     u32 pass_counter = 0;
     
-    u8 limit = ((spa_ivs+1) * 2);
+    u8 min_sum = (spa_ivs*2);
+    u8 limit_sum = (spa_ivs*2) + 4;
+    u8 limit = limit_sum;
     if(limit > 0x20)
         limit = 0x20;
-    u8 start = (spa_ivs*2) - 0x1F;
-    if((spa_ivs*2) < 0x1F)
+    u8 start = min_sum - 0x1F;
+    if(min_sum < 0x1F)
         start = 0;
     
     u8 base_spe = (start_seed >> 0) & 1;
-    u8 base_spd = (start_seed >> 1) & 1;
+    u8 base_spd = (start_seed >> 1) & 3;
     u8 initial_spa = SWI_DivMod((start_seed>>3)&0x1FFF, (limit-start));
     
     for(int i = 0; i < (limit-start); i++) {
-        for(int j = 0; j < 2; j++) {
-            u8 new_spa_ivs = start + (initial_spa-i);
-            u8 new_spd_ivs = (spa_ivs*2)-new_spa_ivs + (j^base_spd);
-            if(new_spa_ivs > ((spa_ivs*2) + (j^base_spd)))
-                continue;
-            if(new_spd_ivs > 0x1F)
-                continue;
+        u8 new_spa_ivs = start + (initial_spa-i);
+        u8 base_spd_ivs = min_sum - new_spa_ivs;
+        if(min_sum < new_spa_ivs)
+            base_spd_ivs = 0;
+        u8 spd_limit = limit_sum - new_spa_ivs;
+        if(spd_limit > 0x20)
+            spd_limit = 0x20;
+        u8 spd_offset = base_spd;
+        while((spd_limit-base_spd_ivs) <= spd_offset)
+            spd_offset -= (spd_limit-base_spd_ivs);
+        for(int j = 0; j < (spd_limit-base_spd_ivs); j++) {
+            u8 new_spd_ivs = base_spd_ivs + spd_offset - j;
             for(int u = 0; u < 2; u++) {
                 u8 new_spe_ivs = spe_ivs + (u^base_spe);
                 for(int k = 0; k < 2; k++) {
@@ -407,6 +414,8 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs
                     pass_counter++;
                 }
             }
+            if(spd_offset == j)
+                spd_offset += (spd_limit-base_spd_ivs);
         }
         if(initial_spa == i)
             initial_spa += (limit-start);
@@ -475,28 +484,35 @@ IWRAM_CODE MAX_OPTIMIZE void _convert_roamer_to_colo_info(u8 wanted_nature, u16 
     
     u32 base_first_ivs = hp_ivs | (atk_ivs<<5) | (def_ivs<<10);
     
-    u8 limit = ((spa_ivs+1) * 2);
-    if(limit > 0x20)
-        limit = 0x20;
-    u8 start = (spa_ivs*2) - 0x1F;
-    if((spa_ivs*2) < 0x1F)
-        start = 0;
-    
     u32 pass_counter = 0;
     
+    u8 min_sum = (spa_ivs*2);
+    u8 limit_sum = (spa_ivs*2) + 4;
+    u8 limit = limit_sum;
+    if(limit > 0x20)
+        limit = 0x20;
+    u8 start = min_sum - 0x1F;
+    if(min_sum < 0x1F)
+        start = 0;
+    
     u8 base_spe = (start_seed >> 0) & 1;
-    u8 base_spd = (start_seed >> 1) & 1;
+    u8 base_spd = (start_seed >> 1) & 3;
     u8 initial_spa = SWI_DivMod(start_seed>>16, (limit-start));
     u8 base_def = (start_seed >> 3) & 1;
     
     for(int i = 0; i < (limit-start); i++) {
-        for(int j = 0; j < 2; j++) {
-            u8 new_spa_ivs = start + (initial_spa-i);
-            u8 new_spd_ivs = (spa_ivs*2)-new_spa_ivs + (j^base_spd);
-            if(new_spa_ivs > ((spa_ivs*2) + (j^base_spd)))
-                continue;
-            if(new_spd_ivs > 0x1F)
-                continue;
+        u8 new_spa_ivs = start + (initial_spa-i);
+        u8 base_spd_ivs = min_sum - new_spa_ivs;
+        if(min_sum < new_spa_ivs)
+            base_spd_ivs = 0;
+        u8 spd_limit = limit_sum - new_spa_ivs;
+        if(spd_limit > 0x20)
+            spd_limit = 0x20;
+        u8 spd_offset = base_spd;
+        while((spd_limit-base_spd_ivs) <= spd_offset)
+            spd_offset -= (spd_limit-base_spd_ivs);
+        for(int j = 0; j < (spd_limit-base_spd_ivs); j++) {
+            u8 new_spd_ivs = base_spd_ivs + spd_offset - j;
             for(int u = 0; u < 2; u++) {
                 u8 new_spe_ivs = spe_ivs + (u^base_spe);
                 u32 seed_base = (new_spe_ivs) | (new_spa_ivs << 5) | (new_spd_ivs << 10);
@@ -506,6 +522,8 @@ IWRAM_CODE MAX_OPTIMIZE void _convert_roamer_to_colo_info(u8 wanted_nature, u16 
                 }
                 pass_counter++;
             }
+            if(spd_offset == j)
+                spd_offset += (spd_limit-base_spd_ivs);
         }
         if(initial_spa == i)
             initial_spa += (limit-start);
@@ -528,32 +546,39 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_generic_genderless_info(u8 wanted_nature,
     
     u32 base_first_ivs = (atk_ivs<<5) | (def_ivs<<10);
     
-    u8 limit = ((spa_ivs+1) * 2);
+    u8 min_sum = (spa_ivs*2);
+    u8 limit_sum = (spa_ivs*2) + 4;
+    u8 limit = limit_sum;
     if(limit > 0x20)
         limit = 0x20;
-    u8 start = (spa_ivs*2) - 0x1F;
-    if((spa_ivs*2) < 0x1F)
+    u8 start = min_sum - 0x1F;
+    if(min_sum < 0x1F)
         start = 0;
     
     u32 pass_counter = 0;
     
     u8 base_spe = (start_seed >> 0) & 1;
-    u8 base_spd = (start_seed >> 1) & 1;
+    u8 base_spd = (start_seed >> 1) & 3;
     u8 initial_spa = SWI_DivMod(start_seed>>16, (limit-start));
-    u8 base_atk = (start_seed >> 2) & 1;
-    u8 base_def = (start_seed >> 3) & 1;
-    u8 base_hp = (start_seed >> 4) & 0x1F;
-    s32 base_increment = (((start_seed >> 10) & 0xF)+1);
-    base_increment *= (-1 + (2 * ((start_seed>>9)&1)));
+    u8 base_atk = (start_seed >> 3) & 1;
+    u8 base_def = (start_seed >> 4) & 1;
+    u8 base_hp = (start_seed >> 5) & 0x1F;
+    s32 base_increment = (((start_seed >> 11) & 0xF)+1);
+    base_increment *= (-1 + (2 * ((start_seed>>10)&1)));
     
     for(int i = 0; i < (limit-start); i++) {
-        for(int j = 0; j < 2; j++) {
-            u8 new_spa_ivs = start + (initial_spa-i);
-            u8 new_spd_ivs = (spa_ivs*2)-new_spa_ivs + (j^base_spd);
-            if(new_spa_ivs > ((spa_ivs*2) + (j^base_spd)))
-                continue;
-            if(new_spd_ivs > 0x1F)
-                continue;
+        u8 new_spa_ivs = start + (initial_spa-i);
+        u8 base_spd_ivs = min_sum - new_spa_ivs;
+        if(min_sum < new_spa_ivs)
+            base_spd_ivs = 0;
+        u8 spd_limit = limit_sum - new_spa_ivs;
+        if(spd_limit > 0x20)
+            spd_limit = 0x20;
+        u8 spd_offset = base_spd;
+        while((spd_limit-base_spd_ivs) <= spd_offset)
+            spd_offset -= (spd_limit-base_spd_ivs);
+        for(int j = 0; j < (spd_limit-base_spd_ivs); j++) {
+            u8 new_spd_ivs = base_spd_ivs + spd_offset - j;
             for(int u = 0; u < 2; u++) {
                 u8 new_spe_ivs = spe_ivs + (u^base_spe);
                 u32 seed_base = (new_spe_ivs) | (new_spa_ivs << 5) | (new_spd_ivs << 10);
@@ -569,6 +594,8 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_generic_genderless_info(u8 wanted_nature,
                 }
                 pass_counter++;
             }
+            if(spd_offset == j)
+                spd_offset += (spd_limit-base_spd_ivs);
         }
         if(initial_spa == i)
             initial_spa += (limit-start);
@@ -1017,7 +1044,7 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_egg_info(0, 0x2113, 0, 0, 0, &pid, &ivs, 34);
+    _generate_egg_info(0, 0x1093, 0, 0, 1, &pid, &ivs, 4);
     
     max_counter = ((*counter)-curr_counter);
     
@@ -1035,7 +1062,7 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_generic_genderless_info(6, 0x132A, 0xA30E, &pid, &ivs, &ability, 0, _generator_generic_shadow_info_colo);
+    _generate_generic_genderless_info(3, 0x6419, 0x9B22, &pid, &ivs, &ability, 21, _generator_generic_shadow_info_colo);
     
     max_counter = ((*counter)-curr_counter);
     
@@ -1071,7 +1098,7 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_generic_genderless_shiny_info(0, 0x2088, &pid, &ivs, &ability, 0x36810000, _generator_generic_genderless_shadow_shiny_info_colo);
+    _generate_generic_genderless_shiny_info(1, 0x1B08, &pid, &ivs, &ability, 0xE07A0000, _generator_generic_genderless_shadow_shiny_info_colo);
     
     max_counter = ((*counter)-curr_counter);
     
