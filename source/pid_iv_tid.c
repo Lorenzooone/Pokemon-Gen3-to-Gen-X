@@ -48,6 +48,9 @@
 #define NUM_DIFFERENT_UNOWN_PSV (0x10000>>5)
 #define NUM_DIFFERENT_NON_SHINY_UNOWN_PSV (0x10000>>4)
 
+typedef u8 (*genderless_generator_functions_t)(u16, u16, u8, u16, u32*, u32*, u8*);
+typedef u8 (*shiny_genderless_generator_functions_t)(u32, u8, u32*, u32*, u8*);
+
 u32 normalize_position(u32, u32*, s32, u32);
 static u8 is_bad_tsv(u16);
 static void get_letter_valid_natures(u16, u8, u8*);
@@ -62,10 +65,17 @@ u8 get_seed_colo(u32*, u32, u32);
 u8 get_seed_ivs_colo(u32*, u32, u32);
 void _generate_egg_info(u8, u16, u16, u8, u8, u32*, u32*, u32);
 void _generate_egg_shiny_info(u8, u16, u8, u8, u32*, u32*, u32);
-void _generate_static_info(u8, u16, u16, u32*, u32*, u32);
-void _generate_static_shiny_info(u8, u16, u32*, u32*, u32);
+void _convert_roamer_to_colo_info(u8, u16, u8, u8, u16, u32*, u32*, u8*, u32);
+void _generate_generic_genderless_info(u8, u16, u16, u32*, u32*, u8*, u32, genderless_generator_functions_t);
+u8 _generator_static_info(u16, u16, u8, u16, u32*, u32*, u8*);
+u8 _generator_generic_shadow_info_colo(u16, u16, u8, u16, u32*, u32*, u8*);
+void _generate_generic_genderless_shiny_info(u8, u16, u32*, u32*, u8*, u32, shiny_genderless_generator_functions_t);
+u8 _generator_static_shiny_info(u32, u8, u32*, u32*, u8*);
+u8 _generator_generic_genderless_shadow_shiny_info_colo(u32, u8, u32*, u32*, u8*);
+u8 _generator_shiny_roamer_to_colo_info(u32, u8, u32*, u32*, u8*);
 void _generate_unown_info(u8, u8, u8, u16, u32*, u32*, u32);
 u8 search_specific_low_pid(u32, u32*, u32*, u8, u8);
+u8 search_specific_low_pid_colo(u32, u8, u32*, u32*, u8*, u8);
 u8 search_unown_pid_masks(u32, u8, u32*, u32*, u8);
 void _generate_unown_shiny_info(u8, u16, u8, u32*, u32*, u32);
 
@@ -107,16 +117,6 @@ IWRAM_CODE MAX_OPTIMIZE u32 normalize_position(u32 pos, u32* initial_pos, s32 ba
         }
     
     return pos;
-}
-
-ALWAYS_INLINE MAX_OPTIMIZE u8 is_bad_tsv(u16 tsv) {
-    tsv = (tsv >> 3) << 3;
-    const u32* shiny_unown_banned_tsv_bin_32 = (const u32*)shiny_unown_banned_tsv_bin;
-    for(size_t i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
-        if(tsv == (shiny_unown_banned_tsv_bin_32[i] & 0xFFFF))
-            return 1;
-    }
-    return 0;
 }
 
 ALWAYS_INLINE MAX_OPTIMIZE void get_letter_valid_natures(u16 tsv, u8 letter, u8* valid_natures) {
@@ -259,7 +259,7 @@ IWRAM_CODE MAX_OPTIMIZE u8 get_seed_ivs_colo(u32* possible_seeds, u32 first, u32
     u16 t_div = 0;
     u32 t_mod = SWI_DivMod(t, COLO_MULT);
 
-    // Max iterations = 7 * 2
+    // Max iterations = 7
     u8 found_values = 0;
     for(u8 k = 0; k <= k_max; k++) {
         if(t_mod < NUM_SEEDS) {
@@ -276,6 +276,21 @@ IWRAM_CODE MAX_OPTIMIZE u8 get_seed_ivs_colo(u32* possible_seeds, u32 first, u32
     }
     
     return found_values;
+}
+
+ALWAYS_INLINE MAX_OPTIMIZE u8 is_bad_tsv(u16 tsv) {
+    tsv = (tsv >> 3) << 3;
+    const u32* shiny_unown_banned_tsv_bin_32 = (const u32*)shiny_unown_banned_tsv_bin;
+    for(size_t i = 0; i < (shiny_unown_banned_tsv_bin_size >> 2); i++) {
+        if(tsv == (shiny_unown_banned_tsv_bin_32[i] & 0xFFF8))
+            return 1;
+    }
+    return 0;
+}
+
+IWRAM_CODE MAX_OPTIMIZE u8 are_colo_valid_tid_sid(u16 tid, u16 sid) {
+    u32 possible_seeds[4];
+    return (get_seed_colo(possible_seeds, tid, sid) > 0) ? 1 : 0;
 }
 
 IWRAM_CODE MAX_OPTIMIZE u32 generate_ot(u16 tid, u8* name) {
@@ -300,7 +315,7 @@ IWRAM_CODE MAX_OPTIMIZE u32 generate_ot(u16 tid, u8* name) {
         seed = get_next_seed(seed);
         sid = seed >> 0x10;
     }
-    while(is_bad_tsv(sid^tid));
+    while(is_bad_tsv(sid^tid) && (!are_colo_valid_tid_sid(tid, sid)));
     
     return (sid << 0x10) | tid;
 }
@@ -452,14 +467,66 @@ IWRAM_CODE MAX_OPTIMIZE void generate_egg_shiny_info(u8 index, u8 wanted_nature,
     _generate_egg_shiny_info(wanted_nature, tsv, get_pokemon_gender_gen2(index, (wanted_ivs>>4)&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
 }
 
-IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
+IWRAM_CODE MAX_OPTIMIZE void _convert_roamer_to_colo_info(u8 wanted_nature, u16 wanted_ivs, u8 hp_ivs, u8 atk_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability, u32 start_seed) {
+    // Worst case: 6, 12706, 0xA30E, 0
+    u8 def_ivs = ((wanted_ivs) & 0xF)<<1;
+    u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
+    u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
+    
+    u32 base_first_ivs = hp_ivs | (atk_ivs<<5) | (def_ivs<<10);
+    
+    u8 limit = ((spa_ivs+1) * 2);
+    if(limit > 0x20)
+        limit = 0x20;
+    u8 start = (spa_ivs*2) - 0x1F;
+    if((spa_ivs*2) < 0x1F)
+        start = 0;
+    
+    u32 pass_counter = 0;
+    
+    u8 base_spe = (start_seed >> 0) & 1;
+    u8 base_spd = (start_seed >> 1) & 1;
+    u8 initial_spa = SWI_DivMod(start_seed>>16, (limit-start));
+    u8 base_def = (start_seed >> 3) & 1;
+    
+    for(int i = 0; i < (limit-start); i++) {
+        for(int j = 0; j < 2; j++) {
+            u8 new_spa_ivs = start + (initial_spa-i);
+            u8 new_spd_ivs = (spa_ivs*2)-new_spa_ivs + (j^base_spd);
+            if(new_spa_ivs > ((spa_ivs*2) + (j^base_spd)))
+                continue;
+            if(new_spd_ivs > 0x1F)
+                continue;
+            for(int u = 0; u < 2; u++) {
+                u8 new_spe_ivs = spe_ivs + (u^base_spe);
+                u32 seed_base = (new_spe_ivs) | (new_spa_ivs << 5) | (new_spd_ivs << 10);
+                for(int k = 0; k < 2; k++) {
+                    if(_generator_generic_shadow_info_colo(base_first_ivs | ((k^base_def)<<10), seed_base, wanted_nature, tsv, dst_pid, dst_ivs, dst_ability))
+                        return;
+                }
+                pass_counter++;
+            }
+        }
+        if(initial_spa == i)
+            initial_spa += (limit-start);
+    }
+    *dst_pid = 0;
+    *dst_ability = 0;
+    *dst_ivs = 0;
+}
+
+IWRAM_CODE MAX_OPTIMIZE void convert_roamer_to_colo_info(u8 wanted_nature, u16 wanted_ivs, u8 hp_ivs, u8 atk_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    _convert_roamer_to_colo_info(wanted_nature, wanted_ivs, hp_ivs, atk_ivs, tsv, dst_pid, dst_ivs, dst_ability, get_rng());
+}
+
+IWRAM_CODE MAX_OPTIMIZE void _generate_generic_genderless_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability, u32 start_seed, genderless_generator_functions_t generator) {
     // Worst case: 6, 12706, 0xA30E, 0
     u8 atk_ivs = ((wanted_ivs>>4) & 0xF)<<1;
     u8 def_ivs = ((wanted_ivs) & 0xF)<<1;
     u8 spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
     u8 spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
     
-    u32 base_second_ivs = (atk_ivs<<5) | (def_ivs<<10);
+    u32 base_first_ivs = (atk_ivs<<5) | (def_ivs<<10);
     
     u8 limit = ((spa_ivs+1) * 2);
     if(limit > 0x20)
@@ -495,27 +562,8 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
                 for(int k = 0; k < 0x20; k++) {
                     for(int l = 0; l < 2; l++)
                         for(int m = 0; m < 2; m++) {
-                            u32 possible_seeds[3*2*2];
-                            u8 num_found = get_reverse_masked_ivs_gba3(possible_seeds, seed_base, base_second_ivs | hps | ((l^base_atk)<<5) | ((m^base_def)<<10));
-                            for(int n = 0; n < num_found; n++) {
-                                u32 seed = possible_seeds[n];
-                                
-                                seed = get_prev_seed(seed);
-                                u32 generated_ivs = ((seed>>16) & 0x7FFF) << 15;
-                                seed = get_prev_seed(seed);
-                                u32 ivs = generated_ivs | ((seed>>16) & 0x7FFF);
-                                seed = get_prev_seed(seed);
-                                u32 pid = seed & 0xFFFF0000;
-                                seed = get_prev_seed(seed);
-                                pid |= seed >> 16;
-                                u16 shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
-                                u8 nature = get_nature_fast(pid);
-                                if((nature == wanted_nature) && (shiny_pid >= 8)) {
-                                    *dst_pid = pid;
-                                    *dst_ivs = ivs;
-                                    return;
-                                }
-                            }
+                            if(generator(base_first_ivs | hps | ((l^base_atk)<<5) | ((m^base_def)<<10), seed_base, wanted_nature, tsv, dst_pid, dst_ivs, dst_ability))
+                                return;
                         }
                     hps = normalize_position(hps, &initial_hps, base_increment, 0x20);
                 }
@@ -526,14 +574,90 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_info(u8 wanted_nature, u16 wanted_
             initial_spa += (limit-start);
     }
     *dst_pid = 0;
+    *dst_ability = 0;
     *dst_ivs = 0;
 }
 
-IWRAM_CODE MAX_OPTIMIZE void generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
-    _generate_static_info(wanted_nature, wanted_ivs, tsv, dst_pid, dst_ivs, get_rng());
+IWRAM_CODE MAX_OPTIMIZE u8 _generator_static_info(u16 first, u16 second, u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* UNUSED(dst_ability)) {
+    u32 possible_seeds[3*2*2];
+    u8 num_found = get_reverse_masked_ivs_gba3(possible_seeds, second, first);
+    for(int n = 0; n < num_found; n++) {
+        u32 seed = possible_seeds[n];
+        
+        seed = get_prev_seed(seed);
+        u32 generated_ivs = ((seed>>16) & 0x7FFF) << 15;
+        seed = get_prev_seed(seed);
+        u32 ivs = generated_ivs | ((seed>>16) & 0x7FFF);
+        seed = get_prev_seed(seed);
+        u32 pid = seed & 0xFFFF0000;
+        seed = get_prev_seed(seed);
+        pid |= seed >> 16;
+        u16 shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
+        u8 nature = get_nature_fast(pid);
+        if((nature == wanted_nature) && (shiny_pid >= 8)) {
+            *dst_pid = pid;
+            *dst_ivs = ivs;
+            return 1;
+        }
+    }
+    return 0;
 }
 
-IWRAM_CODE MAX_OPTIMIZE void _generate_static_shiny_info(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 given_seed) {
+IWRAM_CODE MAX_OPTIMIZE void generate_static_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
+    u8 ability = 0;
+    _generate_generic_genderless_info(wanted_nature, wanted_ivs, tsv, dst_pid, dst_ivs, &ability, get_rng(), _generator_static_info);
+}
+
+IWRAM_CODE MAX_OPTIMIZE u8 _generator_generic_shadow_info_colo(u16 first, u16 second, u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    u32 possible_seeds[7*2];
+    u8 num_found = get_seed_ivs_colo(possible_seeds, first, second);
+    for(int n = 0; n < num_found; n++) {
+        u32 seed = possible_seeds[n];
+        
+        u32 enemy_tsv_seed = seed;
+        // enemy_tsv_seed = TPID 2
+        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
+        // enemy_tsv_seed = TPID 1
+        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
+        u16 esid = enemy_tsv_seed >> 16;
+        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
+        u16 etid = enemy_tsv_seed >> 16;
+        
+        seed = get_next_seed_colo(seed);
+        u32 generated_ivs = ((seed>>16) & 0x7FFF);
+        seed = get_next_seed_colo(seed);
+        u32 ivs = generated_ivs | (((seed>>16) & 0x7FFF)<<15);
+        seed = get_next_seed_colo(seed);
+        u8 ability = (seed>>16) & 1;
+        u32 pid;
+        u16 shiny_pid;
+        
+        // Enemy TSV shiny lock
+        do {
+            seed = get_next_seed_colo(seed);
+            pid = seed & 0xFFFF0000;
+            seed = get_next_seed_colo(seed);
+            pid |= seed >> 16;
+            shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ esid ^ etid;
+        } while(shiny_pid < 8);
+        
+        shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
+        u8 nature = get_nature_fast(pid);
+        if((nature == wanted_nature) && (shiny_pid >= 8)) {
+            *dst_pid = pid;
+            *dst_ability = ability;
+            *dst_ivs = ivs;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+IWRAM_CODE MAX_OPTIMIZE void generate_generic_genderless_shadow_info_colo(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    _generate_generic_genderless_info(wanted_nature, wanted_ivs, tsv, dst_pid, dst_ivs, dst_ability, get_rng(), _generator_generic_shadow_info_colo);
+}
+
+IWRAM_CODE MAX_OPTIMIZE void _generate_generic_genderless_shiny_info(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability, u32 given_seed, shiny_genderless_generator_functions_t generator) {
     // Worst case: 0, 0x2088, 0x36810000
     u16 high_pid;
     u16 low_pid;
@@ -558,15 +682,37 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_static_shiny_info(u8 wanted_nature, u16 t
         low_pid |= (wanted_nature_shiny_table[nature_diff] & 0x7);
         high_pid |= ((wanted_nature_shiny_table[nature_diff]>>4) & 0x7);
         
-        if(search_specific_low_pid((high_pid<<16) | low_pid, dst_pid, dst_ivs, base_pos_search_pid, 0))
+        if(generator((high_pid<<16) | low_pid, base_pos_search_pid, dst_pid, dst_ivs, dst_ability))
             return;
 
         pos = normalize_position(pos, &initial_pos, base_increment, NUM_DIFFERENT_PSV);
     }
 }
 
+IWRAM_CODE MAX_OPTIMIZE u8 _generator_static_shiny_info(u32 pid, u8 base_pos, u32* dst_pid, u32* dst_ivs, u8* UNUSED(dst_ability)) {
+    return search_specific_low_pid(pid, dst_pid, dst_ivs, base_pos, 0);
+}
+
 IWRAM_CODE MAX_OPTIMIZE void generate_static_shiny_info(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs) {
-    _generate_static_shiny_info(wanted_nature, tsv, dst_pid, dst_ivs, get_rng());
+    u8 ability = 0;
+    _generate_generic_genderless_shiny_info(wanted_nature, tsv, dst_pid, dst_ivs, &ability, get_rng(), _generator_static_shiny_info);
+}
+
+IWRAM_CODE MAX_OPTIMIZE u8 _generator_generic_genderless_shadow_shiny_info_colo(u32 pid, u8 base_pos, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    return search_specific_low_pid_colo(pid, base_pos, dst_pid, dst_ivs, dst_ability, 0);
+}
+
+IWRAM_CODE MAX_OPTIMIZE void generate_generic_genderless_shadow_shiny_info_colo(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    _generate_generic_genderless_shiny_info(wanted_nature, tsv, dst_pid, dst_ivs, dst_ability, get_rng(), _generator_generic_genderless_shadow_shiny_info_colo);
+}
+
+IWRAM_CODE MAX_OPTIMIZE u8 _generator_shiny_roamer_to_colo_info(u32 pid, u8 base_pos, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    return search_specific_low_pid_colo(pid, base_pos, dst_pid, dst_ivs, dst_ability, 1);
+}
+
+IWRAM_CODE MAX_OPTIMIZE void convert_shiny_roamer_to_colo_info(u8 wanted_nature, u8 hp_ivs, u8 atk_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    *dst_ability = hp_ivs | ((atk_ivs&7)<<5);
+    _generate_generic_genderless_shiny_info(wanted_nature, tsv, dst_pid, dst_ivs, dst_ability, get_rng(), _generator_shiny_roamer_to_colo_info);
 }
 
 IWRAM_CODE MAX_OPTIMIZE void _generate_unown_info(u8 wanted_nature, u8 letter, u8 rest_of_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
@@ -699,6 +845,54 @@ IWRAM_CODE MAX_OPTIMIZE u8 search_specific_low_pid(u32 pid, u32* dst_pid, u32* d
     return 0;
 }
 
+IWRAM_CODE MAX_OPTIMIZE u8 search_specific_low_pid_colo(u32 pid, u8 base_pos, u32* dst_pid, u32* dst_ivs, u8* dst_ability, u8 is_limited) {
+    
+    u32 possible_seeds[4];
+    u8 num_found = 0;
+    num_found = get_seed_colo(possible_seeds, pid >> 16, pid & 0xFFFF);
+        
+    if(num_found) {
+        u8 chosen_pos = SWI_DivMod(base_pos, num_found);
+        
+        for(int i = 0; i < num_found; i++) {
+            u32 seed = possible_seeds[chosen_pos];
+            // seed = ability
+            u8 ability = (seed>>16) & 1;
+            seed = get_prev_seed_colo(seed);
+            // seed = high IVs
+            u32 generated_ivs = ((seed>>16)&0x7FFF)<<15;
+            seed = get_prev_seed_colo(seed);
+            // seed = low IVs
+            u32 ivs = ((seed>>16)&0x7FFF) | generated_ivs;
+            if((!is_limited) || ((ivs & 0xFF) == (*dst_ability))) {
+                seed = get_prev_seed_colo(seed);
+                // seed = TPID 2
+                seed = get_prev_seed_colo(seed);
+                // seed = TPID 1
+                seed = get_prev_seed_colo(seed);
+                u16 esid = seed >> 16;
+                seed = get_prev_seed_colo(seed);
+                u16 etid = seed >> 16;
+                
+                u16 shiny_pid = etid ^ esid ^ (pid>>16) ^ (pid & 0xFFFF);
+                
+                // Enemy TSV shiny lock
+                if(shiny_pid >= 8) {
+                    *dst_pid = pid;
+                    *dst_ability = ability;
+                    *dst_ivs = ivs;
+                    return 1;
+                }
+            }
+            chosen_pos++;
+            if(chosen_pos >= num_found)
+                chosen_pos = 0;
+        }
+    }
+
+    return 0;
+}
+
 IWRAM_CODE MAX_OPTIMIZE u8 search_unown_pid_masks(u32 pid, u8 wanted_nature, u32* dst_pid, u32* dst_ivs, u8 base_pos) {
     for(int i = 0; i < 0x20; i++)
         for(int j = 0; j < 0x80; j++) {
@@ -818,6 +1012,7 @@ void worst_case_conversion_tester(vu32* counter) {
     u32 curr_counter = *counter;
     u32 max_counter = 0;
     u32 pid, ivs;
+    u8 ability;
     
     VBlankIntrWait();
     curr_counter = *counter;
@@ -831,11 +1026,20 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_static_info(6, 0x132A, 0xA30E, &pid, &ivs, 0);
+    _generate_generic_genderless_info(6, 0x132A, 0xA30E, &pid, &ivs, &ability, 0, _generator_static_info);
     
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time 2 p: 0x\x04\n", max_counter);
+    
+    VBlankIntrWait();
+    curr_counter = *counter;
+    
+    _generate_generic_genderless_info(6, 0x132A, 0xA30E, &pid, &ivs, &ability, 0, _generator_generic_shadow_info_colo);
+    
+    max_counter = ((*counter)-curr_counter);
+    
+    PRINT_FUNCTION("Max time 3 p: 0x\x04\n", max_counter);
     
     VBlankIntrWait();
     curr_counter = *counter;
@@ -858,11 +1062,20 @@ void worst_case_conversion_tester(vu32* counter) {
     VBlankIntrWait();
     curr_counter = *counter;
     
-    _generate_static_shiny_info(0, 0x2088, &pid, &ivs, 0x36810000);
+    _generate_generic_genderless_shiny_info(0, 0x2088, &pid, &ivs, &ability, 0x36810000, _generator_static_shiny_info);
     
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time 2 s: 0x\x04\n", max_counter);
+    
+    VBlankIntrWait();
+    curr_counter = *counter;
+    
+    _generate_generic_genderless_shiny_info(0, 0x2088, &pid, &ivs, &ability, 0x36810000, _generator_generic_genderless_shadow_shiny_info_colo);
+    
+    max_counter = ((*counter)-curr_counter);
+    
+    PRINT_FUNCTION("Max time 3 s: 0x\x04\n", max_counter);
     
     VBlankIntrWait();
     curr_counter = *counter;
@@ -872,6 +1085,25 @@ void worst_case_conversion_tester(vu32* counter) {
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time 4 s: 0x\x04\n", max_counter);
+    
+    VBlankIntrWait();
+    curr_counter = *counter;
+    
+    _convert_roamer_to_colo_info(6, 0x132A, 0, 0, 0xA30E, &pid, &ivs, &ability, 0);
+    
+    max_counter = ((*counter)-curr_counter);
+    
+    PRINT_FUNCTION("Max time conv p: 0x\x04\n", max_counter);
+    
+    VBlankIntrWait();
+    curr_counter = *counter;
+    
+    ability = 0;
+    _generate_generic_genderless_shiny_info(0, 0x2088, &pid, &ivs, &ability, 0x36810000, _generator_shiny_roamer_to_colo_info);
+    
+    max_counter = ((*counter)-curr_counter);
+    
+    PRINT_FUNCTION("Max time conv s: 0x\x04\n", max_counter);
     
     #endif
 }
