@@ -265,7 +265,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
     if(level < MAX_LEVEL)
         while(exp > max_exp) {
             level++;
-            if(level == MAX_LEVEL) {
+            if(level >= MAX_LEVEL-1) {
                 exp -= NUM_NATURES;
                 level--;
             }
