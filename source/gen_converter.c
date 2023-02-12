@@ -54,8 +54,10 @@ u8 get_encounter_type_gen3(u16);
 u8 are_roamer_ivs(struct gen3_mon_misc*);
 u8 is_roamer_frlg(u16, u8, u8, u8);
 u8 is_roamer_rse(u16, u8, u8, u8);
+u8 is_roamer_gen3(struct gen3_mon_misc*, u16);
 u16 convert_ivs_of_gen3(struct gen3_mon_misc*, u16, u32, u8, u8, u8, u8, u8);
 void set_ivs(struct gen3_mon_misc*, u32);
+void preset_alter_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
 void set_origin_pid_iv(struct gen3_mon*, struct gen3_mon_misc*, u16, u16, u8, u8, u8, u8);
 u8 are_trainers_same(struct gen3_mon*, u8);
 void fix_name_change_from_gen3(struct gen3_mon*, u16,  u8*, u8, u8);
@@ -337,6 +339,12 @@ u8 is_roamer_rse(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
     return 0;
 }
 
+u8 is_roamer_gen3(struct gen3_mon_misc* misc, u16 species) {
+    u8 origin_game = (misc->origins_info>>7)&0xF;
+    u8 met_level = (misc->origins_info)&0x7F;
+    return (get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location, met_level) || is_roamer_rse(species, origin_game, misc->met_location, met_level));
+}
+
 u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2, u8 skip_checks) {
     if(!skip_checks)
         if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (species > LAST_VALID_GEN_1_MON)))
@@ -355,9 +363,7 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
     u8 spe_ivs = misc->spe_ivs >> 1;
     
     // Handle roamers losing IVs when caught
-    u8 origin_game = (misc->origins_info>>7)&0xF;
-    u8 met_level = (misc->origins_info)&0x7F;
-    if((get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location, met_level) || is_roamer_rse(species, origin_game, misc->met_location, met_level))) {
+    if(is_roamer_gen3(misc, species)) {
         u32 real_ivs = 0;
         if(get_roamer_ivs(pid, misc->hp_ivs, misc->atk_ivs, &real_ivs)){
             atk_ivs = ((real_ivs >> 5) & 0x1F) >> 1;
@@ -429,6 +435,101 @@ void set_ivs(struct gen3_mon_misc* misc, u32 ivs) {
     misc->spe_ivs = (ivs >> 15) & 0x1F;
     misc->spa_ivs = (ivs >> 20) & 0x1F;
     misc->spd_ivs = (ivs >> 25) & 0x1F;
+}
+
+void preset_alter_data(struct gen3_mon_data_unenc* data_src, struct alternative_data_gen3* alternative_data) {
+    alternative_data->met_location = data_src->misc.met_location;
+    alternative_data->origins_info = data_src->misc.origins_info;
+    alternative_data->pid = data_src->src->pid;
+    alternative_data->ivs = (data_src->misc.hp_ivs) | (data_src->misc.atk_ivs << 5) | (data_src->misc.def_ivs << 10) | (data_src->misc.spe_ivs << 15) | (data_src->misc.spa_ivs << 20) | (data_src->misc.spd_ivs << 25);
+    alternative_data->ability = data_src->misc.ability;
+    alternative_data->ot_id = data_src->src->ot_id;
+}
+
+void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
+    preset_alter_data(data_src, &data_src->alter_nature);
+    
+    // Don't edit eggs or invalid
+    if((!data_src->is_valid_gen3) || (data_src->is_egg))
+        return;
+    
+    // Normalize nature
+    SWI_DivMod(wanted_nature, NUM_NATURES);
+    
+    // Prepare generic data
+    u16 species = data_src->growth.species;
+    u32 ot_id = data_src->alter_nature.ot_id;
+    u8 is_shiny = is_shiny_gen3_raw(data_src, ot_id);
+    u8 gender = get_pokemon_gender_raw(data_src);
+    u8 gender_kind = get_pokemon_gender_kind_gen3_raw(data_src);
+
+    // Prepare extra needed data
+    u16 wanted_ivs = convert_ivs_of_gen3(&data_src->misc, species, data_src->alter_nature.pid, is_shiny, gender, gender_kind, 1, 1);
+    u8 is_ability_set = 0;
+    
+    // Get encounter type
+    u8 encounter_type = get_encounter_type_gen3(species);
+    u8 origin_game = (data_src->misc.origins_info>>7)&0xF;
+
+    // Prepare the TSV
+    u16 tsv = (ot_id & 0xFFFF) ^ (ot_id >> 16);
+    
+    // Prepare pointers
+    u32* pid_ptr = &data_src->alter_nature.pid;
+    u32* ivs_ptr = &data_src->alter_nature.ivs;
+    u8* ability_ptr = &data_src->alter_nature.ability;
+
+    // Get PID and IVs
+    switch(encounter_type) {
+        case STATIC_ENCOUNTER:
+            if(!is_shiny)
+                generate_static_info(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr);
+            else
+                generate_static_shiny_info(wanted_nature, tsv, pid_ptr, ivs_ptr);
+            break;
+        case ROAMER_ENCOUNTER:
+            if(origin_game == COLOSSEUM_CODE) {
+                if(!is_shiny)
+                    generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                else
+                    generate_generic_genderless_shadow_shiny_info_colo(wanted_nature, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                is_ability_set = 1;
+            }
+            else {
+                if(!is_shiny)
+                    generate_static_info(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr);
+                else
+                    generate_static_shiny_info(wanted_nature, tsv, pid_ptr, ivs_ptr);
+                // Roamers only get the first byte of their IVs
+                if(is_roamer_gen3(&data_src->misc, species))
+                    data_src->alter_nature.ivs &= 0xFF;
+            }
+            break;
+        case UNOWN_ENCOUNTER:
+            if(!is_shiny)
+                generate_unown_info_letter_preloaded(wanted_nature, wanted_ivs, get_unown_letter_gen3(data_src->alter_nature.pid), tsv, pid_ptr, ivs_ptr);
+            else
+                generate_unown_shiny_info_letter_preloaded(wanted_nature, get_unown_letter_gen3(data_src->alter_nature.pid), tsv, pid_ptr, ivs_ptr);
+            break;
+        default:
+            if(!is_shiny)
+                generate_egg_info(species, wanted_nature, wanted_ivs, tsv, 2, pid_ptr, ivs_ptr);
+            else
+                generate_egg_shiny_info(species, wanted_nature, wanted_ivs, tsv, 2, pid_ptr, ivs_ptr);
+            break;
+    }
+    
+    // Set ability
+    if((is_ability_set && (*ability_ptr)) || ((!is_ability_set) && ((*pid_ptr) & 1))) {
+        u16 abilities = get_possible_abilities_pokemon(species, *pid_ptr, data_src->is_egg, data_src->deoxys_form);
+        u8 abilities_same = (abilities&0xFF) == ((abilities>>8)&0xFF);
+        if(!abilities_same)
+            *ability_ptr = 1;
+        else
+            *ability_ptr = 0;
+    }
+    else
+        *ability_ptr = 0;
 }
 
 void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 species, u16 wanted_ivs, u8 wanted_nature, u8 ot_gender, u8 is_egg, u8 no_restrictions) {
@@ -536,7 +637,11 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
         u8 abilities_same = (abilities&0xFF) == ((abilities>>8)&0xFF);
         if(!abilities_same)
             misc->ability = 1;
+        else
+            misc->ability = 0;
     }
+    else
+        misc->ability = 0;
 }
 
 u8 are_trainers_same(struct gen3_mon* dst, u8 is_jp) {

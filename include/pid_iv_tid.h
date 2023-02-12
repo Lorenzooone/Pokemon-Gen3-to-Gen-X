@@ -6,7 +6,9 @@ void init_unown_tsv(void);
 
 u8 get_roamer_ivs(u32, u8, u8, u32*);
 void generate_unown_shiny_info(u8, u16, u16, u32*, u32*);
+void generate_unown_shiny_info_letter_preloaded(u8, u8, u16, u32*, u32*);
 void generate_unown_info(u8, u16, u16, u32*, u32*);
+void generate_unown_info_letter_preloaded(u8, u16, u8, u16, u32*, u32*);
 void generate_static_shiny_info(u8, u16, u32*, u32*);
 void generate_generic_genderless_shadow_shiny_info_colo(u8, u16, u32*, u32*, u8*);
 void generate_static_info(u8, u16, u16, u32*, u32*);

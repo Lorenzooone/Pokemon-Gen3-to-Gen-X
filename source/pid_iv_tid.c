@@ -835,11 +835,15 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_unown_info(u8 wanted_nature, u8 letter, u
 }
 
 IWRAM_CODE MAX_OPTIMIZE void generate_unown_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
+    u8 letter = get_unown_letter_gen2_fast(wanted_ivs);
+    generate_unown_info_letter_preloaded(wanted_nature, wanted_ivs, letter, tsv, dst_pid, dst_ivs);
+}
+
+IWRAM_CODE MAX_OPTIMIZE void generate_unown_info_letter_preloaded(u8 wanted_nature, u16 wanted_ivs, u8 letter, u16 tsv, u32* dst_pid, u32* dst_ivs) {
     u8 atk_ivs = ((wanted_ivs>>4) & 0xF);
     u8 def_ivs = ((wanted_ivs) & 0xF);
     u8 spe_ivs = ((wanted_ivs>>12) & 0xF);
     u8 spa_ivs = ((wanted_ivs>>8) & 0xF);
-    u8 letter = get_unown_letter_gen2_fast(wanted_ivs);
     u8 rest_of_ivs = (((atk_ivs & 1) | ((atk_ivs>>2)&2))<<0) | (((def_ivs & 1) | ((def_ivs>>2)&2))<<2) | (((spe_ivs & 1) | ((spe_ivs>>2)&2))<<4) | (((spa_ivs & 1) | ((spa_ivs>>2)&2))<<6);
     _generate_unown_info(wanted_nature, letter, rest_of_ivs, tsv, dst_pid, dst_ivs, get_rng());
 }
@@ -996,6 +1000,10 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_unown_shiny_info(u8 wanted_nature, u16 ts
 
 IWRAM_CODE MAX_OPTIMIZE void generate_unown_shiny_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs) {
     u8 letter = get_unown_letter_gen2_fast(wanted_ivs);
+    generate_unown_shiny_info_letter_preloaded(wanted_nature, letter, tsv, dst_pid, dst_ivs);
+}
+
+IWRAM_CODE MAX_OPTIMIZE void generate_unown_shiny_info_letter_preloaded(u8 wanted_nature, u8 letter, u16 tsv, u32* dst_pid, u32* dst_ivs) {
     u8 valid_natures[NUM_NATURES];
     get_letter_valid_natures(tsv, letter, valid_natures);
     // Unown TSV checks

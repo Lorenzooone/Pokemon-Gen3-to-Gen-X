@@ -138,6 +138,15 @@
 
 typedef u32 gen3_party_total_t;
 
+struct alternative_data_gen3 {
+    u8 met_location;
+    u16 origins_info;
+    u32 pid;
+    u32 ivs;
+    u8 ability;
+    u32 ot_id;
+};
+
 struct mail_gen3 {
     u16 words[MAIL_WORDS_SIZE];
     u8 ot_name[OT_NAME_GEN3_SIZE+1];
@@ -210,6 +219,10 @@ struct gen3_mon_data_unenc {
     u8 is_valid_gen1 :1;
     u8 is_egg :1;
     u8 deoxys_form :2;
+    u8 can_roamer_fix :1;
+    u8 fix_has_altered_ot :1;
+    struct alternative_data_gen3 alter_nature;
+    struct alternative_data_gen3 fixed_ivs;
 };
 
 struct gen3_mon {
@@ -353,6 +366,7 @@ const u8* get_ribbon_rank_name(struct gen3_mon_misc*, u8);
 s32 get_proper_exp_raw(struct gen3_mon_data_unenc*);
 s32 get_level_exp_mon_index(u16, u8);
 u8 get_pokemon_gender_kind_gen3(int, u32, u8, u8);
+u8 get_pokemon_gender_kind_gen3_raw(struct gen3_mon_data_unenc*);
 void recalc_stats_gen3(struct gen3_mon_data_unenc*, struct gen3_mon*);
 void clean_mail_gen3(struct mail_gen3*, struct gen3_mon* mon);
 u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, const u16**, u8);

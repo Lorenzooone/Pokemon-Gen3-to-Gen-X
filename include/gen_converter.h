@@ -1,7 +1,10 @@
 #ifndef GEN_CONVERTER__
 #define GEN_CONVERTER__
 
+
 #include "party_handler.h"
+
+void alter_nature(struct gen3_mon_data_unenc*, u8);
 
 u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_unenc*, u32);
 u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_unenc*, u32);

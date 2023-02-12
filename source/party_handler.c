@@ -389,6 +389,13 @@ u8 get_pokemon_gender_kind_gen3(int index, u32 pid, u8 is_egg, u8 deoxys_form){
     return pokemon_gender_bin[get_mon_index(index, pid, is_egg, deoxys_form)];
 }
 
+u8 get_pokemon_gender_kind_gen3_raw(struct gen3_mon_data_unenc* data_src){
+    if(!data_src->is_valid_gen3)
+        return get_pokemon_gender_kind_gen3(0,0,0,0);
+
+    return get_pokemon_gender_kind_gen3(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form);
+}
+
 u8 is_egg_gen3(struct gen3_mon* UNUSED(src), struct gen3_mon_misc* misc){
     // In case it ends up being more complex, for some reason
     return misc->is_egg;
@@ -763,6 +770,10 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         dst->is_valid_gen1 = 0;
         return;
     }
+    
+    // Default roamer values
+    dst->can_roamer_fix = 0;
+    dst->fix_has_altered_ot = 0;
     
     // We reuse this SOOOO much...
     dst->is_egg = is_egg_gen3(src, misc);
