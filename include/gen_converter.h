@@ -6,6 +6,7 @@
 
 void alter_nature(struct gen3_mon_data_unenc*, u8);
 void set_alter_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
+void preload_if_fixable(struct gen3_mon_data_unenc*);
 
 u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_unenc*, u32);
 u8 gen3_to_gen1(struct gen1_mon*, struct gen3_mon_data_unenc*, u32);

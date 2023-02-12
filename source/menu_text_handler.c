@@ -17,6 +17,7 @@
 #define SUMMARY_LINE_MAX_SIZE 18
 #define PRINTABLE_INVALID_STRINGS 3
 
+void print_basic_alter_conf_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
 void print_pokemon_base_data(u8, struct gen3_mon_data_unenc*, u8, u8);
 void print_pokemon_base_info(u8, struct gen3_mon_data_unenc*, u8);
 void print_bottom_info(void);
@@ -228,7 +229,7 @@ void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 ot
     PRINT_FUNCTION("Summary: Receiving");
 }
 
-void print_trade_options(u8 cursor_x_pos){
+void print_trade_options(u8 cursor_x_pos, u8 own_menu){
     reset_screen(BLANK_FILL);
     init_trade_options_window();
     clear_trade_options_window();
@@ -236,7 +237,9 @@ void print_trade_options(u8 cursor_x_pos){
     set_text_x(TRADE_OPTIONS_WINDOW_X);
     PRINT_FUNCTION("  Summary");
     set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
-    if(cursor_x_pos)
+    if(own_menu)
+        PRINT_FUNCTION("  Fix IV");
+    else if(cursor_x_pos)
         PRINT_FUNCTION("  Set Nature");
     else 
         PRINT_FUNCTION("  Offer");
@@ -278,26 +281,63 @@ void print_start_trade(){
     }
 }
 
-void print_set_nature(u8 load_sprites, struct gen3_mon_data_unenc* mon) {
-    default_reset_screen();
-    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_NATURE_PAGE, BASE_X_SPRITE_NATURE_PAGE);
-
+void print_basic_alter_conf_data(struct gen3_mon_data_unenc* mon, struct alternative_data_gen3* altered) {
     PRINT_FUNCTION("\n       OLD    NEW   OLD  NEW");
     PRINT_FUNCTION("\nSTAT  VALUE  VALUE   IV   IV");
     for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
         PRINT_FUNCTION("\n \x11", stat_strings[i], 3);
         PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
-        PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw_alternative(mon, &mon->alter_nature, i), 4, get_nature_symbol(mon->alter_nature.pid, i));
-        PRINT_FUNCTION("  \x09  \x09", get_ivs_gen3(&mon->misc, i), 3, get_ivs_gen3_pure(mon->alter_nature.ivs, i), 3);
+        PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw_alternative(mon, altered, i), 4, get_nature_symbol(altered->pid, i));
+        PRINT_FUNCTION("  \x09  \x09", get_ivs_gen3(&mon->misc, i), 3, get_ivs_gen3_pure(altered->ivs, i), 3);
     }
-    
-    set_text_y(12);
-    PRINT_FUNCTION("Old Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
-    set_text_y(13);
-    PRINT_FUNCTION("New Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3_pure(mon->alter_nature.ivs), get_hidden_power_power_gen3_pure(mon->alter_nature.ivs));
+    PRINT_FUNCTION("\n\nOld Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    PRINT_FUNCTION("\nNew Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3_pure(altered->ivs), get_hidden_power_power_gen3_pure(altered->ivs));
+}
+
+void print_set_nature(u8 load_sprites, struct gen3_mon_data_unenc* mon) {
+    default_reset_screen();
+
+    if((!mon->is_valid_gen3) || (mon->is_egg)) {
+        print_bottom_info();
+        return;
+    }
+
+    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_NATURE_PAGE, BASE_X_SPRITE_NATURE_PAGE);
+
+    print_basic_alter_conf_data(mon, &mon->alter_nature);
     
     set_text_y(16);
     PRINT_FUNCTION("\x01 Nature to: <\x01>", get_nature_name(mon->src->pid), get_nature_name(mon->alter_nature.pid));
+    
+    set_text_y(Y_LIMIT-1);
+    PRINT_FUNCTION("A: Confirm - B: Go Back");
+}
+
+void print_iv_fix(struct gen3_mon_data_unenc* mon) {
+    default_reset_screen();
+
+    if((!mon->is_valid_gen3) || (mon->is_egg) || (!mon->can_roamer_fix)) {
+        print_bottom_info();
+        return;
+    }
+
+    print_pokemon_base_data(1, mon, BASE_Y_SPRITE_IV_FIX_PAGE, BASE_X_SPRITE_IV_FIX_PAGE);
+    u16 species = mon->growth.species;
+
+    print_basic_alter_conf_data(mon, &mon->fixed_ivs);
+
+    PRINT_FUNCTION("\nOld Met in: \x01", get_met_location_name_gen3_raw(mon));
+    if((species == LATIAS_SPECIES) || (species == LATIOS_SPECIES))
+        PRINT_FUNCTION("\nNew Met in: Southern Island");
+    if((species == RAIKOU_SPECIES) || (species == ENTEI_SPECIES) || (species == SUICUNE_SPECIES))
+        PRINT_FUNCTION("\nNew Met in: Deep Colosseum");
+    
+    PRINT_FUNCTION("\nCaught Level: from \x03 to \x03", get_met_level_gen3_raw(mon), mon->fixed_ivs.origins_info&0x7F);
+    
+    if(mon->fix_has_altered_ot) {
+        PRINT_FUNCTION("\n           WARNING:");
+        PRINT_FUNCTION("\n  CHANGED ORIGINAL TRAINER!");
+    }
     
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("A: Confirm - B: Go Back");

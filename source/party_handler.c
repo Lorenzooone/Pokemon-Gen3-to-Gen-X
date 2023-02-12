@@ -10,6 +10,7 @@
 #include "fast_pokemon_methods.h"
 #include "optimized_swi.h"
 #include "useful_qualifiers.h"
+#include "gen_converter.h"
 #include <stddef.h>
 
 #include "pokemon_gender_bin.h"
@@ -724,7 +725,11 @@ void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mo
 
 void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
     dst->src = src;
-    
+
+    // Default roamer values
+    dst->can_roamer_fix = 0;
+    dst->fix_has_altered_ot = 0;
+
     u32 decryption[ENC_DATA_SIZE>>2];
     
     // Initial data decryption
@@ -799,10 +804,6 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         return;
     }
     
-    // Default roamer values
-    dst->can_roamer_fix = 0;
-    dst->fix_has_altered_ot = 0;
-    
     // We reuse this SOOOO much...
     dst->is_egg = is_egg_gen3(src, misc);
     
@@ -826,6 +827,9 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     // Recalc the stats, always
     recalc_stats_gen3(dst, src);
+
+    // Handle roamers
+    preload_if_fixable(dst);
 }
 
 void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){

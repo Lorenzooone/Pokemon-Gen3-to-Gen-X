@@ -34,6 +34,7 @@
 #define TRADE_CANCEL_SCREEN 1
 #define INFO_SCREEN 3
 #define NATURE_SCREEN 2
+#define IV_FIX_SCREEN 2
 
 void vblank_update_function(void);
 void find_optimal_ewram_settings(void);
@@ -50,17 +51,18 @@ void waiting_init(void);
 void invalid_init(u8);
 void waiting_offer_init(u8, u8);
 void waiting_accept_init(u8);
-void trade_options_init(u8, u8*);
+void trade_options_init(u8, u8*, u8);
 void trade_menu_init(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
 void start_trade_init(struct game_data_t*, u8, u8, u8, u8, u8*);
 void main_menu_init(struct game_data_t*, u8, u8, u8, u8*);
 void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void nature_menu_init(struct game_data_t*, u8, u8, u8*);
+void iv_fix_menu_init(struct game_data_t*, u8, u8);
 void conclude_trade(struct game_data_t*, u8, u8, u8, u8*);
 void return_to_trade_menu(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -250,10 +252,10 @@ void waiting_accept_init(u8 decline) {
         try_to_accept_offer();
 }
 
-void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos) {
+void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos, u8 own_menu) {
     curr_state = TRADE_OPTIONS;
     set_screen(TRADE_OPTIONS_WINDOW_SCREEN);
-    print_trade_options(cursor_x_pos);
+    print_trade_options(cursor_x_pos, own_menu);
     enable_screen(TRADE_OPTIONS_WINDOW_SCREEN);
     *submenu_cursor_x_pos = 0;
     cursor_update_trade_options(*submenu_cursor_x_pos);
@@ -329,6 +331,15 @@ void nature_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mo
     alter_nature(&game_data[cursor_x_pos].party_3_undec[curr_mon], *wanted_nature);
     print_set_nature(1, &game_data[cursor_x_pos].party_3_undec[curr_mon]);
     enable_screen(NATURE_SCREEN);
+    prepare_flush();
+}
+
+void iv_fix_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon) {
+    curr_state = IV_FIX_MENU;
+    set_screen(IV_FIX_SCREEN);
+    disable_all_sprites();
+    print_iv_fix(&game_data[cursor_x_pos].party_3_undec[curr_mon]);
+    enable_screen(IV_FIX_SCREEN);
     prepare_flush();
 }
 
@@ -497,17 +508,21 @@ int main(void)
                 if(own_menu) {
                     if(returned_val == CANCEL_TRADING)
                         main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
-                    else if(returned_val)
-                        info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
+                    else if(returned_val) {
+                        if(game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3 && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg) && game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix)
+                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu);
+                        else
+                            info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
+                    }
                 }
                 else {
                     if(returned_val == CANCEL_TRADING)
                         waiting_offer_init(1, cursor_y_pos);
                     else if(returned_val) {
-                        if(cursor_x_pos && ((curr_gen ==3) || (game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg) || (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3)))
+                        if(cursor_x_pos && ((curr_gen ==3) || (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3) || game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg))
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else
-                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos);
+                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu);
                     }
                 }
                 break;
@@ -543,9 +558,11 @@ int main(void)
                     else {
                         if(!submenu_cursor_x_pos)
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
+                        else if(own_menu)
+                            iv_fix_menu_init(game_data, cursor_x_pos, curr_mon);
                         else if(!cursor_x_pos)
                             waiting_offer_init(0, cursor_y_pos);
-                        else if((game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3) && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg))
+                        else
                             nature_menu_init(game_data, cursor_x_pos, curr_mon, &submenu_cursor_y_pos);
                     }
                 }
@@ -560,12 +577,30 @@ int main(void)
                     if(returned_val == CANCEL_NATURE)
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     else if(returned_val == CONFIRM_NATURE) {
-                        set_alter_data(&game_data[cursor_x_pos].party_3_undec[curr_mon], &game_data[cursor_x_pos].party_3_undec[curr_mon].alter_nature);
+                        if(game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3 && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg))
+                           set_alter_data(&game_data[cursor_x_pos].party_3_undec[curr_mon], &game_data[cursor_x_pos].party_3_undec[curr_mon].alter_nature);
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     }
                     else {
                         change_nature(game_data, cursor_x_pos, curr_mon, &submenu_cursor_y_pos, returned_val == INC_NATURE);
                         print_set_nature(0, &game_data[cursor_x_pos].party_3_undec[curr_mon]);
+                    }
+                }
+                break;
+            case IV_FIX_MENU:
+                returned_val = handle_input_iv_fix_menu(keys);
+                if(returned_val) {
+                    if(returned_val == CANCEL_IV_FIX)
+                        return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                    else {
+                        if(game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3 && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg) && game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix) {
+                           set_alter_data(&game_data[cursor_x_pos].party_3_undec[curr_mon], &game_data[cursor_x_pos].party_3_undec[curr_mon].fixed_ivs);
+                           game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix = 0;
+                           game_data[cursor_x_pos].party_3_undec[curr_mon].fix_has_altered_ot = 0;
+                           set_default_gift_ribbons(&game_data[cursor_x_pos]);
+                           // TODO: Save the game
+                        }
+                        return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     }
                 }
                 break;

@@ -6,6 +6,8 @@
 #include "text_handler.h"
 #include <stddef.h>
 
+#include "default_gift_ribbons_bin.h"
+
 #define MAGIC_NUMBER 0x08012025
 #define NUM_SLOTS 2
 #define INVALID_SLOT NUM_SLOTS
@@ -35,6 +37,7 @@ void register_dex_entry(struct game_data_t*, struct gen3_mon_data_unenc*);
 void handle_mail_trade(struct game_data_t*, u8, u8);
 void process_party_data(struct game_data_t*);
 void read_party(int, struct game_data_t*);
+void update_gift_ribbons(struct game_data_t*, const u8*);
 u32 read_slot_index(int);
 u8 validate_slot(int);
 u8 get_slot(void);
@@ -135,6 +138,16 @@ void handle_mail_trade(struct game_data_t* game_data, u8 own_mon, u8 other_mon) 
         game_data[1].party_3_undec[other_mon].src->mail_id = GEN3_NO_MAIL;
 }
 
+void update_gift_ribbons(struct game_data_t* game_data, const u8* new_gift_ribbons) {
+    for(int i = 0; i < GIFT_RIBBONS; i++)
+        if(!game_data->giftRibbons[i])
+            game_data->giftRibbons[i] = new_gift_ribbons[i];
+}
+
+void set_default_gift_ribbons(struct game_data_t* game_data) {
+    update_gift_ribbons(game_data, default_gift_ribbons_bin);
+}
+
 u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, const u16** learnset_ptr, u8 curr_gen) {
     handle_mail_trade(game_data, own_mon, other_mon);
 
@@ -147,9 +160,7 @@ u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, const u16
     for(size_t i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
         dst[i] = src[i];
     game_data[0].party_3_undec[own_mon].src = &game_data[0].party_3.mons[own_mon];
-    for(int i = 0; i < GIFT_RIBBONS; i++)
-        if(!game_data[0].giftRibbons[i])
-            game_data[0].giftRibbons[i] = game_data[1].giftRibbons[i];
+    update_gift_ribbons(&game_data[0], game_data[1].giftRibbons);
     register_dex_entry(&game_data[0], &game_data[0].party_3_undec[own_mon]);
     u8 ret_val = trade_evolve(&game_data[0].party_3.mons[own_mon], &game_data[0].party_3_undec[own_mon], learnset_ptr, curr_gen);
     if(ret_val)

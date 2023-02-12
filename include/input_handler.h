@@ -6,6 +6,8 @@
 
 #define CANCEL_INFO 0xFF
 #define CANCEL_TRADING 0xFF
+#define CANCEL_IV_FIX 0xFF
+#define CONFIRM_IV_FIX 1
 #define CANCEL_NATURE 0xFF
 #define CONFIRM_NATURE 3
 #define INC_NATURE 1
@@ -26,6 +28,7 @@ u8 handle_input_trading_menu(u8*, u8*, u16, u8, u8);
 u8 handle_input_main_menu(u8*, u16, u8*, u8*, u8*, u8*);
 u8 handle_input_trade_options(u16, u8*);
 u8 handle_input_nature_menu(u16);
+u8 handle_input_iv_fix_menu(u16);
 u8 handle_input_offer_options(u16, u8*, u8*);
 u8 handle_input_trade_setup(u16, u8);
 

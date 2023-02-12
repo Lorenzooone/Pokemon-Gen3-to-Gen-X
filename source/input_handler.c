@@ -355,6 +355,17 @@ u8 handle_input_nature_menu(u16 keys) {
     return 0;
 }
 
+u8 handle_input_iv_fix_menu(u16 keys) {
+    
+    if(keys & KEY_B)
+        return CANCEL_IV_FIX;
+    
+    if(keys & KEY_A)
+        return CONFIRM_IV_FIX;
+    
+    return 0;
+}
+
 u8 handle_input_offer_options(u16 keys, u8* cursor_y_pos, u8* cursor_x_pos) {
     
     if(keys & KEY_B)

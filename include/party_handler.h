@@ -45,14 +45,17 @@
 #define NUM_RIBBONS (LAST_RIBBON+1)
 #define NO_RANK_ID 1
 #define NO_RIBBON_ID 21
+#define COLO_RIBBON_VALUE (1<<24)
 #define CONTEST_STATS_TOTAL 6
 
 #define COLOSSEUM_CODE 15
+#define SAPPHIRE_CODE 1
 #define RUBY_CODE 2
 #define EMERALD_CODE 3
 #define BATTLE_FACILITY 0x3A
 #define HIDEOUT 0x42
 #define SOUTHERN_ISLAND 0x49
+#define DEEP_COLOSSEUM 0x7D
 #define DEPT_STORE 0xC4
 #define EMPTY_LOCATION 0xD5
 #define BATTLE_FACILITY_ALT 0x101
@@ -68,7 +71,10 @@
 #define MEW_SPECIES 151
 #define UNOWN_SPECIES 201
 #define RAIKOU_SPECIES 243
+#define ENTEI_SPECIES 244
 #define SUICUNE_SPECIES 245
+#define LUGIA_SPECIES 249
+#define HO_OH_SPECIES 250
 #define LATIAS_SPECIES 407
 #define LATIOS_SPECIES 408
 #define DEOXYS_SPECIES 410
@@ -145,6 +151,8 @@ struct alternative_data_gen3 {
     u32 ivs;
     u8 ability;
     u32 ot_id;
+    u32 ribbons : 31;
+    u32 obedience : 1;
 };
 
 struct mail_gen3 {

@@ -715,6 +715,9 @@ IWRAM_CODE MAX_OPTIMIZE void _generate_generic_genderless_shiny_info(u8 wanted_n
 
         pos = normalize_position(pos, &initial_pos, base_increment, NUM_DIFFERENT_PSV);
     }
+    *dst_pid = 0;
+    *dst_ivs = 0;
+    *dst_ability = 0;
 }
 
 IWRAM_CODE MAX_OPTIMIZE u8 _generator_static_shiny_info(u32 pid, u8 base_pos, u32* dst_pid, u32* dst_ivs, u8* UNUSED(dst_ability)) {

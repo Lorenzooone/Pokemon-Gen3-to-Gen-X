@@ -36,6 +36,8 @@
 #define ROAMER_ROUTES_END_FRLG 125
 #define ROAMER_LEVEL_RSE 40
 #define ROAMER_LEVEL_FRLG 50
+#define SOUTHERN_ISLAND_LEVEL_RSE 50
+#define SHADOW_ROAMER_LEVEL_COLO 40
 
 #define MIN_LEVEL_25_EXP_DIFF 4
 
@@ -335,7 +337,7 @@ u8 are_roamer_ivs(struct gen3_mon_misc* misc) {
 }
 
 u8 is_roamer_frlg(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
-    return ((species >= RAIKOU_SPECIES) && (species <= SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_FRLG) && (met_location <= ROAMER_ROUTES_END_FRLG)) && (met_level == ROAMER_LEVEL_FRLG);
+    return ((species == RAIKOU_SPECIES) || (species == ENTEI_SPECIES) || (species == SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_FRLG) && (met_location <= ROAMER_ROUTES_END_FRLG)) && (met_level == ROAMER_LEVEL_FRLG);
 }
 
 u8 is_roamer_rse(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
@@ -451,6 +453,8 @@ void preset_alter_data(struct gen3_mon_data_unenc* data_src, struct alternative_
     alternative_data->ivs = (data_src->misc.hp_ivs) | (data_src->misc.atk_ivs << 5) | (data_src->misc.def_ivs << 10) | (data_src->misc.spe_ivs << 15) | (data_src->misc.spa_ivs << 20) | (data_src->misc.spd_ivs << 25);
     alternative_data->ability = data_src->misc.ability;
     alternative_data->ot_id = data_src->src->ot_id;
+    alternative_data->ribbons = data_src->misc.ribbons;
+    alternative_data->obedience = data_src->misc.obedience;
 }
 
 void set_alter_data(struct gen3_mon_data_unenc* data_src, struct alternative_data_gen3* alternative_data) {
@@ -460,12 +464,92 @@ void set_alter_data(struct gen3_mon_data_unenc* data_src, struct alternative_dat
     set_ivs(&data_src->misc, alternative_data->ivs);
     data_src->misc.ability = alternative_data->ability;
     data_src->src->ot_id = alternative_data->ot_id;
+    data_src->misc.ribbons = alternative_data->ribbons;
+    data_src->misc.obedience = alternative_data->obedience;
     
     // Place all the substructures' data
     place_and_encrypt_gen3_data(data_src, data_src->src);
     
     // Calculate stats
     recalc_stats_gen3(data_src, data_src->src);
+}
+
+void preload_if_fixable(struct gen3_mon_data_unenc* data_src) {
+    data_src->can_roamer_fix = 0;
+    data_src->fix_has_altered_ot = 0;
+
+    if((!data_src->is_valid_gen3) || (data_src->is_egg))
+        return;
+
+    u16 species = data_src->growth.species;
+
+    if(is_roamer_gen3(&data_src->misc, species)) {
+        u32 real_ivs = 0;
+        if(get_roamer_ivs(data_src->src->pid, data_src->misc.hp_ivs, data_src->misc.atk_ivs, &real_ivs)){
+            preset_alter_data(data_src, &data_src->fixed_ivs);
+            data_src->can_roamer_fix = 1;
+            
+            if((species == LATIOS_SPECIES) || (species == LATIAS_SPECIES)) {
+                data_src->fixed_ivs.ivs = real_ivs;
+                data_src->fixed_ivs.met_location = SOUTHERN_ISLAND;
+                data_src->fixed_ivs.origins_info &= ~(0xF<<7);
+                // This is the default. But making them from E with the obedience flag is also a possibility
+                if(species == LATIOS_SPECIES)
+                    data_src->fixed_ivs.origins_info |= SAPPHIRE_CODE<<7;
+                else
+                    data_src->fixed_ivs.origins_info |= RUBY_CODE<<7;
+                //data_src->fixed_ivs.origins_info |= EMERALD_CODE<<7;
+                //data_src->fixed_ivs.obedience = 1;
+                data_src->fixed_ivs.origins_info &= ~(0x7F);
+                data_src->fixed_ivs.origins_info |= SOUTHERN_ISLAND_LEVEL_RSE;
+            }
+            else if((species == RAIKOU_SPECIES) || (species == ENTEI_SPECIES) || (species == SUICUNE_SPECIES)) {
+                if(!are_colo_valid_tid_sid(data_src->src->ot_id & 0xFFFF, data_src->src->ot_id >> 0x10)) {
+                    data_src->fixed_ivs.ot_id = generate_ot(data_src->src->ot_id & 0xFFFF, data_src->src->ot_name);
+                    data_src->fix_has_altered_ot = 1;
+                }
+                u8 wanted_nature = get_nature(data_src->src->pid);
+                u32 ot_id =  data_src->fixed_ivs.ot_id;
+                u8 is_shiny = is_shiny_gen3_raw(data_src, ot_id);
+                u8 gender = get_pokemon_gender_raw(data_src);
+                u8 gender_kind = get_pokemon_gender_kind_gen3_raw(data_src);
+                u16 wanted_ivs = convert_ivs_of_gen3(&data_src->misc, species, data_src->src->pid, is_shiny, gender, gender_kind, 1, 1);
+
+                // Prepare the TSV
+                u16 tsv = (ot_id & 0xFFFF) ^ (ot_id >> 16);
+                
+                // Prepare pointers
+                u32* pid_ptr = &data_src->fixed_ivs.pid;
+                u32* ivs_ptr = &data_src->fixed_ivs.ivs;
+                u8* ability_ptr = &data_src->fixed_ivs.ability;
+
+                if(!is_shiny)
+                    convert_roamer_to_colo_info(wanted_nature, wanted_ivs, real_ivs & 0x1F, (real_ivs >> 5) & 0x1F, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                else
+                    convert_shiny_roamer_to_colo_info(wanted_nature, real_ivs & 0x1F, (real_ivs >> 5) & 0x1F, tsv, pid_ptr, ivs_ptr, ability_ptr);
+
+                data_src->fixed_ivs.met_location = DEEP_COLOSSEUM;
+                data_src->fixed_ivs.origins_info &= ~(0xF<<7);
+                data_src->fixed_ivs.origins_info |= COLOSSEUM_CODE<<7;
+                data_src->fixed_ivs.origins_info &= ~(0x7F);
+                data_src->fixed_ivs.origins_info |= SHADOW_ROAMER_LEVEL_COLO;
+                // Purification ribbon
+                data_src->fixed_ivs.ribbons |= COLO_RIBBON_VALUE;
+    
+                // Set ability
+                if(*ability_ptr) {
+                    u16 abilities = get_possible_abilities_pokemon(species, *pid_ptr, data_src->is_egg, data_src->deoxys_form);
+                    u8 abilities_same = (abilities&0xFF) == ((abilities>>8)&0xFF);
+                    if(!abilities_same)
+                        *ability_ptr = 1;
+                    else
+                        *ability_ptr = 0;
+                }
+                else
+                    *ability_ptr = 0;
+            }
+        }
+    }
 }
 
 void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
@@ -602,6 +686,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
                     generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                 else
                     generate_generic_genderless_shadow_shiny_info_colo(wanted_nature, tsv, &dst->pid, &ivs, &ability);
+                misc->ribbons |= COLO_RIBBON_VALUE;
                 is_ability_set = 1;
             }
             else {
@@ -1052,8 +1137,8 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->misc.pokerus = src->pokerus;
     
-    // Special Mew handling
-    if(data_dst->growth.species == MEW_SPECIES)
+    // Special Mew, Lugia and Ho-Oh handling
+    if((data_dst->growth.species == MEW_SPECIES) || (data_dst->growth.species == HO_OH_SPECIES) || (data_dst->growth.species == LUGIA_SPECIES))
         data_dst->misc.obedience = 1;
     
     // Set the PID-Origin-IVs data, they're all connected
