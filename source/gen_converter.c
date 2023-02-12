@@ -37,6 +37,8 @@
 #define ROAMER_LEVEL_RSE 40
 #define ROAMER_LEVEL_FRLG 50
 
+#define MIN_LEVEL_25_EXP_DIFF 4
+
 u16 swap_endian_short(u16);
 u32 swap_endian_int(u32);
 u8 validate_converting_mon_of_gen1(u8, struct gen1_mon_data*);
@@ -265,7 +267,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
     if(level < MAX_LEVEL)
         while(exp > max_exp) {
             level++;
-            if(level >= MAX_LEVEL-1) {
+            if(level >= (MIN_LEVEL_25_EXP_DIFF+1)) {
                 exp -= NUM_NATURES;
                 level--;
             }
