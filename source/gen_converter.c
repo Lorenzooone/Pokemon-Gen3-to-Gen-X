@@ -266,17 +266,18 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         while(exp > max_exp) {
             level++;
             if(level == MAX_LEVEL) {
-                exp = max_exp+1;
-                break;
+                exp -= NUM_NATURES;
+                level--;
             }
             max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
         }
-
+    
+    /*
     if ((level == MAX_LEVEL) && (exp != get_level_exp_mon_index(mon_index, MAX_LEVEL))){
         level--;
         exp -= NUM_NATURES;
     }
-
+    */
 
     // Store exp and level
     *level_ptr = level;
