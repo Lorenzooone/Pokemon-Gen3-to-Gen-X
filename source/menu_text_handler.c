@@ -17,6 +17,7 @@
 #define SUMMARY_LINE_MAX_SIZE 18
 #define PRINTABLE_INVALID_STRINGS 3
 
+void print_pokemon_base_data(u8, struct gen3_mon_data_unenc*, u8, u8);
 void print_pokemon_base_info(u8, struct gen3_mon_data_unenc*, u8);
 void print_bottom_info(void);
 void print_pokemon_page1(struct gen3_mon_data_unenc*);
@@ -277,11 +278,66 @@ void print_start_trade(){
     }
 }
 
-void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 page) {
+void print_set_nature(u8 load_sprites, struct gen3_mon_data_unenc* mon) {
+    default_reset_screen();
+    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_NATURE_PAGE, BASE_X_SPRITE_NATURE_PAGE);
+
+    PRINT_FUNCTION("\n       OLD    NEW   OLD  NEW");
+    PRINT_FUNCTION("\nSTAT  VALUE  VALUE   IV   IV");
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+        PRINT_FUNCTION("\n \x11", stat_strings[i], 3);
+        PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
+        PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw_alternative(mon, &mon->alter_nature, i), 4, get_nature_symbol(mon->alter_nature.pid, i));
+        PRINT_FUNCTION("  \x09  \x09", get_ivs_gen3(&mon->misc, i), 3, get_ivs_gen3_pure(mon->alter_nature.ivs, i), 3);
+    }
     
+    set_text_y(12);
+    PRINT_FUNCTION("Old Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    set_text_y(13);
+    PRINT_FUNCTION("New Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3_pure(mon->alter_nature.ivs), get_hidden_power_power_gen3_pure(mon->alter_nature.ivs));
+    
+    set_text_y(16);
+    PRINT_FUNCTION("\x01 Nature to: <\x01>", get_nature_name(mon->src->pid), get_nature_name(mon->alter_nature.pid));
+    
+    set_text_y(Y_LIMIT-1);
+    PRINT_FUNCTION("A: Confirm - B: Go Back");
+}
+
+void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 y, u8 x) {
     u8 is_shiny = is_shiny_gen3_raw(mon, 0);
     u8 has_pokerus = has_pokerus_gen3_raw(mon);
     u8 is_jp = mon->src->language == JAPANESE_LANGUAGE;
+    u8 is_egg = mon->is_egg;
+
+    if(load_sprites) {
+        reset_sprites_to_party();
+        load_pokemon_sprite_raw(mon, y, x);
+    }
+    
+    set_text_y((y>>3) + 2);
+    set_text_x((x>>3) + 4);
+    
+    if(!is_egg) {
+        PRINT_FUNCTION("\x05 - \x01 \x02\n", mon->src->nickname, NICKNAME_GEN3_SIZE, is_jp, get_pokemon_name_raw(mon), get_pokemon_gender_char_raw(mon));
+    
+        set_text_x((x>>3) + 4);
+        
+        if(is_shiny)
+            PRINT_FUNCTION("Shiny");
+    
+        if(is_shiny && has_pokerus)
+            PRINT_FUNCTION(" - ");
+    
+        if(has_pokerus == HAS_POKERUS)
+            PRINT_FUNCTION("Has Pokerus");
+        else if(has_pokerus == HAD_POKERUS)
+            PRINT_FUNCTION("Had Pokerus");
+    }
+    else
+        PRINT_FUNCTION("\x01\n", get_pokemon_name_raw(mon));
+}
+
+void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 page) {
     u8 is_egg = mon->is_egg;
     
     default_reset_screen();
@@ -300,30 +356,8 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     
     if(page < page_total)
         PRINT_FUNCTION(">");
-
-    if(load_sprites) {
-        reset_sprites_to_party();
-        load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE);
-    }
     
-    if(!is_egg) {
-        PRINT_FUNCTION("\n\n    \x05 - \x01 \x02\n", mon->src->nickname, NICKNAME_GEN3_SIZE, is_jp, get_pokemon_name_raw(mon), get_pokemon_gender_char_raw(mon));
-    
-        PRINT_FUNCTION("    ");
-        if(is_shiny)
-            PRINT_FUNCTION("Shiny");
-    
-        if(is_shiny && has_pokerus)
-            PRINT_FUNCTION(" - ");
-    
-        if(has_pokerus == HAS_POKERUS)
-            PRINT_FUNCTION("Has Pokerus");
-        else if(has_pokerus == HAD_POKERUS)
-            PRINT_FUNCTION("Had Pokerus");
-    }
-    else
-        PRINT_FUNCTION("\n\n    \x01\n", get_pokemon_name_raw(mon));
-    
+    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE);
 }
 
 void print_bottom_info(){

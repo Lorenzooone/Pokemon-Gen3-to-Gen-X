@@ -6,6 +6,10 @@
 
 #define CANCEL_INFO 0xFF
 #define CANCEL_TRADING 0xFF
+#define CANCEL_NATURE 0xFF
+#define CONFIRM_NATURE 3
+#define INC_NATURE 1
+#define DEC_NATURE 2
 #define CANCEL_TRADE_START 0xFF
 #define CANCEL_TRADE_OPTIONS 0xFF
 #define OFFER_INFO_DISPLAY 0x12
@@ -21,6 +25,7 @@ u8 handle_input_offer_info_menu(struct game_data_t*, u8*, const u8**, u16, u8*);
 u8 handle_input_trading_menu(u8*, u8*, u16, u8, u8);
 u8 handle_input_main_menu(u8*, u16, u8*, u8*, u8*, u8*);
 u8 handle_input_trade_options(u16, u8*);
+u8 handle_input_nature_menu(u16);
 u8 handle_input_offer_options(u16, u8*, u8*);
 u8 handle_input_trade_setup(u16, u8);
 

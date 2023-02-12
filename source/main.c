@@ -15,6 +15,7 @@
 #include "print_system.h"
 #include "window_handler.h"
 #include "communicator.h"
+#include "gen_converter.h"
 #include "sio.h"
 #include "vcount_basic.h"
 #include <stddef.h>
@@ -32,6 +33,7 @@
 #define BASE_SCREEN 0
 #define TRADE_CANCEL_SCREEN 1
 #define INFO_SCREEN 3
+#define NATURE_SCREEN 2
 
 void vblank_update_function(void);
 void find_optimal_ewram_settings(void);
@@ -40,18 +42,20 @@ void cursor_update_trading_menu(u8, u8);
 void cursor_update_main_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
+void change_nature(struct game_data_t*, u8, u8, u8*, u8);
+void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
+void trade_cancel_print_screen(u8);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
 void waiting_init(void);
 void invalid_init(u8);
 void waiting_offer_init(u8, u8);
 void waiting_accept_init(u8);
-void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
-void trade_cancel_print_screen(u8);
 void trade_options_init(u8, u8*);
 void trade_menu_init(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
 void start_trade_init(struct game_data_t*, u8, u8, u8, u8, u8*);
 void main_menu_init(struct game_data_t*, u8, u8, u8, u8*);
 void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
+void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void conclude_trade(struct game_data_t*, u8, u8, u8, u8*);
 void return_to_trade_menu(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
 int main(void);
@@ -153,6 +157,47 @@ void cursor_update_offer_options(u8 cursor_y_pos, u8 cursor_x_pos) {
     update_cursor_y(BASE_Y_CURSOR_OFFER_OPTIONS + (BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS * cursor_y_pos));
 }
 
+void change_nature(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* wanted_nature, u8 is_change_inc) {
+    if((!game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3) || (game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg))
+        return;
+
+    u8 base_nature = get_nature(game_data[cursor_x_pos].party_3_undec[curr_mon].alter_nature.pid);
+    u8 new_base_nature = base_nature;
+
+    while(get_nature(game_data[cursor_x_pos].party_3_undec[curr_mon].alter_nature.pid) == base_nature) {
+        if(is_change_inc)
+            new_base_nature += 1;
+        else
+            new_base_nature += NUM_NATURES-1;
+        
+        if(new_base_nature >= NUM_NATURES)
+            new_base_nature -= NUM_NATURES;
+
+        alter_nature(&game_data[cursor_x_pos].party_3_undec[curr_mon], new_base_nature);
+    }
+
+    *wanted_nature = get_nature(game_data[cursor_x_pos].party_3_undec[curr_mon].alter_nature.pid);
+}
+
+void check_bad_trade_received(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos) {
+    u8 useless = 0;
+    // Handle bad received / No valid mons
+    if(handle_input_trading_menu(&useless, &useless, 0, curr_gen, own_menu) == CANCEL_TRADING) {
+        if(own_menu)
+            main_menu_init(&game_data[0], target, region, master, cursor_y_pos);
+        else
+            waiting_offer_init(1, 0);
+    }
+}
+
+void trade_cancel_print_screen(u8 update) {
+    u8 prev_screen = get_screen_num();
+    set_screen(TRADE_CANCEL_SCREEN);
+    print_trade_menu_cancel(update);
+    enable_screen(TRADE_CANCEL_SCREEN);
+    set_screen(prev_screen);
+}
+
 void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cursor_y_pos, u8* cursor_x_pos, u8 reset) {
     curr_state = OFFER_MENU;
     set_screen(BASE_SCREEN);
@@ -203,25 +248,6 @@ void waiting_accept_init(u8 decline) {
         try_to_decline_offer();
     else
         try_to_accept_offer();
-}
-
-void check_bad_trade_received(struct game_data_t* game_data, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos) {
-    u8 useless = 0;
-    // Handle bad received / No valid mons
-    if(handle_input_trading_menu(&useless, &useless, 0, curr_gen, own_menu) == CANCEL_TRADING) {
-        if(own_menu)
-            main_menu_init(&game_data[0], target, region, master, cursor_y_pos);
-        else
-            waiting_offer_init(1, 0);
-    }
-}
-
-void trade_cancel_print_screen(u8 update) {
-    u8 prev_screen = get_screen_num();
-    set_screen(TRADE_CANCEL_SCREEN);
-    print_trade_menu_cancel(update);
-    enable_screen(TRADE_CANCEL_SCREEN);
-    set_screen(prev_screen);
 }
 
 void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos) {
@@ -292,6 +318,17 @@ void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon,
     disable_all_sprites();
     print_pokemon_pages(1, 1, &game_data[cursor_x_pos].party_3_undec[curr_mon], *curr_page);
     enable_screen(INFO_SCREEN);
+    prepare_flush();
+}
+
+void nature_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* wanted_nature) {
+    curr_state = NATURE_SETTING;
+    set_screen(NATURE_SCREEN);
+    disable_all_sprites();
+    *wanted_nature = get_nature(game_data[cursor_x_pos].party_3_undec[curr_mon].src->pid);
+    alter_nature(&game_data[cursor_x_pos].party_3_undec[curr_mon], *wanted_nature);
+    print_set_nature(1, &game_data[cursor_x_pos].party_3_undec[curr_mon]);
+    enable_screen(NATURE_SCREEN);
     prepare_flush();
 }
 
@@ -467,7 +504,7 @@ int main(void)
                     if(returned_val == CANCEL_TRADING)
                         waiting_offer_init(1, cursor_y_pos);
                     else if(returned_val) {
-                        if(cursor_x_pos && curr_gen ==3)
+                        if(cursor_x_pos && ((curr_gen ==3) || (game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg) || (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3)))
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else
                             trade_options_init(cursor_x_pos, &submenu_cursor_x_pos);
@@ -508,10 +545,8 @@ int main(void)
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else if(!cursor_x_pos)
                             waiting_offer_init(0, cursor_y_pos);
-                        else {
-                            // TODO: Print the nature settings menu here
-                            curr_state = NATURE_SETTING;
-                        }
+                        else if((game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3) && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg))
+                            nature_menu_init(game_data, cursor_x_pos, curr_mon, &submenu_cursor_y_pos);
                     }
                 }
                 else
@@ -520,7 +555,19 @@ int main(void)
             case WAITING_DATA:
                 break;
             case NATURE_SETTING:
-                // TODO: Nature settings
+                returned_val = handle_input_nature_menu(keys);
+                if(returned_val) {
+                    if(returned_val == CANCEL_NATURE)
+                        return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                    else if(returned_val == CONFIRM_NATURE) {
+                        set_alter_data(&game_data[cursor_x_pos].party_3_undec[curr_mon], &game_data[cursor_x_pos].party_3_undec[curr_mon].alter_nature);
+                        return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                    }
+                    else {
+                        change_nature(game_data, cursor_x_pos, curr_mon, &submenu_cursor_y_pos, returned_val == INC_NATURE);
+                        print_set_nature(0, &game_data[cursor_x_pos].party_3_undec[curr_mon]);
+                    }
+                }
                 break;
             case OFFER_MENU:
                 returned_val = handle_input_offer_options(keys, &submenu_cursor_y_pos, &submenu_cursor_x_pos);

@@ -60,6 +60,7 @@ u8 is_shiny_gen3(u32, u32, u8, u32);
 u8 get_mail_id(struct gen3_mon*, struct gen3_mon_growth*, u8);
 u8 decrypt_data(struct gen3_mon* src, u32* decrypted_dst);
 void encrypt_data(struct gen3_mon* dst);
+u8 get_hidden_power_type_gen3_pure(u32);
 u8 get_hidden_power_type_gen3(struct gen3_mon_misc*);
 void make_evs_legal_gen3(struct gen3_mon_evs*);
 u8 to_valid_level_gen3(struct gen3_mon*);
@@ -509,34 +510,54 @@ void encrypt_data(struct gen3_mon* dst) {
         dst->enc_data[i] = dst->enc_data[i] ^ key;
 }
 
-u8 get_ivs_gen3(struct gen3_mon_misc* misc, u8 stat_index) {
+u8 get_ivs_gen3_pure(u32 ivs, u8 stat_index) {
     if(stat_index >= GEN2_STATS_TOTAL)
         stat_index = GEN2_STATS_TOTAL-1;
     
-    u32 ivs = (*(((u32*)misc)+1));
     u8 real_stat_index = stat_index_conversion_gen3[stat_index];
     
     return (ivs >> (5*real_stat_index))&0x1F;
 }
 
-u8 get_hidden_power_type_gen3(struct gen3_mon_misc* misc) {
-    u32 type = 0;
+u8 get_ivs_gen3(struct gen3_mon_misc* misc, u8 stat_index) {
+    if(stat_index >= GEN2_STATS_TOTAL)
+        stat_index = GEN2_STATS_TOTAL-1;
+    
     u32 ivs = (*(((u32*)misc)+1));
+    return get_ivs_gen3_pure(ivs, stat_index);
+}
+
+u8 get_hidden_power_type_gen3_pure(u32 ivs) {
+    u32 type = 0;
     for(int i = 0; i < GEN2_STATS_TOTAL; i++)
         type += (((ivs >> (5*i))&0x1F)&1)<<i;
     return Div(type*15, (1<<GEN2_STATS_TOTAL)-1);
 }
 
-u8 get_hidden_power_power_gen3(struct gen3_mon_misc* misc) {
+u8 get_hidden_power_power_gen3_pure(u32 ivs) {
     u32 power = 0;
-    u32 ivs = (*(((u32*)misc)+1));
     for(int i = 0; i < GEN2_STATS_TOTAL; i++)
         power += ((((ivs >> (5*i))&0x1F)>>1)&1)<<i;
     return Div(power*40, (1<<GEN2_STATS_TOTAL)-1) + 30;
 }
 
+u8 get_hidden_power_type_gen3(struct gen3_mon_misc* misc) {
+    u32 ivs = (*(((u32*)misc)+1));
+    return get_hidden_power_type_gen3_pure(ivs);
+}
+
+u8 get_hidden_power_power_gen3(struct gen3_mon_misc* misc) {
+    u32 ivs = (*(((u32*)misc)+1));
+    return get_hidden_power_power_gen3_pure(ivs);
+}
+
+const u8* get_hidden_power_type_name_gen3_pure(u32 ivs) {
+    return get_table_pointer(type_names_bin, get_hidden_power_type_gen3_pure(ivs));
+}
+
 const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc* misc) {
-    return get_table_pointer(type_names_bin, get_hidden_power_type_gen3(misc));
+    u32 ivs = (*(((u32*)misc)+1));
+    return get_hidden_power_type_name_gen3_pure(ivs);
 }
 
 const u8* get_nature_name(u32 pid) {
@@ -651,6 +672,13 @@ u16 calc_stats_gen3_raw(struct gen3_mon_data_unenc* data_src, u8 stat_index) {
         return 0;
 
     return calc_stats_gen3(data_src->growth.species, data_src->src->pid, stat_index, to_valid_level_gen3(data_src->src), get_ivs_gen3(&data_src->misc, stat_index), get_evs_gen3(&data_src->evs, stat_index), data_src->deoxys_form);
+}
+
+u16 calc_stats_gen3_raw_alternative(struct gen3_mon_data_unenc* data_src, struct alternative_data_gen3* data_alt, u8 stat_index) {
+    if(!data_src->is_valid_gen3)
+        return 0;
+
+    return calc_stats_gen3(data_src->growth.species, data_alt->pid, stat_index, to_valid_level_gen3(data_src->src), get_ivs_gen3_pure(data_alt->ivs, stat_index), get_evs_gen3(&data_src->evs, stat_index), data_src->deoxys_form);
 }
 
 u8 to_valid_level(u8 level) {

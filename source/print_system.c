@@ -265,15 +265,17 @@ void default_reset_screen(){
 }
 
 void set_text_x(u8 new_x){
+    new_x %= X_SIZE;
     if(new_x < X_LIMIT)
         x_pos = new_x;
+    else
+        x_pos = X_LIMIT-1;
 }
 
 void set_text_y(u8 new_y){
-    if(new_y < Y_SIZE) {
-        y_pos = new_y;
-        x_pos = 0;
-    }
+    new_y %= Y_SIZE;
+    y_pos = new_y;
+    x_pos = 0;
 }
 
 void new_line(){

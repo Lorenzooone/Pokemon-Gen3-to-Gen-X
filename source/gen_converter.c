@@ -248,7 +248,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
     // Experience handling
     s32 exp = get_proper_exp(src, growth, 0);
     
-    s32 max_exp = exp;
+    s32 max_exp = get_level_exp_mon_index(mon_index, level);
     if(level < MAX_LEVEL)
         max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
     
@@ -269,10 +269,12 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
             }
             max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
         }
+    /*
     if ((level == MAX_LEVEL) && (exp != get_level_exp_mon_index(mon_index, MAX_LEVEL))){
         level--;
         exp -= NUM_NATURES;
     }
+    */
 
     // Store exp and level
     *level_ptr = level;
@@ -446,6 +448,21 @@ void preset_alter_data(struct gen3_mon_data_unenc* data_src, struct alternative_
     alternative_data->ot_id = data_src->src->ot_id;
 }
 
+void set_alter_data(struct gen3_mon_data_unenc* data_src, struct alternative_data_gen3* alternative_data) {
+    data_src->misc.met_location = alternative_data->met_location;
+    data_src->misc.origins_info = alternative_data->origins_info;
+    data_src->src->pid = alternative_data->pid;
+    set_ivs(&data_src->misc, alternative_data->ivs);
+    data_src->misc.ability = alternative_data->ability;
+    data_src->src->ot_id = alternative_data->ot_id;
+    
+    // Place all the substructures' data
+    place_and_encrypt_gen3_data(data_src, data_src->src);
+    
+    // Calculate stats
+    recalc_stats_gen3(data_src, data_src->src);
+}
+
 void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
     preset_alter_data(data_src, &data_src->alter_nature);
     
@@ -455,6 +472,9 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
     
     // Normalize nature
     SWI_DivMod(wanted_nature, NUM_NATURES);
+    
+    if(wanted_nature == get_nature(data_src->src->pid))
+        return;
     
     // Prepare generic data
     u16 species = data_src->growth.species;

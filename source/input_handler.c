@@ -339,6 +339,22 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
     return 0;
 }
 
+u8 handle_input_nature_menu(u16 keys) {
+    
+    if(keys & KEY_B)
+        return CANCEL_NATURE;
+    
+    if(keys & KEY_A)
+        return CONFIRM_NATURE;
+    
+    if(keys & KEY_RIGHT)
+        return INC_NATURE;
+    else if(keys & KEY_LEFT)
+        return DEC_NATURE;
+    
+    return 0;
+}
+
 u8 handle_input_offer_options(u16 keys, u8* cursor_y_pos, u8* cursor_x_pos) {
     
     if(keys & KEY_B)
