@@ -16,6 +16,12 @@
 #define WAITING_WINDOW_X ((TOTAL_X_SIZE>>1)-((WAITING_WINDOW_X_SIZE+1)>>1))
 #define WAITING_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((WAITING_WINDOW_Y_SIZE+1)>>1))
 
+#define SAVING_WINDOW_SCREEN 3
+#define SAVING_WINDOW_X_SIZE 9
+#define SAVING_WINDOW_Y_SIZE 1
+#define SAVING_WINDOW_X ((TOTAL_X_SIZE>>1)-((WAITING_WINDOW_X_SIZE+1)>>1))
+#define SAVING_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((WAITING_WINDOW_Y_SIZE+1)>>1))
+
 #define MESSAGE_WINDOW_SCREEN 2
 #define MESSAGE_WINDOW_X 1
 #define MESSAGE_WINDOW_Y 0x10
@@ -48,5 +54,8 @@ void clear_offer_options_window(void);
 
 void init_waiting_window(void);
 void clear_waiting_window(void);
+
+void init_saving_window(void);
+void clear_saving_window(void);
 
 #endif

@@ -46,6 +46,7 @@ void cursor_update_offer_options(u8, u8);
 void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
 void trade_cancel_print_screen(u8);
+void saving_print_screen(void);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
 void waiting_init(void);
 void invalid_init(u8);
@@ -198,6 +199,15 @@ void trade_cancel_print_screen(u8 update) {
     print_trade_menu_cancel(update);
     enable_screen(TRADE_CANCEL_SCREEN);
     set_screen(prev_screen);
+}
+
+void saving_print_screen() {
+    u8 prev_screen = get_screen_num();
+    set_screen(SAVING_WINDOW_SCREEN);
+    print_saving();
+    enable_screen(SAVING_WINDOW_SCREEN);
+    set_screen(prev_screen);
+    prepare_flush();
 }
 
 void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cursor_y_pos, u8* cursor_x_pos, u8 reset) {
@@ -594,11 +604,16 @@ int main(void)
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     else {
                         if(game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3 && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg) && game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix) {
-                           set_alter_data(&game_data[cursor_x_pos].party_3_undec[curr_mon], &game_data[cursor_x_pos].party_3_undec[curr_mon].fixed_ivs);
-                           game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix = 0;
-                           game_data[cursor_x_pos].party_3_undec[curr_mon].fix_has_altered_ot = 0;
-                           set_default_gift_ribbons(&game_data[cursor_x_pos]);
-                           // TODO: Save the game
+                            set_alter_data(&game_data[cursor_x_pos].party_3_undec[curr_mon], &game_data[cursor_x_pos].party_3_undec[curr_mon].fixed_ivs);
+                            game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix = 0;
+                            game_data[cursor_x_pos].party_3_undec[curr_mon].fix_has_altered_ot = 0;
+                            set_default_gift_ribbons(&game_data[cursor_x_pos]);
+                            if(!cursor_x_pos) {
+                                // TODO: Handle bad save
+                                saving_print_screen();
+                                pre_write_gen_3_data(&game_data[0]);
+                                complete_write_gen_3_data();
+                            }
                         }
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     }

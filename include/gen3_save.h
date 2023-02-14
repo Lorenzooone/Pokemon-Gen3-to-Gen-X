@@ -7,9 +7,11 @@
 #define SAVE_SLOT_SIZE 0xE000
 #define SECTION_SIZE 0x1000
 
-struct game_data_t {    
-    u8 pokedex_seen[DEX_BYTES];
+struct game_data_t {
+    u32 seen_unown_pid;
+    u32 seen_spinda_pid;
     u8 pokedex_owned[DEX_BYTES];
+    u8 pokedex_seen[DEX_BYTES];
     struct game_identity game_identifier;
     u8 giftRibbons[GIFT_RIBBONS];
     u8 trainer_name[OT_NAME_GEN3_SIZE+1];
@@ -23,11 +25,14 @@ struct game_data_t {
 };
 
 void init_game_data(struct game_data_t*);
-void read_gen_3_data(struct game_data_t*);
+u8 read_gen_3_data(struct game_data_t*);
 void process_party_data(struct game_data_t* game_data);
 struct game_data_t* get_own_game_data(void);
 void set_default_gift_ribbons(struct game_data_t*);
 u8 trade_mons(struct game_data_t*, u8, u8, const u16**, u8);
 u8 is_invalid_offer(struct game_data_t*, u8, u8);
+u8 pre_write_gen_3_data(struct game_data_t*);
+u8 pre_write_updated_moves_gen_3_data(struct game_data_t*);
+u8 complete_write_gen_3_data(void);
 
 #endif

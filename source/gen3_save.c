@@ -20,33 +20,46 @@
 
 #define SECTION_TRAINER_INFO_ID 0
 #define SECTION_PARTY_INFO_ID 1
+#define SECTION_BASE_DEX_ID 0
 #define SECTION_DEX_SEEN_1_ID 1
 #define SECTION_DEX_SEEN_2_ID 4
 #define SECTION_MAIL_ID 3
 #define SECTION_GIFT_RIBBON_ID 4
 
-#define DEX_POS_0 0x28
+#define TRAINER_NAME_POS 0
+#define TRAINER_GENDER_POS 8
+#define TRAINER_ID_POS 10
+#define DEX_BASE_POS 0x18
+#define DEX_UNOWN_PID_POS (DEX_BASE_POS+4)
+#define DEX_SPINDA_PID_POS (DEX_BASE_POS+8)
+#define DEX_POS_OWNED (DEX_BASE_POS+0x10)
+#define DEX_POS_SEEN_0 (DEX_BASE_POS+DEX_BYTES+0x10)
+
 #define RSE_PARTY 0x234
 #define FRLG_PARTY 0x34
 
 #define VALID_MAPS 36
 
-u32 read_section_id(int, int);
+u16 read_section_id(int, int);
+u32 read_slot_index(int);
 void read_game_data_trainer_info(int, struct game_data_t*);
 void register_dex_entry(struct game_data_t*, struct gen3_mon_data_unenc*);
 void handle_mail_trade(struct game_data_t*, u8, u8);
 void process_party_data(struct game_data_t*);
 void read_party(int, struct game_data_t*);
 void update_gift_ribbons(struct game_data_t*, const u8*);
-u32 read_slot_index(int);
 u8 validate_slot(int);
 u8 get_slot(void);
+u8 pre_update_save(struct game_data_t*, u8);
+u8 pre_update_moves_save(struct game_data_t*, u8);
+u8 complete_save(u8);
 
 const u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
 const u16 pokedex_extra_pos_1 [] = {0x938, 0x5F8, 0x988};
 const u16 pokedex_extra_pos_2 [] = {0xC0C, 0xB98, 0xCA4};
 const u16 mail_pos [] = {0xC4C, 0xDD0, 0xCE0};
 const u16 ribbon_pos [] = {0x290, 0x21C, 0x328};
+const u16 party_pos[] = {RSE_PARTY, FRLG_PARTY, RSE_PARTY};
 const u16 special_area [] = {0, 9, 9};
 const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0x0406, 0x0503, 0x0504, 0x0603, 0x0604, 0x0700, 0x0701, 0x0804, 0x0805, 0x090a, 0x090b, 0x0a05, 0x0a06, 0x0b05, 0x0b06, 0x0c02, 0x0c03, 0x0d06, 0x0d07, 0x0e03, 0x0e04, 0x0f02, 0x0f03, 0x100c, 0x100d, 0x100a, 0x1918, 0x1919, 0x191a, 0x191b, 0x1a05};
 
@@ -70,7 +83,7 @@ void init_game_data(struct game_data_t* game_data) {
         game_data->party_3_undec[i].is_valid_gen3 = 0;
 }
 
-u32 read_section_id(int slot, int section_pos) {
+u16 read_section_id(int slot, int section_pos) {
     if(slot)
         slot = 1;
     if(section_pos < 0)
@@ -81,19 +94,24 @@ u32 read_section_id(int slot, int section_pos) {
     return read_short_save((slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + SECTION_ID_POS);
 }
 
+u32 read_slot_index(int slot) {
+    if(slot)
+        slot = 1;
+    
+    return read_int_save((slot * SAVE_SLOT_SIZE) + SAVE_SLOT_INDEX_POS);
+}
+
 void read_game_data_trainer_info(int slot, struct game_data_t* game_data) {
     if(slot)
         slot = 1;
 
     for(int i = 0; i < SECTION_TOTAL; i++)
         if(read_section_id(slot, i) == SECTION_TRAINER_INFO_ID) {
-            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), game_data->trainer_name, OT_NAME_GEN3_SIZE+1);
-            game_data->trainer_gender = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 8);
-            game_data->trainer_id = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + 10);
-            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_0, game_data->pokedex_owned, DEX_BYTES);
-            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_0 + DEX_BYTES, game_data->pokedex_seen, DEX_BYTES);
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + TRAINER_NAME_POS, game_data->trainer_name, OT_NAME_GEN3_SIZE+1);
+            game_data->trainer_gender = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + TRAINER_GENDER_POS);
+            game_data->trainer_id = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + TRAINER_ID_POS);
             determine_game_with_save(&game_data->game_identifier, slot, i, summable_bytes[SECTION_TRAINER_INFO_ID]);
-            
+
             break;
         }
 }
@@ -103,8 +121,13 @@ void register_dex_entry(struct game_data_t* game_data, struct gen3_mon_data_unen
     if(dex_index != NO_DEX_INDEX) {
         u8 base_index = dex_index >> 3;
         u8 rest_index = dex_index & 7;
+        u8 prev_seen = game_data->pokedex_seen[base_index] & (1 << rest_index);
         game_data->pokedex_seen[base_index] |= (1 << rest_index);
         game_data->pokedex_owned[base_index] |= (1 << rest_index);
+        if((!prev_seen) && (data_src->growth.species == UNOWN_SPECIES))
+            game_data->seen_unown_pid = data_src->src->pid;
+        if((!prev_seen) && (data_src->growth.species == SPINDA_SPECIES))
+            game_data->seen_spinda_pid = data_src->src->pid;
     }
 }
 
@@ -229,30 +252,32 @@ void read_party(int slot, struct game_data_t* game_data) {
         else
             game_data->game_identifier.game_is_jp = 0;
     }
-    u16 add_on = RSE_PARTY;
-    if(game_data->game_identifier.game_main_version == FRLG_MAIN_GAME_CODE)
-        add_on = FRLG_PARTY;
-
-    for(int i = 0; i < SECTION_TOTAL; i++)
-        if(read_section_id(slot, i) == SECTION_PARTY_INFO_ID) {
-            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + add_on, (u8*)(&game_data->party_3), sizeof(struct gen3_party));
-            break;
-        }
-    process_party_data(game_data);
-}
-
-u32 read_slot_index(int slot) {
-    if(slot)
-        slot = 1;
     
-    return read_int_save((slot * SAVE_SLOT_SIZE) + SAVE_SLOT_INDEX_POS);
+    u8 game_id = game_data->game_identifier.game_main_version;
+
+    for(int i = 0; i < SECTION_TOTAL; i++) {
+        u16 section_id = read_section_id(slot, i);
+        if(section_id == SECTION_PARTY_INFO_ID)
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + party_pos[game_id], (u8*)(&game_data->party_3), sizeof(struct gen3_party));
+        if(section_id == SECTION_MAIL_ID)
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + mail_pos[game_id], (u8*)game_data->mails_3, sizeof(game_data->mails_3));
+        if(section_id == SECTION_GIFT_RIBBON_ID)
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + ribbon_pos[game_id], (u8*)game_data->giftRibbons, sizeof(game_data->giftRibbons));
+        if(section_id == SECTION_BASE_DEX_ID) {
+            game_data->seen_unown_pid = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_UNOWN_PID_POS);
+            game_data->seen_spinda_pid = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_SPINDA_PID_POS);
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_OWNED, game_data->pokedex_owned, sizeof(game_data->pokedex_owned));
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_SEEN_0, game_data->pokedex_seen, sizeof(game_data->pokedex_seen));
+        }
+    }
+    process_party_data(game_data);
 }
 
 u8 validate_slot(int slot) {
     if(slot)
         slot = 1;
     
-    u16 valid_sections = 0;
+    u32 valid_sections = 0;
     u32 buffer[SECTION_SIZE>>2];
     u16* buffer_16 = (u16*)buffer;
     u32 current_save_index = read_slot_index(slot);
@@ -283,28 +308,203 @@ u8 validate_slot(int slot) {
     return 1;
 }
 
+u8 pre_update_save(struct game_data_t* game_data, u8 base_slot) {
+    u8 target_slot = (base_slot + 1) % NUM_SLOTS;
+    u32 target_slot_save_index = read_slot_index(base_slot) - 1;
+
+    u32 buffer[SECTION_SIZE>>2];
+    u16* buffer_16 = (u16*)buffer;
+    u8* buffer_8 = (u8*)buffer;
+    u8 target_section = 1;
+    u8 game_id = game_data->game_identifier.game_main_version;
+    
+    for(int i = 0; i < SECTION_TOTAL; i++)
+    {
+        if(target_section >= SECTION_TOTAL)
+            target_section -= SECTION_TOTAL;
+        copy_save_to_ram((base_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), buffer_8, SECTION_SIZE);
+        
+        // Don't use this until everything is in order, so the old save is safe
+        buffer[SAVE_NUMBER_POS>>2] = target_slot_save_index;
+        u16 section_id = buffer_16[SECTION_ID_POS>>1];
+        
+        if(section_id == SECTION_PARTY_INFO_ID)
+            for(size_t j = 0; j < sizeof(struct gen3_party); j++)
+                buffer_8[party_pos[game_id]+j] = ((u8*)(&game_data->party_3))[j];
+        
+        if(section_id == SECTION_MAIL_ID)
+            for(size_t j = 0; j < sizeof(game_data->mails_3); j++)
+                buffer_8[mail_pos[game_id]+j] = ((u8*)game_data->mails_3)[j];
+        
+        if(section_id == SECTION_GIFT_RIBBON_ID)
+            for(size_t j = 0; j < sizeof(game_data->giftRibbons); j++)
+                buffer_8[ribbon_pos[game_id]+j] = ((u8*)game_data->giftRibbons)[j];
+        
+        if(section_id == SECTION_BASE_DEX_ID) {
+            for(size_t j = 0; j < sizeof(game_data->seen_unown_pid); j++)
+                buffer_8[DEX_UNOWN_PID_POS+j] = ((u8*)&game_data->seen_unown_pid)[j];
+            for(size_t j = 0; j < sizeof(game_data->seen_spinda_pid); j++)
+                buffer_8[DEX_SPINDA_PID_POS+j] = ((u8*)&game_data->seen_spinda_pid)[j];
+            for(size_t j = 0; j < sizeof(game_data->pokedex_owned); j++)
+                buffer_8[DEX_POS_OWNED+j] = ((u8*)game_data->pokedex_owned)[j];
+            for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
+                buffer_8[DEX_POS_SEEN_0+j] = ((u8*)game_data->pokedex_seen)[j];
+        }
+        
+        if(section_id == SECTION_DEX_SEEN_1_ID)
+            for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
+                buffer_8[pokedex_extra_pos_1[game_id]+j] = ((u8*)game_data->pokedex_seen)[j];
+        
+        if(section_id == SECTION_DEX_SEEN_2_ID)
+            for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
+                buffer_8[pokedex_extra_pos_2[game_id]+j] = ((u8*)game_data->pokedex_seen)[j];
+        
+        // Checksum calcs
+        u32 checksum = 0;
+        for(int j = 0; j < (summable_bytes[section_id] >> 2); j++)
+            checksum += buffer[j];
+        checksum = ((checksum & 0xFFFF) + (checksum >> 16)) & 0xFFFF;
+        buffer_16[CHECKSUM_POS>>1] = checksum;
+
+        // Copy to new slot
+        copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE);
+        // Verify everything went accordingly
+        if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE))
+            return 0;
+
+        target_section++;
+    }
+    
+    
+    return 1;
+}
+
+u8 pre_update_moves_save(struct game_data_t* game_data, u8 base_slot) {
+    u8 target_slot = (base_slot + 1) % NUM_SLOTS;
+
+    u32 buffer[SECTION_SIZE>>2];
+    u16* buffer_16 = (u16*)buffer;
+    u8* buffer_8 = (u8*)buffer;
+    u8 game_id = game_data->game_identifier.game_main_version;
+
+    for(int i = 0; i < SECTION_TOTAL; i++)
+    {
+        u16 section_id = read_section_id(target_slot, i);
+        if(section_id == SECTION_PARTY_INFO_ID) {
+            copy_save_to_ram((target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), buffer_8, SECTION_SIZE);
+
+            for(size_t j = 0; j < sizeof(struct gen3_party); j++)
+                buffer_8[party_pos[game_id]+j] = ((u8*)(&game_data->party_3))[j];
+
+            // Checksum calcs
+            u32 checksum = 0;
+            for(int j = 0; j < (summable_bytes[section_id] >> 2); j++)
+                checksum += buffer[j];
+            checksum = ((checksum & 0xFFFF) + (checksum >> 16)) & 0xFFFF;
+            buffer_16[CHECKSUM_POS>>1] = checksum;
+
+            // Copy to new slot
+            copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), SECTION_SIZE);
+            // Verify everything went accordingly
+            if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), SECTION_SIZE))
+                return 0;
+
+            break;
+        }
+    }
+
+    return 1;
+}
+
+u8 complete_save(u8 base_slot) {
+    u8 target_slot = (base_slot + 1) % NUM_SLOTS;
+    u32 target_slot_save_index = read_slot_index(base_slot) + 1;
+
+    for(int i = 0; i < SECTION_TOTAL; i++)
+        write_int_save((target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SAVE_NUMBER_POS, target_slot_save_index);
+
+    if(get_slot() != target_slot)
+        return 0;
+    return 1;
+}
+
 u8 get_slot(){
     u32 last_valid_save_index = 0;
     u8 slot = INVALID_SLOT;
 
     for(int i = 0; i < NUM_SLOTS; i++) {
         u32 current_save_index = read_slot_index(i);
-        if((current_save_index >= last_valid_save_index) && validate_slot(i)) {
-            slot = i;
-            last_valid_save_index = current_save_index;
+        if(validate_slot(i)) {
+            u8 success = 0;
+
+            if(slot == INVALID_SLOT)
+                success = 1;
+            else if(((last_valid_save_index + 1) == 0) && (current_save_index == 0))
+                success = 1;
+            else if((last_valid_save_index == 0) && ((current_save_index + 1) == 0))
+                success = 0;
+            else if(current_save_index > last_valid_save_index)
+                success = 1;
+            else
+                success = 0;
+
+            if(success) {
+                slot = i;
+                last_valid_save_index = current_save_index;
+            }
         }
     }
     return slot;
 }
 
-void read_gen_3_data(struct game_data_t* game_data){
+u8 read_gen_3_data(struct game_data_t* game_data){
     init_bank();
     
     u8 slot = get_slot();
-    if(slot == INVALID_SLOT) {
-        return;
-    }
+    if(slot == INVALID_SLOT)
+        return 0;
     
     read_party(slot, game_data);
     own_game_data_ptr = game_data;
+    
+    return 1;
+}
+
+u8 pre_write_gen_3_data(struct game_data_t* game_data){
+    init_bank();
+
+    u8 base_slot = get_slot();
+    if(base_slot == INVALID_SLOT)
+        return 0;
+
+    if(!pre_update_save(game_data, base_slot))
+        return 0;
+
+    return 1;
+}
+
+u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data){
+    init_bank();
+
+    u8 base_slot = get_slot();
+    if(base_slot == INVALID_SLOT)
+        return 0;
+
+    if(!pre_update_save(game_data, base_slot))
+        return 0;
+
+    return 1;
+}
+
+u8 complete_write_gen_3_data(){
+    init_bank();
+
+    u8 base_slot = get_slot();
+    if(base_slot == INVALID_SLOT)
+        return 0;
+
+    if(!complete_save(base_slot))
+        return 0;
+
+    return 1;
 }

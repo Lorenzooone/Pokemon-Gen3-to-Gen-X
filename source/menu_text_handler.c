@@ -254,6 +254,15 @@ void print_waiting(){
     PRINT_FUNCTION("Waiting...");
 }
 
+void print_saving(){
+    reset_screen(BLANK_FILL);
+    init_saving_window();
+    clear_saving_window();
+    set_text_y(SAVING_WINDOW_Y);
+    set_text_x(SAVING_WINDOW_X);
+    PRINT_FUNCTION("Saving...");
+}
+
 void print_start_trade(){
     enum START_TRADE_STATE state = get_start_state();
     enum START_TRADE_STATE raw_state = get_start_state_raw();
