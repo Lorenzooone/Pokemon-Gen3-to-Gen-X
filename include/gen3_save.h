@@ -3,9 +3,10 @@
 
 #include "party_handler.h"
 #include "version_identifier.h"
+#include "save.h"
 
 #define SAVE_SLOT_SIZE 0xE000
-#define SECTION_SIZE 0x1000
+#define SECTION_SIZE SECTOR_SIZE
 
 struct game_data_t {
     u32 seen_unown_pid;

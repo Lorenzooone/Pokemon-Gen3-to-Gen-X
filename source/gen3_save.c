@@ -367,6 +367,7 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot) {
         buffer_16[CHECKSUM_POS>>1] = checksum;
 
         // Copy to new slot
+        erase_sector((target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE));
         copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE);
         // Verify everything went accordingly
         if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE))
@@ -404,6 +405,7 @@ u8 pre_update_moves_save(struct game_data_t* game_data, u8 base_slot) {
             buffer_16[CHECKSUM_POS>>1] = checksum;
 
             // Copy to new slot
+            erase_sector((target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE));
             copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), SECTION_SIZE);
             // Verify everything went accordingly
             if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), SECTION_SIZE))
@@ -418,10 +420,9 @@ u8 pre_update_moves_save(struct game_data_t* game_data, u8 base_slot) {
 
 u8 complete_save(u8 base_slot) {
     u8 target_slot = (base_slot + 1) % NUM_SLOTS;
-    u32 target_slot_save_index = read_slot_index(base_slot) + 1;
 
     for(int i = 0; i < SECTION_TOTAL; i++)
-        write_int_save((target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SAVE_NUMBER_POS, target_slot_save_index);
+        erase_sector((base_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE));
 
     if(get_slot() != target_slot)
         return 0;

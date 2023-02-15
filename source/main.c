@@ -609,10 +609,13 @@ int main(void)
                             game_data[cursor_x_pos].party_3_undec[curr_mon].fix_has_altered_ot = 0;
                             set_default_gift_ribbons(&game_data[cursor_x_pos]);
                             if(!cursor_x_pos) {
-                                // TODO: Handle bad save
                                 saving_print_screen();
-                                pre_write_gen_3_data(&game_data[0]);
-                                complete_write_gen_3_data();
+                                u8 success = pre_write_gen_3_data(&game_data[0]);
+                                if(success)
+                                    success = complete_write_gen_3_data();
+                                if(!success) {
+                                    // TODO: Handle bad save
+                                }
                             }
                         }
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
