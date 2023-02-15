@@ -53,6 +53,7 @@ u8 get_slot(void);
 u8 pre_update_save(struct game_data_t*, u8);
 u8 pre_update_moves_save(struct game_data_t*, u8);
 u8 complete_save(u8);
+static u8 get_next_slot(u8);
 
 const u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
 const u16 pokedex_extra_pos_1 [] = {0x938, 0x5F8, 0x988};
@@ -64,6 +65,7 @@ const u16 special_area [] = {0, 9, 9};
 const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0x0406, 0x0503, 0x0504, 0x0603, 0x0604, 0x0700, 0x0701, 0x0804, 0x0805, 0x090a, 0x090b, 0x0a05, 0x0a06, 0x0b05, 0x0b06, 0x0c02, 0x0c03, 0x0d06, 0x0d07, 0x0e03, 0x0e04, 0x0f02, 0x0f03, 0x100c, 0x100d, 0x100a, 0x1918, 0x1919, 0x191a, 0x191b, 0x1a05};
 
 struct game_data_t* own_game_data_ptr;
+u8 in_use_slot;
 
 struct game_data_t* get_own_game_data() {
     return own_game_data_ptr;
@@ -308,8 +310,12 @@ u8 validate_slot(int slot) {
     return 1;
 }
 
+ALWAYS_INLINE u8 get_next_slot(u8 base_slot) {
+    return (base_slot + 1) % NUM_SLOTS;
+}
+
 u8 pre_update_save(struct game_data_t* game_data, u8 base_slot) {
-    u8 target_slot = (base_slot + 1) % NUM_SLOTS;
+    u8 target_slot = get_next_slot(base_slot);
     u32 target_slot_save_index = read_slot_index(base_slot) - 1;
 
     u32 buffer[SECTION_SIZE>>2];
@@ -381,7 +387,7 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot) {
 }
 
 u8 pre_update_moves_save(struct game_data_t* game_data, u8 base_slot) {
-    u8 target_slot = (base_slot + 1) % NUM_SLOTS;
+    u8 target_slot = get_next_slot(base_slot);
 
     u32 buffer[SECTION_SIZE>>2];
     u16* buffer_16 = (u16*)buffer;
@@ -419,7 +425,7 @@ u8 pre_update_moves_save(struct game_data_t* game_data, u8 base_slot) {
 }
 
 u8 complete_save(u8 base_slot) {
-    u8 target_slot = (base_slot + 1) % NUM_SLOTS;
+    u8 target_slot = get_next_slot(base_slot);
 
     for(int i = 0; i < SECTION_TOTAL; i++)
         erase_sector((base_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE));
@@ -462,6 +468,7 @@ u8 read_gen_3_data(struct game_data_t* game_data){
     init_bank();
     
     u8 slot = get_slot();
+    in_use_slot = slot;
     if(slot == INVALID_SLOT)
         return 0;
     
@@ -474,11 +481,14 @@ u8 read_gen_3_data(struct game_data_t* game_data){
 u8 pre_write_gen_3_data(struct game_data_t* game_data){
     init_bank();
 
-    u8 base_slot = get_slot();
+    u8 base_slot = in_use_slot;
     if(base_slot == INVALID_SLOT)
         return 0;
 
     if(!pre_update_save(game_data, base_slot))
+        return 0;
+
+    if(!validate_slot(get_next_slot(base_slot)))
         return 0;
 
     return 1;
@@ -487,11 +497,14 @@ u8 pre_write_gen_3_data(struct game_data_t* game_data){
 u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data){
     init_bank();
 
-    u8 base_slot = get_slot();
+    u8 base_slot = in_use_slot;
     if(base_slot == INVALID_SLOT)
         return 0;
 
-    if(!pre_update_save(game_data, base_slot))
+    if(!pre_update_moves_save(game_data, base_slot))
+        return 0;
+
+    if(!validate_slot(get_next_slot(base_slot)))
         return 0;
 
     return 1;
@@ -500,12 +513,14 @@ u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data){
 u8 complete_write_gen_3_data(){
     init_bank();
 
-    u8 base_slot = get_slot();
+    u8 base_slot = in_use_slot;
     if(base_slot == INVALID_SLOT)
         return 0;
 
     if(!complete_save(base_slot))
         return 0;
+    
+    in_use_slot = get_next_slot(in_use_slot);
 
     return 1;
 }
