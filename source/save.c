@@ -71,13 +71,17 @@ void erase_sector(uintptr_t address) {
     address = bank_check(address);
     address >>= SECTOR_SIZE_BITS;
     address <<= SECTOR_SIZE_BITS;
-    #if IS_FLASH
     u8 failed = 1;
     vu8* save_data = (vu8*)SAVE_POS;
     for(int i = 0; failed && (i < 3); i++) {
+        #if IS_FLASH
         FLASH_ERASE_SECTOR_BASE_CMD
         save_data[address] = ERASE_SECTOR_FINAL_CMD;
-
+        #else
+        for(size_t j = 0; j < SECTOR_SIZE; j++)
+            save_data[address+(SECTOR_SIZE-1)-j] = ERASED_BYTE;
+        #endif
+        
         for(vu32 j = 0; j < ERASE_TIMEOUT; j++);
 
         failed = 0;
@@ -89,7 +93,6 @@ void erase_sector(uintptr_t address) {
        if(is_macronix && failed)
             FLASH_TERM_CMD
     }
-    #endif
 }
 
 ALWAYS_INLINE u8 read_direct_single_byte_save(uintptr_t address) {
