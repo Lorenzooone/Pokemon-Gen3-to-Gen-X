@@ -9,6 +9,8 @@
 #define X_SIZE (SCREEN_REAL_WIDTH>>3)
 #define Y_SIZE (SCREEN_REAL_HEIGHT>>3)
 
+#define SCREEN_HALF_X (X_LIMIT>>1)
+
 #define PALETTE 0xF
 
 #define HSWAP_TILE 0x400
@@ -35,6 +37,7 @@ void default_reset_screen(void);
 void reset_screen(u8);
 void set_text_x(u8);
 void set_text_y(u8);
+void swap_screen_enabled_state(u8);
 void enable_screen(u8);
 void disable_screen(u8);
 void disable_all_screens_but_current(void);

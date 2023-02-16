@@ -89,7 +89,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
         PRINT_FUNCTION("\x05 - Gen \x03\n", game_data[0].trainer_name, OT_NAME_GEN3_SIZE+1, game_data[0].game_identifier.game_is_jp, curr_gen);
     else {
         for(int i = 0; i < num_parties; i++) {
-            set_text_x((X_LIMIT>>1) * i);
+            set_text_x(SCREEN_HALF_X * i);
             PRINT_FUNCTION("\x05 - \x01", game_data[i].trainer_name, OT_NAME_GEN3_SIZE+1, game_data[i].game_identifier.game_is_jp, person_strings[i]);
         }
     }
@@ -104,7 +104,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
         set_text_y(2+(3 * i));
         for(int j = 0; j < num_parties; j++) {
             // These two values are for debug only - They should be j and i
-            set_text_x(5 + ((X_LIMIT>>1) * j));
+            set_text_x(5 + (SCREEN_HALF_X * j));
             u8 party_index = j;
             u8 party_option_index = i;
             if(options[party_index][party_option_index] != 0xFF) {
@@ -112,7 +112,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
                 // I tried just using printf here with left padding, but it's EXTREMELY slow
                 PRINT_FUNCTION("\x01", get_pokemon_name_raw(mon));
                 if(load_sprites)
-                    load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (((X_LIMIT >> 1) << 3)*j) + BASE_X_SPRITE_TRADE_MENU);
+                    load_pokemon_sprite_raw(mon, 1, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (BASE_X_SPRITE_INCREMENT_TRADE_MENU*j) + BASE_X_SPRITE_TRADE_MENU);
             }
         }
     }
@@ -146,7 +146,7 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
         set_text_y(curr_text_y++);
         set_text_x(3+(OFFER_WINDOW_X*i));
         PRINT_FUNCTION("\x01", offer_strings[i]);
-        load_pokemon_sprite_raw(mon, BASE_Y_SPRITE_OFFER_MENU, (OFFER_WINDOW_X*8*i) + BASE_X_SPRITE_OFFER_MENU);
+        load_pokemon_sprite_raw(mon, 1, BASE_Y_SPRITE_OFFER_MENU, (OFFER_WINDOW_X*8*i) + BASE_X_SPRITE_OFFER_MENU);
         
         if(!is_egg) {
             set_text_y(curr_text_y++);
@@ -252,6 +252,48 @@ void print_waiting(){
     set_text_y(WAITING_WINDOW_Y);
     set_text_x(WAITING_WINDOW_X);
     PRINT_FUNCTION("Waiting...");
+}
+
+void print_trade_animation_send(struct gen3_mon_data_unenc* mon){
+    u8 is_jp = mon->src->language == JAPANESE_LANGUAGE;
+    u8 is_egg = mon->is_egg;
+
+    reset_screen(BLANK_FILL);
+    init_trade_animation_send_window();
+    clear_trade_animation_send_window();
+    set_text_y(TRADE_ANIMATION_SEND_WINDOW_Y);
+    set_text_x(TRADE_ANIMATION_SEND_WINDOW_X);
+    if(!is_egg) {
+        PRINT_FUNCTION("Sending \x01 away...\n\n", get_pokemon_name_raw(mon));
+        set_text_x(TRADE_ANIMATION_SEND_WINDOW_X);
+        PRINT_FUNCTION("Goodbye, \x05!", mon->src->nickname, NICKNAME_GEN3_SIZE, is_jp);
+    }
+    else {
+        PRINT_FUNCTION("Sending an Egg away...\n\n");
+        set_text_x(TRADE_ANIMATION_SEND_WINDOW_X);
+        PRINT_FUNCTION("Who knows what's inside...");
+    }
+}
+
+void print_trade_animation_recv(struct gen3_mon_data_unenc* mon){
+    u8 is_jp = mon->src->language == JAPANESE_LANGUAGE;
+    u8 is_egg = mon->is_egg;
+
+    reset_screen(BLANK_FILL);
+    init_trade_animation_recv_window();
+    clear_trade_animation_recv_window();
+    set_text_y(TRADE_ANIMATION_RECV_WINDOW_Y);
+    set_text_x(TRADE_ANIMATION_RECV_WINDOW_X);
+    if(!is_egg) {
+        PRINT_FUNCTION("Received \x01.\n\n", get_pokemon_name_raw(mon));
+        set_text_x(TRADE_ANIMATION_RECV_WINDOW_X);
+        PRINT_FUNCTION("Welcome, \x05!", mon->src->nickname, NICKNAME_GEN3_SIZE, is_jp);
+    }
+    else {
+        PRINT_FUNCTION("Received an Egg.\n\n");
+        set_text_x(TRADE_ANIMATION_SEND_WINDOW_X);
+        PRINT_FUNCTION("Who knows what's inside!");
+    }
 }
 
 void print_saving(){
@@ -360,7 +402,7 @@ void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
 
     if(load_sprites) {
         reset_sprites_to_party();
-        load_pokemon_sprite_raw(mon, y, x);
+        load_pokemon_sprite_raw(mon, 1, y, x);
     }
     
     set_text_y((y>>3) + 2);
@@ -490,7 +532,7 @@ void print_pokemon_page5(struct gen3_mon_data_unenc* mon) {
         set_text_y(6+i);
         PRINT_FUNCTION(" \x01\x01", get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)]));
         if(ribbon_print_pos[(i*2)+1] != 0xFF) {
-            set_text_x(X_LIMIT>>1);
+            set_text_x(SCREEN_HALF_X);
             PRINT_FUNCTION(" \x01\x01", get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)+1]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)+1]));
         }
     }

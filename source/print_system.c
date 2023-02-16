@@ -186,6 +186,13 @@ void wait_for_vblank_if_needed() {
         VBlankIntrWait();
 }
 
+void swap_screen_enabled_state(u8 bg_num){
+    wait_for_vblank_if_needed();
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
+    enabled_screen[bg_num] ^= 1;
+}
+
 void enable_screen(u8 bg_num){
     wait_for_vblank_if_needed();
     if(bg_num >= TOTAL_BG)

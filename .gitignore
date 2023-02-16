@@ -1,7 +1,9 @@
 build/
 *.elf
 *.gba
+*.GBA
 *.sav
+*.SAV
 *.py
 settings.sh
 __pycache__/

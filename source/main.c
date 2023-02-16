@@ -18,6 +18,7 @@
 #include "gen_converter.h"
 #include "sio.h"
 #include "vcount_basic.h"
+#include "animations_handler.h"
 #include <stddef.h>
 //#include "save.h"
 
@@ -47,6 +48,7 @@ void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
 void trade_cancel_print_screen(u8);
 void saving_print_screen(void);
+void trading_animation_init(struct game_data_t*, u8, u8);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
 void waiting_init(void);
 void invalid_init(u8);
@@ -77,6 +79,10 @@ IWRAM_CODE void vblank_update_function() {
     move_cursor_x(counter);
     advance_rng();
     counter++;
+    
+    // Handle trading animation
+    if(curr_state == TRADING_ANIMATION)
+        advance_trade_animation();
     // Handle slave communications
     if((REG_SIOCNT & SIO_IRQ) && (!(REG_SIOCNT & SIO_START)))
         slave_routine();
@@ -208,6 +214,25 @@ void saving_print_screen() {
     enable_screen(SAVING_WINDOW_SCREEN);
     set_screen(prev_screen);
     prepare_flush();
+}
+
+void trading_animation_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
+    set_screen(BASE_SCREEN);
+    reset_sprites_to_party();
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    disable_all_sprites();
+    default_reset_screen();
+    set_screen(TRADE_ANIMATION_SEND_WINDOW_SCREEN);
+    print_trade_animation_send(&game_data[0].party_3_undec[own_mon]);
+    set_screen(TRADE_ANIMATION_RECV_WINDOW_SCREEN);
+    print_trade_animation_recv(&game_data[1].party_3_undec[other_mon]);
+    set_screen(BASE_SCREEN);
+    enable_screen(BASE_SCREEN);
+    enable_screen(TRADE_ANIMATION_SEND_WINDOW_SCREEN);
+    setup_trade_animation(&game_data[0].party_3_undec[own_mon], &game_data[1].party_3_undec[other_mon], TRADE_ANIMATION_SEND_WINDOW_SCREEN, TRADE_ANIMATION_RECV_WINDOW_SCREEN);
+    prepare_flush();
+    curr_state = TRADING_ANIMATION;
 }
 
 void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cursor_y_pos, u8* cursor_x_pos, u8 reset) {
@@ -421,13 +446,14 @@ int main(void)
     u8 submenu_cursor_x_pos = 0;
     u8 prev_val = 0;
     u8 curr_mon = 0;
+    u8 success = 0;
     u8 other_mon = 0;
     u8 curr_page = 0;
     const u8* party_selected_mons[2] = {&curr_mon, &other_mon};
     
     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
     
-    //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 0, 0);
+    //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 1, 0, 0);
     //worst_case_conversion_tester(&counter);
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     scanKeys();
@@ -475,9 +501,10 @@ int main(void)
                 else if(get_trading_state() == RECEIVED_ACCEPT) {
                     keys = 0;
                     if(has_accepted_offer()) {
+                        trading_animation_init(game_data, curr_mon, other_mon);
                         evolved = trade_mons(game_data, curr_mon, other_mon, learnset_ptr, curr_gen);
+                        success = pre_write_gen_3_data(&game_data[0]);
                         process_party_data(&game_data[0]);
-                        curr_state = TRADING_ANIMATION;
                     }
                     else
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
@@ -610,7 +637,7 @@ int main(void)
                             set_default_gift_ribbons(&game_data[cursor_x_pos]);
                             if(!cursor_x_pos) {
                                 saving_print_screen();
-                                u8 success = pre_write_gen_3_data(&game_data[0]);
+                                success = pre_write_gen_3_data(&game_data[0]);
                                 if(success)
                                     success = complete_write_gen_3_data();
                                 if(!success) {
@@ -635,6 +662,8 @@ int main(void)
                 }
                 else
                     cursor_update_offer_options(submenu_cursor_y_pos, submenu_cursor_x_pos);
+                break;
+            case TRADING_ANIMATION:
                 break;
             default:
                 main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);

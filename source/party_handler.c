@@ -302,11 +302,11 @@ void load_pokemon_sprite(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 has_i
     set_pokemon_sprite(get_pokemon_sprite_pointer(index, pid, is_egg, deoxys_form), get_palette_references(index, pid, is_egg, deoxys_form), get_pokemon_sprite_info(index, pid, is_egg, deoxys_form), has_item, has_mail, y, x);
 }
 
-void load_pokemon_sprite_raw(struct gen3_mon_data_unenc* data_src, u16 y, u16 x){
+void load_pokemon_sprite_raw(struct gen3_mon_data_unenc* data_src, u8 show_item, u16 y, u16 x){
     if(!data_src->is_valid_gen3)
-        load_pokemon_sprite(0, 0, 0, 0, has_item_raw(data_src), has_mail_raw(data_src), y, x);
+        load_pokemon_sprite(0, 0, 0, 0, has_item_raw(data_src) & show_item, has_mail_raw(data_src) & show_item, y, x);
 
-    load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, has_item_raw(data_src), has_mail_raw(data_src), y, x);
+    load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, has_item_raw(data_src) & show_item, has_mail_raw(data_src) & show_item, y, x);
 }
 
 const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){

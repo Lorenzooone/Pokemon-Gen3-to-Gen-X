@@ -353,7 +353,7 @@ const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_unenc*);
 u8 get_trainer_gender_char_raw(struct gen3_mon_data_unenc*);
 u8 is_egg_gen3_raw(struct gen3_mon_data_unenc*);
 u8 has_pokerus_gen3_raw(struct gen3_mon_data_unenc*);
-void load_pokemon_sprite_raw(struct gen3_mon_data_unenc*, u16, u16);
+void load_pokemon_sprite_raw(struct gen3_mon_data_unenc*, u8, u16, u16);
 u8 get_pokemon_gender_raw(struct gen3_mon_data_unenc*);
 char get_pokemon_gender_char_raw(struct gen3_mon_data_unenc*);
 u8 is_shiny_gen3_raw(struct gen3_mon_data_unenc*, u32);
