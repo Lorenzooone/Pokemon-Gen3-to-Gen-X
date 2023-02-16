@@ -3,8 +3,10 @@
 #include "sio.h"
 #include "menu_text_handler.h"
 #include "print_system.h"
+#include "timing_basic.h"
 
-#define MULTIBOOT_VCOUNTWAIT 2
+#define MULTIBOOT_WAIT_TIME_NS 36000
+#define MULTIBOOT_VCOUNTWAIT (((MULTIBOOT_WAIT_TIME_NS/NS_PER_SCANLINE) + ((MULTIBOOT_WAIT_TIME_NS%NS_PER_SCANLINE) == 0 ? 0 : 1))+1)
 
 int multiboot_normal_send(int);
 
