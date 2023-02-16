@@ -2,6 +2,7 @@
 #include "save.h"
 #include <stddef.h>
 #include "useful_qualifiers.h"
+#include "timing_basic.h"
 
 #define REG_WAITCNT		*(vu16*)(REG_BASE + 0x204)  // Wait state Control
 
@@ -15,7 +16,7 @@
 #define FLASH_EXIT_MAN_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
 #define FLASH_ERASE_SECTOR_BASE_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0x80; BASE_FLASH_CMD
 #define FLASH_TERM_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
-#define TIMEOUT 20000
+#define TIMEOUT (20000*(GBA_CLOCK_SPEED/CLOCK_SPEED))
 #define ERASE_TIMEOUT (TIMEOUT)
 #define ERASED_BYTE 0xFF
 #define BANK_SIZE 0x10000
