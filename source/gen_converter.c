@@ -596,7 +596,7 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
             if(origin_game == COLOSSEUM_CODE) {
                 if(!is_shiny) {
                     if(species == LUGIA_SPECIES)
-                        generate_generic_genderless_shadow_info_xd(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                        generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
                     else
                         generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
                 }
@@ -676,7 +676,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
                 // Prefer Colosseum/XD encounter, if possible
                 if((species == LUGIA_SPECIES) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
                     chosen_version = COLOSSEUM_CODE;
-                    generate_generic_genderless_shadow_info_xd(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
+                    generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                     misc->ribbons |= COLO_RIBBON_VALUE;
                     is_ability_set = 1;
                     data_dst->learnable_moves = (const u16*)learnset_lugia_sp_bin;

@@ -692,47 +692,54 @@ IWRAM_CODE MAX_OPTIMIZE u8 _generator_generic_shadow_info_xd(u16 first, u16 seco
     for(int n = 0; n < num_found; n++) {
         u32 seed = possible_seeds[n];
         
-        /*
-        u32 enemy_tsv_seed = seed;
-        // enemy_tsv_seed = TPID 2
-        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
-        // enemy_tsv_seed = TPID 1
-        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
-        u16 esid = enemy_tsv_seed >> 16;
-        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
-        u16 etid = enemy_tsv_seed >> 16;
-        */
-        
-        seed = get_next_seed_colo(seed);
-        u32 generated_ivs = ((seed>>16) & 0x7FFF);
-        seed = get_next_seed_colo(seed);
-        u32 ivs = generated_ivs | (((seed>>16) & 0x7FFF)<<15);
-        seed = get_next_seed_colo(seed);
-        u8 ability = (seed>>16) & 1;
-        u32 pid;
-        u16 shiny_pid;
-        
-        // TSV shiny lock
-        do {
+        u8 valid = 1;
+        if(*dst_ability) {
+            u32 prev_psv_seed = seed;
+            // prev_psv_seed = TPID 2
+            prev_psv_seed = get_prev_seed_colo(prev_psv_seed);
+            // prev_psv_seed = TPID 1
+            prev_psv_seed = get_prev_seed_colo(prev_psv_seed);
+            u16 ppid_0 = prev_psv_seed >> 16;
+            prev_psv_seed = get_prev_seed_colo(prev_psv_seed);
+            u16 ppid_1 = prev_psv_seed >> 16;
+            
+            if((ppid_1 ^ ppid_0 ^ tsv) < 8)
+                valid = 0;
+        }
+            
+        if(valid) {
             seed = get_next_seed_colo(seed);
-            pid = seed & 0xFFFF0000;
+            u32 generated_ivs = ((seed>>16) & 0x7FFF);
             seed = get_next_seed_colo(seed);
-            pid |= seed >> 16;
-            shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
-        } while(shiny_pid < 8);
+            u32 ivs = generated_ivs | (((seed>>16) & 0x7FFF)<<15);
+            seed = get_next_seed_colo(seed);
+            u8 ability = (seed>>16) & 1;
+            u32 pid;
+            u16 shiny_pid;
+            
+            // TSV shiny lock
+            do {
+                seed = get_next_seed_colo(seed);
+                pid = seed & 0xFFFF0000;
+                seed = get_next_seed_colo(seed);
+                pid |= seed >> 16;
+                shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
+            } while(shiny_pid < 8);
 
-        u8 nature = get_nature_fast(pid);
-        if(nature == wanted_nature) {
-            *dst_pid = pid;
-            *dst_ability = ability;
-            *dst_ivs = ivs;
-            return 1;
+            u8 nature = get_nature_fast(pid);
+            if(nature == wanted_nature) {
+                *dst_pid = pid;
+                *dst_ability = ability;
+                *dst_ivs = ivs;
+                return 1;
+            }
         }
     }
     return 0;
 }
 
-IWRAM_CODE MAX_OPTIMIZE void generate_generic_genderless_shadow_info_xd(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+IWRAM_CODE MAX_OPTIMIZE void generate_generic_genderless_shadow_info_xd(u8 wanted_nature, u8 check_prev_too, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    *dst_ability = check_prev_too;
     _generate_generic_genderless_info(wanted_nature, wanted_ivs, tsv, dst_pid, dst_ivs, dst_ability, get_rng(), _generator_generic_shadow_info_xd);
 }
 
