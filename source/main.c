@@ -433,6 +433,7 @@ int main(void)
     irqEnable(IRQ_VBLANK);
     irqDisable(IRQ_SERIAL);
     
+    init_save_sections();
     read_gen_3_data(&game_data[0]);
     
     init_item_icon();
@@ -440,6 +441,7 @@ int main(void)
     
     int result = 0;
     u8 evolved = 0;
+    u8 learnable_moves = 0;
     u8 returned_val;
     u8 update = 0;
     u8 target = 1;
@@ -513,7 +515,8 @@ int main(void)
                         if(evolved)
                             evolution_animation_init(game_data, curr_mon);
                         curr_state = TRADING_ANIMATION;
-                        success = pre_write_gen_3_data(&game_data[0]);
+                        learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
+                        success = pre_write_gen_3_data(&game_data[0], !learnable_moves);
                         process_party_data(&game_data[0]);
                     }
                     else
@@ -647,7 +650,7 @@ int main(void)
                             set_default_gift_ribbons(&game_data[cursor_x_pos]);
                             if(!cursor_x_pos) {
                                 saving_print_screen();
-                                success = pre_write_gen_3_data(&game_data[0]);
+                                success = pre_write_gen_3_data(&game_data[0], 1);
                                 if(success)
                                     success = complete_write_gen_3_data();
                                 if(!success) {

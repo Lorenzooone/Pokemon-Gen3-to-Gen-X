@@ -40,6 +40,8 @@
 
 #define VALID_MAPS 36
 
+enum SAVING_KIND {FULL_SAVE, NON_PARTY_SAVE, PARTY_ONLY_SAVE};
+
 u16 read_section_id(int, int);
 u32 read_slot_index(int);
 void read_game_data_trainer_info(int, struct game_data_t*);
@@ -50,11 +52,11 @@ void read_party(int, struct game_data_t*);
 void update_gift_ribbons(struct game_data_t*, const u8*);
 u8 validate_slot(int);
 u8 get_slot(void);
-u8 pre_update_save(struct game_data_t*, u8);
-u8 pre_update_moves_save(struct game_data_t*, u8);
+u8 pre_update_save(struct game_data_t*, u8, enum SAVING_KIND);
 u8 complete_save(u8);
 static u8 get_next_slot(u8);
 
+u8 sections_freed[SECTION_TOTAL];
 const u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
 const u16 pokedex_extra_pos_1 [] = {0x938, 0x5F8, 0x988};
 const u16 pokedex_extra_pos_2 [] = {0xC0C, 0xB98, 0xCA4};
@@ -314,7 +316,7 @@ ALWAYS_INLINE u8 get_next_slot(u8 base_slot) {
     return (base_slot + 1) % NUM_SLOTS;
 }
 
-u8 pre_update_save(struct game_data_t* game_data, u8 base_slot) {
+u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND saving_kind) {
     u8 target_slot = get_next_slot(base_slot);
     u32 target_slot_save_index = read_slot_index(base_slot) - 1;
 
@@ -328,81 +330,51 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot) {
     {
         if(target_section >= SECTION_TOTAL)
             target_section -= SECTION_TOTAL;
-        copy_save_to_ram((base_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), buffer_8, SECTION_SIZE);
-        
-        // Don't use this until everything is in order, so the old save is safe
-        buffer[SAVE_NUMBER_POS>>2] = target_slot_save_index;
-        u16 section_id = buffer_16[SECTION_ID_POS>>1];
-        
-        if(section_id == SECTION_PARTY_INFO_ID)
-            for(size_t j = 0; j < sizeof(struct gen3_party); j++)
-                buffer_8[party_pos[game_id]+j] = ((u8*)(&game_data->party_3))[j];
-        
-        if(section_id == SECTION_MAIL_ID)
-            for(size_t j = 0; j < sizeof(game_data->mails_3); j++)
-                buffer_8[mail_pos[game_id]+j] = ((u8*)game_data->mails_3)[j];
-        
-        if(section_id == SECTION_GIFT_RIBBON_ID)
-            for(size_t j = 0; j < sizeof(game_data->giftRibbons); j++)
-                buffer_8[ribbon_pos[game_id]+j] = ((u8*)game_data->giftRibbons)[j];
-        
-        if(section_id == SECTION_BASE_DEX_ID) {
-            for(size_t j = 0; j < sizeof(game_data->seen_unown_pid); j++)
-                buffer_8[DEX_UNOWN_PID_POS+j] = ((u8*)&game_data->seen_unown_pid)[j];
-            for(size_t j = 0; j < sizeof(game_data->seen_spinda_pid); j++)
-                buffer_8[DEX_SPINDA_PID_POS+j] = ((u8*)&game_data->seen_spinda_pid)[j];
-            for(size_t j = 0; j < sizeof(game_data->pokedex_owned); j++)
-                buffer_8[DEX_POS_OWNED+j] = ((u8*)game_data->pokedex_owned)[j];
-            for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
-                buffer_8[DEX_POS_SEEN_0+j] = ((u8*)game_data->pokedex_seen)[j];
+            
+        if(!sections_freed[target_section]) {
+            erase_sector((target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE));
+            sections_freed[target_section] = 1;
         }
         
-        if(section_id == SECTION_DEX_SEEN_1_ID)
-            for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
-                buffer_8[pokedex_extra_pos_1[game_id]+j] = ((u8*)game_data->pokedex_seen)[j];
+        u16 section_id = read_section_id(base_slot, i);
         
-        if(section_id == SECTION_DEX_SEEN_2_ID)
-            for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
-                buffer_8[pokedex_extra_pos_2[game_id]+j] = ((u8*)game_data->pokedex_seen)[j];
-        
-        // Checksum calcs
-        u32 checksum = 0;
-        for(int j = 0; j < (summable_bytes[section_id] >> 2); j++)
-            checksum += buffer[j];
-        checksum = ((checksum & 0xFFFF) + (checksum >> 16)) & 0xFFFF;
-        buffer_16[CHECKSUM_POS>>1] = checksum;
-
-        // Copy to new slot
-        erase_sector((target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE));
-        copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE);
-        // Verify everything went accordingly
-        if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE))
-            return 0;
-
-        target_section++;
-    }
-    
-    
-    return 1;
-}
-
-u8 pre_update_moves_save(struct game_data_t* game_data, u8 base_slot) {
-    u8 target_slot = get_next_slot(base_slot);
-
-    u32 buffer[SECTION_SIZE>>2];
-    u16* buffer_16 = (u16*)buffer;
-    u8* buffer_8 = (u8*)buffer;
-    u8 game_id = game_data->game_identifier.game_main_version;
-
-    for(int i = 0; i < SECTION_TOTAL; i++)
-    {
-        u16 section_id = read_section_id(target_slot, i);
-        if(section_id == SECTION_PARTY_INFO_ID) {
-            copy_save_to_ram((target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), buffer_8, SECTION_SIZE);
-
-            for(size_t j = 0; j < sizeof(struct gen3_party); j++)
-                buffer_8[party_pos[game_id]+j] = ((u8*)(&game_data->party_3))[j];
-
+        if((saving_kind == FULL_SAVE) || ((saving_kind == NON_PARTY_SAVE) && (section_id != SECTION_PARTY_INFO_ID)) || ((saving_kind == PARTY_ONLY_SAVE) && (section_id == SECTION_PARTY_INFO_ID))) {
+            copy_save_to_ram((base_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), buffer_8, SECTION_SIZE);
+            
+            // Don't use this until everything is in order, so the old save is safe
+            buffer[SAVE_NUMBER_POS>>2] = target_slot_save_index;
+            
+            if(section_id == SECTION_PARTY_INFO_ID)
+                for(size_t j = 0; j < sizeof(struct gen3_party); j++)
+                    buffer_8[party_pos[game_id]+j] = ((u8*)(&game_data->party_3))[j];
+            
+            if(section_id == SECTION_MAIL_ID)
+                for(size_t j = 0; j < sizeof(game_data->mails_3); j++)
+                    buffer_8[mail_pos[game_id]+j] = ((u8*)game_data->mails_3)[j];
+            
+            if(section_id == SECTION_GIFT_RIBBON_ID)
+                for(size_t j = 0; j < sizeof(game_data->giftRibbons); j++)
+                    buffer_8[ribbon_pos[game_id]+j] = ((u8*)game_data->giftRibbons)[j];
+            
+            if(section_id == SECTION_BASE_DEX_ID) {
+                for(size_t j = 0; j < sizeof(game_data->seen_unown_pid); j++)
+                    buffer_8[DEX_UNOWN_PID_POS+j] = ((u8*)&game_data->seen_unown_pid)[j];
+                for(size_t j = 0; j < sizeof(game_data->seen_spinda_pid); j++)
+                    buffer_8[DEX_SPINDA_PID_POS+j] = ((u8*)&game_data->seen_spinda_pid)[j];
+                for(size_t j = 0; j < sizeof(game_data->pokedex_owned); j++)
+                    buffer_8[DEX_POS_OWNED+j] = ((u8*)game_data->pokedex_owned)[j];
+                for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
+                    buffer_8[DEX_POS_SEEN_0+j] = ((u8*)game_data->pokedex_seen)[j];
+            }
+            
+            if(section_id == SECTION_DEX_SEEN_1_ID)
+                for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
+                    buffer_8[pokedex_extra_pos_1[game_id]+j] = ((u8*)game_data->pokedex_seen)[j];
+            
+            if(section_id == SECTION_DEX_SEEN_2_ID)
+                for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
+                    buffer_8[pokedex_extra_pos_2[game_id]+j] = ((u8*)game_data->pokedex_seen)[j];
+            
             // Checksum calcs
             u32 checksum = 0;
             for(int j = 0; j < (summable_bytes[section_id] >> 2); j++)
@@ -411,24 +383,27 @@ u8 pre_update_moves_save(struct game_data_t* game_data, u8 base_slot) {
             buffer_16[CHECKSUM_POS>>1] = checksum;
 
             // Copy to new slot
-            erase_sector((target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE));
-            copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), SECTION_SIZE);
+            copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE);
+            sections_freed[target_section] = 0;
             // Verify everything went accordingly
-            if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE), SECTION_SIZE))
+            if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE))
                 return 0;
-
-            break;
         }
-    }
 
+        target_section++;
+    }
+    
+    
     return 1;
 }
 
 u8 complete_save(u8 base_slot) {
     u8 target_slot = get_next_slot(base_slot);
 
-    for(int i = 0; i < SECTION_TOTAL; i++)
+    for(int i = 0; i < SECTION_TOTAL; i++) {
         erase_sector((base_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE));
+        sections_freed[i] = 1;
+    }
 
     if(get_slot() != target_slot)
         return 0;
@@ -464,6 +439,11 @@ u8 get_slot(){
     return slot;
 }
 
+void init_save_sections(){
+    for(int i = 0; i < SECTION_TOTAL; i++)
+        sections_freed[i] = 0;
+}
+
 u8 read_gen_3_data(struct game_data_t* game_data){
     init_bank();
     
@@ -478,18 +458,24 @@ u8 read_gen_3_data(struct game_data_t* game_data){
     return 1;
 }
 
-u8 pre_write_gen_3_data(struct game_data_t* game_data){
+u8 pre_write_gen_3_data(struct game_data_t* game_data, u8 is_full){
     init_bank();
 
     u8 base_slot = in_use_slot;
     if(base_slot == INVALID_SLOT)
         return 0;
 
-    if(!pre_update_save(game_data, base_slot))
-        return 0;
+    if(is_full) {
+        if(!pre_update_save(game_data, base_slot, FULL_SAVE))
+            return 0;
 
-    if(!validate_slot(get_next_slot(base_slot)))
-        return 0;
+        if(!validate_slot(get_next_slot(base_slot)))
+            return 0;
+    }
+    else {
+        if(!pre_update_save(game_data, base_slot, NON_PARTY_SAVE))
+            return 0;
+    }
 
     return 1;
 }
@@ -501,7 +487,7 @@ u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data){
     if(base_slot == INVALID_SLOT)
         return 0;
 
-    if(!pre_update_moves_save(game_data, base_slot))
+    if(!pre_update_save(game_data, base_slot, PARTY_ONLY_SAVE))
         return 0;
 
     if(!validate_slot(get_next_slot(base_slot)))
