@@ -848,6 +848,11 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, cons
     *learnset_ptr = NULL;
     const u16* learnsets = (const u16*)learnset_evos_gen3_bin;
     const u16* trade_evolutions = (const u16*)trade_evolutions_bin;
+    u16 num_entries = trade_evolutions[0];
+    const u16* trade_evolutions_base_ids = trade_evolutions+1;
+    const u16* trade_evolutions_item_ids = trade_evolutions+1+num_entries;
+    const u16* trade_evolutions_evo_ids = trade_evolutions+1+(2*num_entries);
+
     u16 max_index = LAST_VALID_GEN_3_MON;
     if(curr_gen == 1) {
         learnsets = (const u16*)learnset_evos_gen1_bin;
@@ -861,18 +866,20 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, cons
     struct gen3_mon_growth* growth = &mon_data->growth;
     
     u8 found = 0;
-    u16 num_entries = trade_evolutions[0];
     
     for(int i = 0; i < num_entries; i++)
-        if(growth->species == trade_evolutions[1+i])
-            if((!trade_evolutions[1+(2*i)]) || (growth->item == trade_evolutions[1+(2*i)]))
-                if((trade_evolutions[1+(3*i)] <= max_index) && ((ACT_AS_GEN1_TRADE && (curr_gen == 1)) || (growth->item != EVERSTONE_ID))) {
+        if(growth->species == trade_evolutions_base_ids[i])
+            if((!trade_evolutions_item_ids[i]) || (growth->item == trade_evolutions_item_ids[i]))
+                if((trade_evolutions_evo_ids[i] <= max_index) && ((ACT_AS_GEN1_TRADE && (curr_gen == 1)) || (growth->item != EVERSTONE_ID))) {
                     found = 1;
+                    // Load the pre-evo name
+                    mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
                     //Evolve
-                    growth->species = trade_evolutions[1+(3*i)];
+                    growth->species = trade_evolutions_evo_ids[i];
                     // Consume the evolution item, if needed
-                    if(growth->item == trade_evolutions[1+(2*i)])
+                    if(growth->item == trade_evolutions_item_ids[i])
                         growth->item = NO_ITEM_ID;
+                    // TODO: Handle names
                     break;
                 }
     

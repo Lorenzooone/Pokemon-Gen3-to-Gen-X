@@ -249,6 +249,17 @@ void raw_update_sprite_y(u8 index, u8 new_y){
     shadow_oam[index].attr0 |= new_y;
 }
 
+void fade_all_sprites_to_white(u16 fading_fraction){
+    REG_BLDCNT &= ~(3<<6);
+    REG_BLDCNT |= (1<<4) | (2<<6);
+    REG_BLDY = fading_fraction;
+}
+
+void remove_fade_all_sprites(){
+    REG_BLDCNT &= ~((1<<4) | (2<<6));
+    REG_BLDY = 0;
+}
+
 void update_cursor_base_x(u16 cursor_x){
     wait_for_vblank_if_needed();
     cursor_base_x = cursor_x;

@@ -230,6 +230,7 @@ struct gen3_mon_data_unenc {
     u8 deoxys_form :2;
     u8 can_roamer_fix :1;
     u8 fix_has_altered_ot :1;
+    const u8* pre_evo_string;
     struct alternative_data_gen3 alter_nature;
     struct alternative_data_gen3 fixed_ivs;
 };

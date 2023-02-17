@@ -71,5 +71,7 @@ void enable_all_sprites(void);
 void update_normal_oam(void);
 void reset_sprites_to_cursor(void);
 void reset_sprites_to_party(void);
+void fade_all_sprites_to_white(u16);
+void remove_fade_all_sprites(void);
 
 #endif

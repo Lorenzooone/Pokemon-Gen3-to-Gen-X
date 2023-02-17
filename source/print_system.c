@@ -54,6 +54,8 @@ int prepare_base_16(u32, u8*);
 int digits_print(u8*, int, u8, u8);
 int write_base_10(int, int, u8);
 int write_base_16(u32, int, u8);
+void swap_buffer_screen_internal(u8);
+u8 is_screen_disabled(u8);
 
 u8 x_pos;
 u8 y_pos;
@@ -78,10 +80,16 @@ void process_arrangements() {
         if(updated_screen[i]) {
             set_arrangements(i);
             updated_screen[i] = 0;
-            buffer_screen[i] ^= 1;
-            if(i == screen_num)
-                screen = get_screen(i);
+            swap_buffer_screen_internal(i);
         }
+}
+
+void swap_buffer_screen_internal(u8 bg_num) {
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
+    buffer_screen[bg_num] ^= 1;
+    if(bg_num == screen_num)
+        screen = get_screen(bg_num);
 }
 
 void enable_screens() {
@@ -90,6 +98,14 @@ void enable_screens() {
             REG_DISPCNT |= (0x100)<<i;
         else
             REG_DISPCNT &= ~((0x100)<<i);
+}
+
+u8 is_screen_disabled(u8 bg_num) {
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
+    if(REG_DISPCNT & ((0x100)<<bg_num))
+        return 0;
+    return 1;
 }
 
 void set_screens_positions() {
@@ -174,6 +190,15 @@ void init_text_system() {
 void set_updated_screen() {
     wait_for_vblank_if_needed();
     updated_screen[screen_num] = 1;
+}
+
+void swap_buffer_screen(u8 bg_num, u8 effective_swap) {
+    wait_for_vblank_if_needed();
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
+    if(effective_swap && is_screen_disabled(bg_num))
+        swap_buffer_screen_internal(bg_num);
+    updated_screen[bg_num] = 1;
 }
 
 void prepare_flush() {

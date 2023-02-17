@@ -49,6 +49,7 @@ void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
 void trade_cancel_print_screen(u8);
 void saving_print_screen(void);
 void trading_animation_init(struct game_data_t*, u8, u8);
+void evolution_animation_init(struct game_data_t*, u8);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
 void waiting_init(void);
 void invalid_init(u8);
@@ -232,7 +233,14 @@ void trading_animation_init(struct game_data_t* game_data, u8 own_mon, u8 other_
     enable_screen(TRADE_ANIMATION_SEND_WINDOW_SCREEN);
     setup_trade_animation(&game_data[0].party_3_undec[own_mon], &game_data[1].party_3_undec[other_mon], TRADE_ANIMATION_SEND_WINDOW_SCREEN, TRADE_ANIMATION_RECV_WINDOW_SCREEN);
     prepare_flush();
-    curr_state = TRADING_ANIMATION;
+}
+
+void evolution_animation_init(struct game_data_t* game_data, u8 own_mon) {
+    set_screen(EVOLUTION_ANIMATION_WINDOW_SCREEN);
+    print_evolution_animation(&game_data[0].party_3_undec[own_mon]);
+    set_screen(BASE_SCREEN);
+    setup_evolution_animation(&game_data[0].party_3_undec[own_mon], EVOLUTION_ANIMATION_WINDOW_SCREEN);
+    prepare_flush();
 }
 
 void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cursor_y_pos, u8* cursor_x_pos, u8 reset) {
@@ -503,6 +511,9 @@ int main(void)
                     if(has_accepted_offer()) {
                         trading_animation_init(game_data, curr_mon, other_mon);
                         evolved = trade_mons(game_data, curr_mon, other_mon, learnset_ptr, curr_gen);
+                        if(evolved)
+                            evolution_animation_init(game_data, curr_mon);
+                        curr_state = TRADING_ANIMATION;
                         success = pre_write_gen_3_data(&game_data[0]);
                         process_party_data(&game_data[0]);
                     }

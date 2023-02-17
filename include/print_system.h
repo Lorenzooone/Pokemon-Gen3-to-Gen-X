@@ -40,6 +40,7 @@ void set_text_y(u8);
 void swap_screen_enabled_state(u8);
 void enable_screen(u8);
 void disable_screen(u8);
+void swap_buffer_screen(u8, u8);
 void disable_all_screens_but_current(void);
 void set_bg_pos(u8, int, int);
 screen_t* get_screen(u8 bg_num);

@@ -19,6 +19,7 @@ void print_multiboot(enum MULTIBOOT_RESULTS);
 void print_start_trade(void);
 void print_waiting(void);
 void print_saving(void);
+void print_evolution_animation(struct gen3_mon_data_unenc*);
 void print_invalid(u8);
 void print_offer_screen(struct game_data_t*, u8, u8);
 void print_offer_options_screen(struct game_data_t*, u8, u8);

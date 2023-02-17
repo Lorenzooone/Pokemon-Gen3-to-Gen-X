@@ -26,6 +26,7 @@ void print_pokemon_page2(struct gen3_mon_data_unenc*);
 void print_pokemon_page3(struct gen3_mon_data_unenc*);
 void print_pokemon_page4(struct gen3_mon_data_unenc*);
 void print_pokemon_page5(struct gen3_mon_data_unenc*);
+void print_evolution_animation_internal(struct gen3_mon_data_unenc*, u8);
 
 const char* person_strings[] = {"You", "Other"};
 const char* game_strings[] = {"RS", "FRLG", "E"};
@@ -252,6 +253,30 @@ void print_waiting(){
     set_text_y(WAITING_WINDOW_Y);
     set_text_x(WAITING_WINDOW_X);
     PRINT_FUNCTION("Waiting...");
+}
+
+void print_evolution_animation_internal(struct gen3_mon_data_unenc* mon, u8 is_second_run){
+    reset_screen(BLANK_FILL);
+    init_evolution_animation_window();
+    clear_evolution_animation_window();
+    set_text_y(EVOLUTION_ANIMATION_WINDOW_Y);
+    set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
+    if(!is_second_run) {
+        PRINT_FUNCTION("Huh?! \x01\n\n", mon->pre_evo_string);
+        set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
+        PRINT_FUNCTION("is evolving?!");
+    }
+    else {
+        PRINT_FUNCTION("\x01 evolved\n\n", mon->pre_evo_string);
+        set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
+        PRINT_FUNCTION("into \x01!", get_pokemon_name_raw(mon));
+    }
+    swap_buffer_screen(get_screen_num(), 1);
+}
+
+void print_evolution_animation(struct gen3_mon_data_unenc* mon){
+    print_evolution_animation_internal(mon, 0);
+    print_evolution_animation_internal(mon, 1);
 }
 
 void print_trade_animation_send(struct gen3_mon_data_unenc* mon){
