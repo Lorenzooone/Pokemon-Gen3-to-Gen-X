@@ -173,7 +173,7 @@ void set_default_gift_ribbons(struct game_data_t* game_data) {
     update_gift_ribbons(game_data, default_gift_ribbons_bin);
 }
 
-u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, const u16** learnset_ptr, u8 curr_gen) {
+u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8 curr_gen) {
     handle_mail_trade(game_data, own_mon, other_mon);
 
     u8* dst = (u8*)&game_data[0].party_3.mons[own_mon];
@@ -187,7 +187,7 @@ u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, const u16
     game_data[0].party_3_undec[own_mon].src = &game_data[0].party_3.mons[own_mon];
     update_gift_ribbons(&game_data[0], game_data[1].giftRibbons);
     register_dex_entry(&game_data[0], &game_data[0].party_3_undec[own_mon]);
-    u8 ret_val = trade_evolve(&game_data[0].party_3.mons[own_mon], &game_data[0].party_3_undec[own_mon], learnset_ptr, curr_gen);
+    u8 ret_val = trade_evolve(&game_data[0].party_3.mons[own_mon], &game_data[0].party_3_undec[own_mon], curr_gen);
     if(ret_val)
         register_dex_entry(&game_data[0], &game_data[0].party_3_undec[own_mon]);
     return ret_val;

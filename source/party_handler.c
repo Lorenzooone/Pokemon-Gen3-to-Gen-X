@@ -729,6 +729,9 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     // Default roamer values
     dst->can_roamer_fix = 0;
     dst->fix_has_altered_ot = 0;
+    
+    // Default learnable moves values
+    dst->learnable_moves = NULL;
 
     u32 decryption[ENC_DATA_SIZE>>2];
     
@@ -844,8 +847,7 @@ void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){
     mon->mail_id = GEN3_NO_MAIL;
 }
 
-u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, const u16** learnset_ptr, u8 curr_gen) {
-    *learnset_ptr = NULL;
+u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 curr_gen) {
     const u16* learnsets = (const u16*)learnset_evos_gen3_bin;
     const u16* trade_evolutions = (const u16*)trade_evolutions_bin;
     u16 num_entries = trade_evolutions[0];
@@ -901,7 +903,7 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, cons
             for(int j = 0; j < num_levels; j++) {
                 u16 level = learnsets[base_pos++];
                 if(level == mon->level) {
-                    *learnset_ptr = &learnsets[base_pos];
+                    mon_data->learnable_moves = &learnsets[base_pos];
                     break;
                 }
             }

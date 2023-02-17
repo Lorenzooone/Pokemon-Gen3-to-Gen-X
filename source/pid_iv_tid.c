@@ -69,6 +69,7 @@ void _convert_roamer_to_colo_info(u8, u16, u8, u8, u16, u32*, u32*, u8*, u32);
 void _generate_generic_genderless_info(u8, u16, u16, u32*, u32*, u8*, u32, genderless_generator_functions_t);
 u8 _generator_static_info(u16, u16, u8, u16, u32*, u32*, u8*);
 u8 _generator_generic_shadow_info_colo(u16, u16, u8, u16, u32*, u32*, u8*);
+u8 _generator_generic_shadow_info_xd(u16, u16, u8, u16, u32*, u32*, u8*);
 void _generate_generic_genderless_shiny_info(u8, u16, u32*, u32*, u8*, u32, shiny_genderless_generator_functions_t);
 u8 _generator_static_shiny_info(u32, u8, u32*, u32*, u8*);
 u8 _generator_generic_genderless_shadow_shiny_info_colo(u32, u8, u32*, u32*, u8*);
@@ -683,6 +684,56 @@ IWRAM_CODE MAX_OPTIMIZE u8 _generator_generic_shadow_info_colo(u16 first, u16 se
 
 IWRAM_CODE MAX_OPTIMIZE void generate_generic_genderless_shadow_info_colo(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
     _generate_generic_genderless_info(wanted_nature, wanted_ivs, tsv, dst_pid, dst_ivs, dst_ability, get_rng(), _generator_generic_shadow_info_colo);
+}
+
+IWRAM_CODE MAX_OPTIMIZE u8 _generator_generic_shadow_info_xd(u16 first, u16 second, u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    u32 possible_seeds[7*2];
+    u8 num_found = get_seed_ivs_colo(possible_seeds, first, second);
+    for(int n = 0; n < num_found; n++) {
+        u32 seed = possible_seeds[n];
+        
+        /*
+        u32 enemy_tsv_seed = seed;
+        // enemy_tsv_seed = TPID 2
+        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
+        // enemy_tsv_seed = TPID 1
+        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
+        u16 esid = enemy_tsv_seed >> 16;
+        enemy_tsv_seed = get_prev_seed_colo(enemy_tsv_seed);
+        u16 etid = enemy_tsv_seed >> 16;
+        */
+        
+        seed = get_next_seed_colo(seed);
+        u32 generated_ivs = ((seed>>16) & 0x7FFF);
+        seed = get_next_seed_colo(seed);
+        u32 ivs = generated_ivs | (((seed>>16) & 0x7FFF)<<15);
+        seed = get_next_seed_colo(seed);
+        u8 ability = (seed>>16) & 1;
+        u32 pid;
+        u16 shiny_pid;
+        
+        // TSV shiny lock
+        do {
+            seed = get_next_seed_colo(seed);
+            pid = seed & 0xFFFF0000;
+            seed = get_next_seed_colo(seed);
+            pid |= seed >> 16;
+            shiny_pid = (pid>>16) ^ (pid & 0xFFFF) ^ tsv;
+        } while(shiny_pid < 8);
+
+        u8 nature = get_nature_fast(pid);
+        if(nature == wanted_nature) {
+            *dst_pid = pid;
+            *dst_ability = ability;
+            *dst_ivs = ivs;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+IWRAM_CODE MAX_OPTIMIZE void generate_generic_genderless_shadow_info_xd(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability) {
+    _generate_generic_genderless_info(wanted_nature, wanted_ivs, tsv, dst_pid, dst_ivs, dst_ability, get_rng(), _generator_generic_shadow_info_xd);
 }
 
 IWRAM_CODE MAX_OPTIMIZE void _generate_generic_genderless_shiny_info(u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* dst_ability, u32 given_seed, shiny_genderless_generator_functions_t generator) {

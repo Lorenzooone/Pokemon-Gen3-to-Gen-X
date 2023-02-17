@@ -231,6 +231,7 @@ struct gen3_mon_data_unenc {
     u8 can_roamer_fix :1;
     u8 fix_has_altered_ot :1;
     const u8* pre_evo_string;
+    const u16* learnable_moves;
     struct alternative_data_gen3 alter_nature;
     struct alternative_data_gen3 fixed_ivs;
 };
@@ -383,6 +384,6 @@ u8 get_pokemon_gender_kind_gen3(int, u32, u8, u8);
 u8 get_pokemon_gender_kind_gen3_raw(struct gen3_mon_data_unenc*);
 void recalc_stats_gen3(struct gen3_mon_data_unenc*, struct gen3_mon*);
 void clean_mail_gen3(struct mail_gen3*, struct gen3_mon* mon);
-u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, const u16**, u8);
+u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, u8);
 
 #endif

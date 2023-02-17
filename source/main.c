@@ -438,7 +438,6 @@ int main(void)
     init_item_icon();
     init_cursor();
     
-    const u16** learnset_ptr = NULL;
     int result = 0;
     u8 evolved = 0;
     u8 returned_val;
@@ -510,7 +509,7 @@ int main(void)
                     keys = 0;
                     if(has_accepted_offer()) {
                         trading_animation_init(game_data, curr_mon, other_mon);
-                        evolved = trade_mons(game_data, curr_mon, other_mon, learnset_ptr, curr_gen);
+                        evolved = trade_mons(game_data, curr_mon, other_mon, curr_gen);
                         if(evolved)
                             evolution_animation_init(game_data, curr_mon);
                         curr_state = TRADING_ANIMATION;

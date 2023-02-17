@@ -13,6 +13,7 @@ void generate_static_shiny_info(u8, u16, u32*, u32*);
 void generate_generic_genderless_shadow_shiny_info_colo(u8, u16, u32*, u32*, u8*);
 void generate_static_info(u8, u16, u16, u32*, u32*);
 void generate_generic_genderless_shadow_info_colo(u8, u16, u16, u32*, u32*, u8*);
+void generate_generic_genderless_shadow_info_xd(u8, u16, u16, u32*, u32*, u8*);
 void generate_egg_shiny_info(u8, u8, u16, u16, u8, u32*, u32*);
 void generate_egg_info(u8, u8, u16, u16, u8, u32*, u32*);
 u32 generate_ot(u16, u8*);

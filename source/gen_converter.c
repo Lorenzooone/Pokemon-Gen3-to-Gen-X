@@ -24,6 +24,7 @@
 #include "encounters_unown_bin.h"
 #include "encounter_types_gen2_bin.h"
 #include "special_encounters_gen2_bin.h"
+#include "learnset_lugia_sp_bin.h"
 
 #define MF_7_1_INDEX 2
 #define UNOWN_EX_LETTER 26
@@ -62,7 +63,7 @@ u8 is_roamer_gen3(struct gen3_mon_misc*, u16);
 u16 convert_ivs_of_gen3(struct gen3_mon_misc*, u16, u32, u8, u8, u8, u8, u8);
 void set_ivs(struct gen3_mon_misc*, u32);
 void preset_alter_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
-void set_origin_pid_iv(struct gen3_mon*, struct gen3_mon_misc*, u16, u16, u8, u8, u8, u8);
+void set_origin_pid_iv(struct gen3_mon*, struct gen3_mon_data_unenc*, u16, u16, u8, u8, u8, u8);
 u8 are_trainers_same(struct gen3_mon*, u8);
 void fix_name_change_from_gen3(struct gen3_mon*, u16,  u8*, u8, u8);
 void fix_name_change_to_gen3(struct gen3_mon*, u8);
@@ -591,15 +592,14 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
     // Get PID and IVs
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
-            if(!is_shiny)
-                generate_static_info(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr);
-            else
-                generate_static_shiny_info(wanted_nature, tsv, pid_ptr, ivs_ptr);
-            break;
         case ROAMER_ENCOUNTER:
             if(origin_game == COLOSSEUM_CODE) {
-                if(!is_shiny)
-                    generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                if(!is_shiny) {
+                    if(species == LUGIA_SPECIES)
+                        generate_generic_genderless_shadow_info_xd(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                    else
+                        generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                }
                 else
                     generate_generic_genderless_shadow_shiny_info_colo(wanted_nature, tsv, pid_ptr, ivs_ptr, ability_ptr);
                 is_ability_set = 1;
@@ -610,7 +610,7 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
                 else
                     generate_static_shiny_info(wanted_nature, tsv, pid_ptr, ivs_ptr);
                 // Roamers only get the first byte of their IVs
-                if(is_roamer_gen3(&data_src->misc, species))
+                if((encounter_type == ROAMER_ENCOUNTER) && (is_roamer_gen3(&data_src->misc, species)))
                     data_src->alter_nature.ivs &= 0xFF;
             }
             break;
@@ -641,8 +641,9 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
         *ability_ptr = 0;
 }
 
-void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 species, u16 wanted_ivs, u8 wanted_nature, u8 ot_gender, u8 is_egg, u8 no_restrictions) {
+void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_dst, u16 species, u16 wanted_ivs, u8 wanted_nature, u8 ot_gender, u8 is_egg, u8 no_restrictions) {
     struct game_data_t* trainer_data = get_own_game_data();
+    struct gen3_mon_misc* misc = &data_dst->misc;
     u8 trainer_game_version = id_to_version(&trainer_data->game_identifier);
     u8 trainer_gender = trainer_data->trainer_gender;
     
@@ -671,8 +672,18 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
     // Get PID and IVs
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
-            if(!is_shiny)
-                generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
+            if(!is_shiny) {
+                // Prefer Colosseum/XD encounter, if possible
+                if((species == LUGIA_SPECIES) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+                    chosen_version = COLOSSEUM_CODE;
+                    generate_generic_genderless_shadow_info_xd(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
+                    misc->ribbons |= COLO_RIBBON_VALUE;
+                    is_ability_set = 1;
+                    data_dst->learnable_moves = (const u16*)learnset_lugia_sp_bin;
+                }
+                else
+                    generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
+            }
             else
                 generate_static_shiny_info(wanted_nature, tsv, &dst->pid, &ivs);
             searchable_table = encounters_static_bin;
@@ -719,6 +730,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
     // Set met location and origins info
     u8 met_location = egg_locations_bin[chosen_version];
     u8 met_level = 0;
+    u8 obedience = 0;
     
     if(find_in_table) {
         u16 mon_index = get_mon_index(species, dst->pid, 0, 0);
@@ -727,15 +739,17 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_misc* misc, u16 spe
             u8 num_elems = possible_met_data[0];
             u8 chosen_entry = 0;
             for(int i = 0; i < num_elems; i++)
-                if(possible_met_data[1+(3*i)] == chosen_version)
+                if((possible_met_data[1+(3*i)]&0xF) == chosen_version)
                     chosen_entry = i;
-            chosen_version = possible_met_data[1+(3*chosen_entry)];
+            chosen_version = possible_met_data[1+(3*chosen_entry)] & 0xF;
+            obedience = (possible_met_data[1+(3*chosen_entry)] >> 4) & 1;
             met_location = possible_met_data[2+(3*chosen_entry)];
-            met_level = possible_met_data[3+(3*chosen_entry)];
+            met_level = possible_met_data[3+(3*chosen_entry)] & 0x7F;
         }
     }
     
     misc->met_location = met_location;
+    misc->obedience = obedience;
     misc->origins_info = ((ot_gender&1)<<15) | ((POKEBALL_ID&0xF)<<11) | ((chosen_version&0xF)<<7) | ((met_level&0x7F)<<0);
     
     // Set IVs
@@ -1137,12 +1151,8 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->misc.pokerus = src->pokerus;
     
-    // Special Mew, Lugia and Ho-Oh handling
-    if((data_dst->growth.species == MEW_SPECIES) || (data_dst->growth.species == HO_OH_SPECIES) || (data_dst->growth.species == LUGIA_SPECIES))
-        data_dst->misc.obedience = 1;
-    
     // Set the PID-Origin-IVs data, they're all connected
-    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, src->ot_gender, is_egg, no_restrictions);
+    set_origin_pid_iv(dst, data_dst, data_dst->growth.species, src->ivs, wanted_nature, src->ot_gender, is_egg, no_restrictions);
     
     // Place all the substructures' data
     place_and_encrypt_gen3_data(data_dst, dst);
@@ -1227,12 +1237,8 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->misc.pokerus = 0;
     
-    // Special Mew handling
-    if(data_dst->growth.species == MEW_SPECIES)
-        data_dst->misc.obedience = 1;
-    
     // Set the PID-Origin-IVs data, they're all connected
-    set_origin_pid_iv(dst, &data_dst->misc, data_dst->growth.species, src->ivs, wanted_nature, 0, 0, no_restrictions);
+    set_origin_pid_iv(dst, data_dst, data_dst->growth.species, src->ivs, wanted_nature, 0, 0, no_restrictions);
     
     // Place all the substructures' data
     place_and_encrypt_gen3_data(data_dst, dst);
