@@ -149,6 +149,16 @@ const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc* data_src){
     return get_pokemon_name(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form);
 }
 
+const u16* get_learnset_for_species(const u16* learnsets, u16 species){
+    u16 num_entries = learnsets[0];
+    for(int i = 0; i < num_entries; i++) {
+        u16 base_pos = learnsets[1+i] >> 1;
+        if(learnsets[base_pos++] == species)
+            return &learnsets[base_pos];
+    }
+    return NULL;
+}
+
 const u8* get_item_name(int index, u8 is_egg){
     if(is_egg)
         index = 0;
@@ -895,19 +905,17 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
     recalc_stats_gen3(mon_data, mon);
     
     // Find if the mon should learn new moves
-    num_entries = learnsets[0];
-    for(int i = 0; i < num_entries; i++) {
-        u16 base_pos = learnsets[1+i] >> 1;
-        if(learnsets[base_pos++] == growth->species) {
-            u16 num_levels = learnsets[base_pos++];
-            for(int j = 0; j < num_levels; j++) {
-                u16 level = learnsets[base_pos++];
-                if(level == mon->level) {
-                    mon_data->learnable_moves = &learnsets[base_pos];
-                    break;
-                }
+    const u16* found_learnset = get_learnset_for_species(learnsets, growth->species);
+    if(found_learnset != NULL) {
+        u16 base_pos = 0;
+        u16 num_levels = found_learnset[base_pos++];
+        for(int j = 0; j < num_levels; j++) {
+            u16 level = found_learnset[base_pos++];
+            if(level == mon->level) {
+                mon_data->learnable_moves = &found_learnset[base_pos];
+                break;
             }
-            break;
+            base_pos += found_learnset[base_pos] + 1;
         }
     }
 

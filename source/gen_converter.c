@@ -24,7 +24,7 @@
 #include "encounters_unown_bin.h"
 #include "encounter_types_gen2_bin.h"
 #include "special_encounters_gen2_bin.h"
-#include "learnset_lugia_sp_bin.h"
+#include "learnset_static_xd_bin.h"
 
 #define MF_7_1_INDEX 2
 #define UNOWN_EX_LETTER 26
@@ -60,6 +60,8 @@ u8 are_roamer_ivs(struct gen3_mon_misc*);
 u8 is_roamer_frlg(u16, u8, u8, u8);
 u8 is_roamer_rse(u16, u8, u8, u8);
 u8 is_roamer_gen3(struct gen3_mon_misc*, u16);
+u8 is_static_in_xd(u16);
+u8 has_prev_check_tsv_in_xd(u16);
 u16 convert_ivs_of_gen3(struct gen3_mon_misc*, u16, u32, u8, u8, u8, u8, u8);
 void set_ivs(struct gen3_mon_misc*, u32);
 void preset_alter_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
@@ -355,6 +357,16 @@ u8 is_roamer_gen3(struct gen3_mon_misc* misc, u16 species) {
     return (get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location, met_level) || is_roamer_rse(species, origin_game, misc->met_location, met_level));
 }
 
+u8 is_static_in_xd(u16 species) {
+    return (species == LUGIA_SPECIES) || (species == ARTICUNO_SPECIES) || (species == ZAPDOS_SPECIES) || (species == MOLTRES_SPECIES);
+}
+
+u8 has_prev_check_tsv_in_xd(u16 species) {
+    if((species == LUGIA_SPECIES) || (species == ARTICUNO_SPECIES) || (species == ZAPDOS_SPECIES))
+        return 0;
+    return 1;
+}
+
 u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_shiny, u8 gender, u8 gender_kind, u8 is_gen2, u8 skip_checks) {
     if(!skip_checks)
         if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (species > LAST_VALID_GEN_1_MON)))
@@ -595,8 +607,8 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
         case ROAMER_ENCOUNTER:
             if(origin_game == COLOSSEUM_CODE) {
                 if(!is_shiny) {
-                    if(species == LUGIA_SPECIES)
-                        generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                    if(is_static_in_xd(species))
+                        generate_generic_genderless_shadow_info_xd(wanted_nature, has_prev_check_tsv_in_xd(species), wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
                     else
                         generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
                 }
@@ -674,12 +686,12 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
         case STATIC_ENCOUNTER:
             if(!is_shiny) {
                 // Prefer Colosseum/XD encounter, if possible
-                if((species == LUGIA_SPECIES) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+                if(is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
                     chosen_version = COLOSSEUM_CODE;
-                    generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
+                    generate_generic_genderless_shadow_info_xd(wanted_nature, has_prev_check_tsv_in_xd(species), wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                     misc->ribbons |= COLO_RIBBON_VALUE;
                     is_ability_set = 1;
-                    data_dst->learnable_moves = (const u16*)learnset_lugia_sp_bin;
+                    data_dst->learnable_moves = get_learnset_for_species((const u16*)learnset_static_xd_bin, species);
                 }
                 else
                     generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);

@@ -68,6 +68,9 @@
 #define NIDORAN_F_SPECIES 29
 #define NIDORAN_M_SPECIES 32
 #define MR_MIME_SPECIES 122
+#define ARTICUNO_SPECIES 144
+#define ZAPDOS_SPECIES 145
+#define MOLTRES_SPECIES 146
 #define MEW_SPECIES 151
 #define UNOWN_SPECIES 201
 #define RAIKOU_SPECIES 243
@@ -345,6 +348,7 @@ u8 get_pokemon_gender_gen3(int, u32, u8, u8);
 u16 calc_stats_gen3(u16, u32, u8, u8, u8, u8, u8);
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc*, struct gen3_mon*);
 
+const u16* get_learnset_for_species(const u16*, u16);
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);
 u16 get_mon_index_raw(struct gen3_mon_data_unenc*);
 u8 has_item_raw(struct gen3_mon_data_unenc* data_src);
