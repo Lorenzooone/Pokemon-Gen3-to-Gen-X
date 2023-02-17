@@ -875,6 +875,9 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
         max_index = LAST_VALID_GEN_2_MON;
     }
     
+    if((!mon_data->is_valid_gen3) || mon_data->is_egg)
+        return 0;
+    
     struct gen3_mon_growth* growth = &mon_data->growth;
     
     u8 found = 0;
