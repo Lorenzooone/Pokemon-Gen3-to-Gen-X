@@ -56,7 +56,6 @@ u8 pre_update_save(struct game_data_t*, u8, enum SAVING_KIND);
 u8 complete_save(u8);
 static u8 get_next_slot(u8);
 
-u8 sections_freed[SECTION_TOTAL];
 const u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
 const u16 pokedex_extra_pos_1 [] = {0x938, 0x5F8, 0x988};
 const u16 pokedex_extra_pos_2 [] = {0xC0C, 0xB98, 0xCA4};
@@ -330,11 +329,6 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND
     {
         if(target_section >= SECTION_TOTAL)
             target_section -= SECTION_TOTAL;
-            
-        if(!sections_freed[target_section]) {
-            erase_sector((target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE));
-            sections_freed[target_section] = 1;
-        }
         
         u16 section_id = read_section_id(base_slot, i);
         
@@ -383,8 +377,8 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND
             buffer_16[CHECKSUM_POS>>1] = checksum;
 
             // Copy to new slot
+            erase_sector((target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE));
             copy_ram_to_save(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE);
-            sections_freed[target_section] = 0;
             // Verify everything went accordingly
             if(!is_save_correct(buffer_8, (target_slot * SAVE_SLOT_SIZE) + (target_section * SECTION_SIZE), SECTION_SIZE))
                 return 0;
@@ -400,10 +394,8 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND
 u8 complete_save(u8 base_slot) {
     u8 target_slot = get_next_slot(base_slot);
 
-    for(int i = 0; i < SECTION_TOTAL; i++) {
+    for(int i = 0; i < SECTION_TOTAL; i++)
         erase_sector((base_slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE));
-        sections_freed[i] = 1;
-    }
 
     if(get_slot() != target_slot)
         return 0;
@@ -439,9 +431,7 @@ u8 get_slot(){
     return slot;
 }
 
-void init_save_sections(){
-    for(int i = 0; i < SECTION_TOTAL; i++)
-        sections_freed[i] = 0;
+void init_save_data(){
 }
 
 u8 read_gen_3_data(struct game_data_t* game_data){

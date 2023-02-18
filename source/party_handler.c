@@ -319,16 +319,19 @@ void load_pokemon_sprite_raw(struct gen3_mon_data_unenc* data_src, u8 show_item,
     load_pokemon_sprite(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, has_item_raw(data_src) & show_item, has_mail_raw(data_src) & show_item, y, x);
 }
 
-const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
-    if(slot >= MOVES_SIZE)
-        slot = MOVES_SIZE-1;
-    
-    u16 move = attacks->moves[slot];
+const u8* get_move_name_raw(u16 move){
     
     if(move > LAST_VALID_GEN_3_MOVE)
         move = 0;
     
     return get_table_pointer(move_names_bin, move);
+}
+
+const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
+    if(slot >= MOVES_SIZE)
+        slot = MOVES_SIZE-1;
+    
+    return get_move_name_raw(attacks->moves[slot]);
 }
 
 u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks){
@@ -922,5 +925,75 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
         }
     }
 
+    return 1;
+}
+
+enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc* mon, u32 index) {
+    if(mon->learnable_moves == NULL) {
+        place_and_encrypt_gen3_data(mon, mon->src);
+        return COMPLETED;
+    }
+    
+    u16 num_moves = mon->learnable_moves[0];
+    if(index >= num_moves) {
+        place_and_encrypt_gen3_data(mon, mon->src);
+        return COMPLETED;
+    }
+    
+    u16 move = mon->learnable_moves[1+index];
+    
+    if(move > LAST_VALID_GEN_3_MOVE)
+        move = 0;
+    
+    if(!move)
+        return SKIPPED;
+    
+    struct gen3_mon_attacks* attacks = &mon->attacks;
+    
+    for(size_t i = 0; i < MOVES_SIZE; i++)
+        if(attacks->moves[i] == move)
+            return SKIPPED;
+    
+    for(size_t i = 0; i < MOVES_SIZE; i++)
+        if((attacks->moves[i] == 0) || (attacks->moves[i] > LAST_VALID_GEN_3_MOVE)) {
+            attacks->moves[i] = move;
+            return LEARNT;
+        }
+    
+    if(mon->is_egg) {
+        for(size_t i = 0; i < MOVES_SIZE-1; i++)
+            attacks->moves[i] = attacks->moves[i+1];
+        attacks->moves[MOVES_SIZE-1] = move;
+        return LEARNT;
+    }
+
+    return LEARNABLE;
+}
+
+u8 forget_and_learn_move(struct gen3_mon_data_unenc* mon, u32 index, u32 forget_index) {
+    if(mon->learnable_moves == NULL)
+        return 0;
+    
+    u16 num_moves = mon->learnable_moves[0];
+    if(index >= num_moves)
+        return 0;
+    
+    if(forget_index >= MOVES_SIZE)
+        return 0;
+    
+    u16 move = mon->learnable_moves[1+index];
+    
+    if(move > LAST_VALID_GEN_3_MOVE)
+        move = 0;
+    
+    if(!move)
+        return 0;
+    
+    struct gen3_mon_attacks* attacks = &mon->attacks;
+    
+    // Do not limit HMs' replaceability for better user experience,
+    // even though normal games do it
+    attacks->moves[forget_index] = move;
+    
     return 1;
 }

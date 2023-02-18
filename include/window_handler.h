@@ -22,6 +22,12 @@
 #define TRADE_ANIMATION_RECV_WINDOW_Y (TOTAL_Y_SIZE-1-TRADE_ANIMATION_RECV_WINDOW_Y_SIZE)
 #define TRADE_ANIMATION_RECV_WINDOW_X_SIZE (TOTAL_X_SIZE-TRADE_ANIMATION_RECV_WINDOW_X-1)
 
+#define LEARN_MOVE_MESSAGE_WINDOW_SCREEN 1
+#define LEARN_MOVE_MESSAGE_WINDOW_X 1
+#define LEARN_MOVE_MESSAGE_WINDOW_Y_SIZE 6
+#define LEARN_MOVE_MESSAGE_WINDOW_Y (TOTAL_Y_SIZE-1-LEARN_MOVE_MESSAGE_WINDOW_Y_SIZE)
+#define LEARN_MOVE_MESSAGE_WINDOW_X_SIZE (TOTAL_X_SIZE-LEARN_MOVE_MESSAGE_WINDOW_X-1)
+
 #define EVOLUTION_ANIMATION_WINDOW_SCREEN 3
 #define EVOLUTION_ANIMATION_WINDOW_X 1
 #define EVOLUTION_ANIMATION_WINDOW_Y_SIZE 3
@@ -72,6 +78,9 @@ void clear_offer_options_window(void);
 
 void init_waiting_window(void);
 void clear_waiting_window(void);
+
+void init_learn_move_message_window(void);
+void clear_learn_move_message_window(void);
 
 void init_trade_animation_send_window(void);
 void clear_trade_animation_send_window(void);

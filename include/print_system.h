@@ -37,6 +37,8 @@ void default_reset_screen(void);
 void reset_screen(u8);
 void set_text_x(u8);
 void set_text_y(u8);
+u8 get_text_x(void);
+u8 get_text_y(void);
 void swap_screen_enabled_state(u8);
 void enable_screen(u8);
 void disable_screen(u8);

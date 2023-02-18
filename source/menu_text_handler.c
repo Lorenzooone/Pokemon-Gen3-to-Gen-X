@@ -96,7 +96,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
     }
 
     if(load_sprites)
-        reset_sprites_to_cursor();
+        reset_sprites_to_cursor(1);
 
     u8* options[2];
     for(int i = 0; i < 2; i++)
@@ -128,6 +128,53 @@ void print_trade_menu_cancel(u8 update) {
     set_text_y(Y_LIMIT-1);
     set_text_x(2);
     PRINT_FUNCTION("Cancel");
+}
+
+void print_learnable_move(struct gen3_mon_data_unenc* mon, u16 index, enum MOVES_PRINTING_TYPE moves_printing_type) {
+    reset_screen(BLANK_FILL);
+    
+    init_learn_move_message_window();
+    clear_learn_move_message_window();
+    
+    if((!mon->is_valid_gen3) || (mon->is_egg))
+        return;
+
+    if(mon->learnable_moves == NULL)
+        return;
+
+    u16 move = mon->learnable_moves[1+index];
+    
+    set_text_y(LEARN_MOVE_MESSAGE_WINDOW_Y);
+    set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
+
+    switch(moves_printing_type) {
+        case LEARNT_P:
+            PRINT_FUNCTION("\x01 learnt\n\n", get_pokemon_name_raw(mon));
+            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
+            PRINT_FUNCTION("\x01!", get_move_name_raw(move));
+            break;
+        case DID_NOT_LEARN_P:
+            PRINT_FUNCTION("\x01 did not\n\n", get_pokemon_name_raw(mon));
+            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
+            PRINT_FUNCTION("learn \x01!", get_move_name_raw(move));
+            break;
+        case LEARNABLE_P:
+            PRINT_FUNCTION("\x01 wants to\n", get_pokemon_name_raw(mon));
+            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
+            PRINT_FUNCTION("learn \x01!\n", get_move_name_raw(move));
+            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
+            PRINT_FUNCTION("Would you like to replace\n", get_pokemon_name_raw(mon));
+            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
+            PRINT_FUNCTION("an existing move with it?", get_move_name_raw(move));
+            set_text_y(BASE_Y_CURSOR_LEARN_MOVE_MESSAGE>>3);
+            set_text_x((BASE_X_CURSOR_LEARN_MOVE_MESSAGE_YES>>3)+2+LEARN_MOVE_MESSAGE_WINDOW_X);
+            PRINT_FUNCTION("Yes");
+            set_text_x((BASE_X_CURSOR_LEARN_MOVE_MESSAGE_NO>>3)+2+LEARN_MOVE_MESSAGE_WINDOW_X);
+            PRINT_FUNCTION("No");
+            break;
+        default:
+            break;
+    }
 }
 
 void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
@@ -417,6 +464,51 @@ void print_iv_fix(struct gen3_mon_data_unenc* mon) {
     
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("A: Confirm - B: Go Back");
+}
+
+void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
+    default_reset_screen();
+
+    if((!mon->is_valid_gen3) || (mon->is_egg))
+        return;
+
+    if(mon->learnable_moves == NULL)
+        return;
+
+    u16 move = mon->learnable_moves[1+index];
+
+    print_pokemon_base_data(1, mon, BASE_Y_SPRITE_IV_FIX_PAGE, BASE_X_SPRITE_IV_FIX_PAGE);
+
+    u8 base_x = 0;
+    u8 base_y = get_text_y() + 1;
+    set_text_y(base_y);
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+        set_text_x(base_x);
+        PRINT_FUNCTION("\x11: \x09\x02\n", stat_strings[i], 3, calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
+        if(i == ((GEN2_STATS_TOTAL-1)>>1)) {
+            set_text_y(base_y);
+            base_x += X_LIMIT>>1;
+        }
+    }
+    PRINT_FUNCTION("Ability: \x01", get_ability_name_raw(mon));
+    PRINT_FUNCTION("\nHidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    PRINT_FUNCTION("\nWhich move will be forgotten?\n");
+    set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
+    PRINT_FUNCTION("MOVES");
+    set_text_x(X_LIMIT-11+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
+    PRINT_FUNCTION("PP UP");
+    for(size_t i = 0; i < MOVES_SIZE; i++){
+        set_text_y((BASE_Y_CURSOR_LEARN_MOVE_MENU + (BASE_Y_CURSOR_INCREMENT_LEARN_MOVE_MENU*i))>>3);
+        set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
+        PRINT_FUNCTION("\x01", get_move_name_gen3(&mon->attacks, i));
+        set_text_x((X_LIMIT-11+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2)+2);
+        PRINT_FUNCTION("\x03", (mon->growth.pp_bonuses >> (2*i)) & 3);
+    }
+    set_text_y((BASE_Y_CURSOR_LEARN_MOVE_MENU + (BASE_Y_CURSOR_INCREMENT_LEARN_MOVE_MENU*MOVES_SIZE))>>3);
+    set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
+    PRINT_FUNCTION("\x01", get_move_name_raw(move));
+    set_text_x((X_LIMIT-11+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2)+1);
+    PRINT_FUNCTION("NEW");
 }
 
 void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 y, u8 x) {

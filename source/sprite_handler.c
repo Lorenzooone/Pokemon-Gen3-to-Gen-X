@@ -285,9 +285,10 @@ void set_attributes(u16 obj_attr_0, u16 obj_attr_1, u16 obj_attr_2) {
     shadow_oam[position].attr2 = obj_attr_2;
 }
 
-void reset_sprites_to_cursor(){
+void reset_sprites_to_cursor(u8 reset_ovram){
     wait_for_vblank_if_needed();
-    __sprite_counter = cursor_sprite+1;
+    if(reset_ovram)
+        __sprite_counter = cursor_sprite+1;
     __inner_sprite_counter = inner_cursor_sprite+1;
     reset_sprites(__inner_sprite_counter);
 }

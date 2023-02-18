@@ -7,6 +7,9 @@
 #define CANCEL_INFO 0xFF
 #define CANCEL_TRADING 0xFF
 #define CANCEL_IV_FIX 0xFF
+#define DENIED_LEARNING 0xFF
+#define DO_NOT_FORGET_MOVE 0xFF
+#define ENTER_LEARN_MENU 1
 #define CONFIRM_IV_FIX 1
 #define CANCEL_NATURE 0xFF
 #define CONFIRM_NATURE 3
@@ -22,6 +25,8 @@
 #define FIRST_PAGE 1
 
 u8 handle_input_multiboot_menu(u16);
+u8 handle_input_learnable_message_moves_menu(u16, u8*);
+u8 handle_input_learnable_moves_menu(u16, u8*);
 u8 handle_input_info_menu(struct game_data_t*, u8*, u8, u16, u8*, u8, u8*);
 u8 handle_input_offer_info_menu(struct game_data_t*, u8*, const u8**, u16, u8*);
 u8 handle_input_trading_menu(u8*, u8*, u16, u8, u8);

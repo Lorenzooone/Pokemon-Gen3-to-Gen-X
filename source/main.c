@@ -20,6 +20,7 @@
 #include "vcount_basic.h"
 #include "animations_handler.h"
 #include <stddef.h>
+#include "timing_basic.h"
 //#include "save.h"
 
 #include "ewram_speed_check_bin.h"
@@ -31,7 +32,10 @@
 #define WORST_CASE_EWRAM 1
 #define MIN_WAITCYCLE 1
 
+#define WAITING_TIME_MOVE_MESSAGES (2*FPS)
+
 #define BASE_SCREEN 0
+#define LEARNABLE_MOVES_MENU_SCREEN 2
 #define TRADE_CANCEL_SCREEN 1
 #define INFO_SCREEN 3
 #define NATURE_SCREEN 2
@@ -40,10 +44,13 @@
 void vblank_update_function(void);
 void find_optimal_ewram_settings(void);
 u8 init_cursor_y_pos_main_menu(void);
+void cursor_update_learnable_move_message_menu(u8);
+void cursor_update_learnable_move_menu(u8);
 void cursor_update_trading_menu(u8, u8);
 void cursor_update_main_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
+void handle_learnable_moves_message(struct game_data_t*, u8, u8*, u32*, enum MOVES_PRINTING_TYPE);
 void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
 void trade_cancel_print_screen(u8);
@@ -62,11 +69,14 @@ void main_menu_init(struct game_data_t*, u8, u8, u8, u8*);
 void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
+void learnable_moves_message_init(struct game_data_t*, u8);
+void learnable_move_menu_init(struct game_data_t*, u8, u8, u8*);
 void conclude_trade(struct game_data_t*, u8, u8, u8, u8*);
 void return_to_trade_menu(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
+void wait_frames(int);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -158,6 +168,19 @@ void cursor_update_main_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
 }
 
+void cursor_update_learnable_move_menu(u8 cursor_y_pos) {
+    update_cursor_base_x(BASE_X_CURSOR_LEARN_MOVE_MENU);
+    update_cursor_y(BASE_Y_CURSOR_LEARN_MOVE_MENU + (cursor_y_pos*BASE_Y_CURSOR_INCREMENT_LEARN_MOVE_MENU));
+}
+
+void cursor_update_learnable_move_message_menu(u8 cursor_x_pos) {
+    if(cursor_x_pos)
+        update_cursor_base_x(BASE_X_CURSOR_LEARN_MOVE_MESSAGE_NO + (LEARN_MOVE_MESSAGE_WINDOW_X<<3));
+    else
+        update_cursor_base_x(BASE_X_CURSOR_LEARN_MOVE_MESSAGE_YES + (LEARN_MOVE_MESSAGE_WINDOW_X<<3));
+    update_cursor_y(BASE_Y_CURSOR_LEARN_MOVE_MESSAGE);
+}
+
 void cursor_update_trade_options(u8 cursor_x_pos) {
     update_cursor_base_x(BASE_X_CURSOR_TRADE_OPTIONS + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS));
 }
@@ -165,6 +188,32 @@ void cursor_update_trade_options(u8 cursor_x_pos) {
 void cursor_update_offer_options(u8 cursor_y_pos, u8 cursor_x_pos) {
     update_cursor_base_x(BASE_X_CURSOR_OFFER_OPTIONS + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_OFFER_OPTIONS));
     update_cursor_y(BASE_Y_CURSOR_OFFER_OPTIONS + (BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS * cursor_y_pos));
+}
+
+void wait_frames(int num_frames) {
+    int wait_counter = 0;
+    while(wait_counter < num_frames) {
+        VBlankIntrWait();
+        wait_counter++;
+    }
+}
+
+void handle_learnable_moves_message(struct game_data_t* game_data, u8 own_mon, u8* cursor_x_pos, u32* curr_move, enum MOVES_PRINTING_TYPE moves_printing_type) {
+    if(!game_data[0].party_3_undec[own_mon].is_egg) {
+        print_learnable_move(&game_data[0].party_3_undec[own_mon], *curr_move, moves_printing_type);
+        enable_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
+        if(moves_printing_type == LEARNABLE_P) {
+            *cursor_x_pos = 0;
+            cursor_update_learnable_move_message_menu(*cursor_x_pos);
+        }
+        prepare_flush();
+        if(moves_printing_type != LEARNABLE_P) {
+            wait_frames(WAITING_TIME_MOVE_MESSAGES);
+            *curr_move += 1;
+        }
+    }
+    else
+        *curr_move += 1;
 }
 
 void change_nature(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* wanted_nature, u8 is_change_inc) {
@@ -329,7 +378,7 @@ void start_trade_init(struct game_data_t* game_data, u8 target, u8 region, u8 ma
         set_bg_pos(BASE_SCREEN, 0, 0);
         print_start_trade();
         disable_all_screens_but_current();
-        reset_sprites_to_cursor();
+        reset_sprites_to_cursor(1);
         disable_all_cursors();
         prepare_flush();
         start_transfer(master, curr_gen);
@@ -345,7 +394,7 @@ void main_menu_init(struct game_data_t* game_data, u8 target, u8 region, u8 mast
     set_bg_pos(BASE_SCREEN, 0, 0);
     print_main_menu(1, target, region, master);
     disable_all_screens_but_current();
-    reset_sprites_to_cursor();
+    reset_sprites_to_cursor(1);
     disable_all_cursors();
     *cursor_y_pos = init_cursor_y_pos_main_menu();
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU);
@@ -383,6 +432,32 @@ void iv_fix_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mo
     disable_all_sprites();
     print_iv_fix(&game_data[cursor_x_pos].party_3_undec[curr_mon]);
     enable_screen(IV_FIX_SCREEN);
+    prepare_flush();
+}
+
+void learnable_move_menu_init(struct game_data_t* game_data, u8 curr_mon, u8 curr_move, u8* cursor_y_pos) {
+    curr_state = LEARNABLE_MOVES_MENU;
+    set_screen(LEARNABLE_MOVES_MENU_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    reset_sprites_to_cursor(0);
+    print_learnable_moves_menu(&game_data[0].party_3_undec[curr_mon], curr_move);
+    enable_screen(LEARNABLE_MOVES_MENU_SCREEN);
+    *cursor_y_pos = 0;
+    cursor_update_learnable_move_menu(*cursor_y_pos);
+    prepare_flush();
+}
+
+void learnable_moves_message_init(struct game_data_t* game_data, u8 curr_mon) {
+    curr_state = LEARNABLE_MOVES_MESSAGE;
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    reset_sprites_to_cursor(0);
+    default_reset_screen();
+    load_pokemon_sprite_raw(&game_data[0].party_3_undec[curr_mon], 0, BASE_Y_SPRITE_TRADE_ANIMATION_SEND, BASE_X_SPRITE_TRADE_ANIMATION);
+    set_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
+    enable_screen(BASE_SCREEN);
     prepare_flush();
 }
 
@@ -433,7 +508,7 @@ int main(void)
     irqEnable(IRQ_VBLANK);
     irqDisable(IRQ_SERIAL);
     
-    init_save_sections();
+    init_save_data();
     read_gen_3_data(&game_data[0]);
     
     init_item_icon();
@@ -443,6 +518,7 @@ int main(void)
     u8 evolved = 0;
     u8 learnable_moves = 0;
     u8 returned_val;
+    u8 move_go_on = 0;
     u8 update = 0;
     u8 target = 1;
     u8 region = 0;
@@ -455,6 +531,7 @@ int main(void)
     u8 submenu_cursor_x_pos = 0;
     u8 prev_val = 0;
     u8 curr_mon = 0;
+    u32 curr_move = 0;
     u8 success = 0;
     u8 other_mon = 0;
     u8 curr_page = 0;
@@ -485,7 +562,7 @@ int main(void)
                 else
                     print_start_trade();
             }
-            if(curr_state == WAITING_DATA) {
+            else if(curr_state == WAITING_DATA) {
                 if(get_trading_state() == RECEIVED_OFFER) {
                     keys = 0;
                     result = get_received_trade_offer();
@@ -517,10 +594,59 @@ int main(void)
                         curr_state = TRADING_ANIMATION;
                         learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
                         success = pre_write_gen_3_data(&game_data[0], !learnable_moves);
-                        process_party_data(&game_data[0]);
+                        if(!success) {
+                            //TODO: Handle bad save
+                        }
                     }
                     else
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                }
+            }
+            else if(curr_state == TRADING_ANIMATION) {
+                if(has_animation_completed()) {
+                    keys = 0;
+                
+                    if(learnable_moves) {
+                        learnable_moves_message_init(game_data, curr_mon);
+                        curr_move = 0;
+                    }
+                    else {
+                        //TODO: Handle done
+                    }
+                    //process_party_data(&game_data[0]);
+                }
+            }
+            else if(curr_state == LEARNABLE_MOVES_MESSAGE) {
+                keys = 0;
+                move_go_on = 0;
+                while(!move_go_on) {
+                    switch(learn_if_possible(&game_data[0].party_3_undec[curr_mon], curr_move)) {
+                        case SKIPPED:
+                            curr_move++;
+                            break;
+                        case LEARNT:
+                            handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                            break;
+                        case LEARNABLE:
+                            curr_state = LEARNABLE_MOVES_MESSAGE_MENU;
+                            move_go_on = 1;
+                            handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNABLE_P);
+                            break;
+                        case COMPLETED:
+                            success = pre_write_updated_moves_gen_3_data(&game_data[0]);
+                            if(!success) {
+                                //TODO: Handle bad save
+                            }
+                            disable_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
+                            prepare_flush();
+                            move_go_on = 1;
+                            //TODO: Handle done
+                            curr_state = MAIN_MENU;
+                            break;
+                        default:
+                            curr_move++;
+                            break;
+                    }
                 }
             }
         } while ((!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT)) && (!(keys & KEY_A)) && (!(keys & KEY_B)) && (!(keys & KEY_UP)) && (!(keys & KEY_DOWN)));
@@ -536,7 +662,7 @@ int main(void)
                     sio_stop_irq_slave();
                     irqDisable(IRQ_SERIAL);
                     disable_cursor();
-                    print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + 0x3FF40)));
+                    print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + MULTIBOOT_MAX_SIZE)));
                 }
                 else if(returned_val > VIEW_OWN_PARTY && returned_val <= VIEW_OWN_PARTY + TOTAL_GENS) {
                     curr_gen = returned_val - VIEW_OWN_PARTY;
@@ -677,6 +803,37 @@ int main(void)
                     cursor_update_offer_options(submenu_cursor_y_pos, submenu_cursor_x_pos);
                 break;
             case TRADING_ANIMATION:
+                break;
+            case LEARNABLE_MOVES_MESSAGE:
+                break;
+            case LEARNABLE_MOVES_MESSAGE_MENU:
+                returned_val = handle_input_learnable_message_moves_menu(keys, &cursor_x_pos);
+                if(returned_val) {
+                    if(returned_val == DENIED_LEARNING) {
+                        learnable_moves_message_init(game_data, curr_mon);
+                        handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, DID_NOT_LEARN_P);
+                    }
+                    else
+                        learnable_move_menu_init(game_data, curr_mon, curr_move, &cursor_y_pos);
+                }
+                else
+                    cursor_update_learnable_move_message_menu(cursor_x_pos);
+                break;
+            case LEARNABLE_MOVES_MENU:
+                returned_val = handle_input_learnable_moves_menu(keys, &cursor_y_pos);
+                if(returned_val) {
+                    if(returned_val == DO_NOT_FORGET_MOVE) {
+                        learnable_moves_message_init(game_data, curr_mon);
+                        handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, DID_NOT_LEARN_P);
+                    }
+                    else {
+                        forget_and_learn_move(&game_data[0].party_3_undec[curr_mon], curr_move, returned_val-1);
+                        learnable_moves_message_init(game_data, curr_mon);
+                        handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                    }
+                }
+                else
+                    cursor_update_learnable_move_menu(cursor_y_pos);
                 break;
             default:
                 main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);

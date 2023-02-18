@@ -462,9 +462,12 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
         else
             conversion_success = gen1_to_gen3(&party_info1->mons_data[i], &game_data->party_3_undec[i], party_info1->mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
         if(conversion_success) {
+            const u16* learnable_moves = game_data->party_3_undec[i].learnable_moves;
             process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
-            if(game_data->party_3_undec[i].is_valid_gen3)
+            if(game_data->party_3_undec[i].is_valid_gen3) {
+                game_data->party_3_undec[i].learnable_moves = learnable_moves;
                 found = 1;
+            }
         }
     }
     if (!found)

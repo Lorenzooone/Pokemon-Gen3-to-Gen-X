@@ -310,6 +310,14 @@ void set_text_y(u8 new_y){
     x_pos = 0;
 }
 
+u8 get_text_x(){
+    return x_pos;
+}
+
+u8 get_text_y(){
+    return y_pos;
+}
+
 void new_line(){
     x_pos = 0;
     y_pos += 1;

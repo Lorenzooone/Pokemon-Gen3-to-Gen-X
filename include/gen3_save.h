@@ -26,7 +26,7 @@ struct game_data_t {
 };
 
 void init_game_data(struct game_data_t*);
-void init_save_sections(void);
+void init_save_data(void);
 u8 read_gen_3_data(struct game_data_t*);
 void process_party_data(struct game_data_t* game_data);
 struct game_data_t* get_own_game_data(void);

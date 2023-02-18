@@ -165,7 +165,11 @@ u8 handle_input_trading_menu(u8* cursor_y_pos, u8* cursor_x_pos, u16 keys, u8 UN
         return options[cursor_x][cursor_y]+1;
     }
 
-    if(keys & KEY_LEFT) {
+    if(keys & KEY_B) {
+        cursor_x = 0;
+        cursor_y = PARTY_SIZE;
+    }
+    else if(keys & KEY_LEFT) {
         cursor_x = 0;
         if(cursor_y >= num_options[0])
             cursor_y = num_options[0]-1;
@@ -362,6 +366,48 @@ u8 handle_input_iv_fix_menu(u16 keys) {
     
     if(keys & KEY_A)
         return CONFIRM_IV_FIX;
+    
+    return 0;
+}
+
+u8 handle_input_learnable_message_moves_menu(u16 keys, u8* cursor_x_pos) {
+    
+    if(keys & KEY_A) {
+        if(*cursor_x_pos)
+            return DENIED_LEARNING;
+        return ENTER_LEARN_MENU;
+    }
+    
+    if(keys & KEY_B)
+        *cursor_x_pos = 1;
+    else if((keys & KEY_LEFT) || (keys & KEY_RIGHT))
+        *cursor_x_pos ^= 1;
+    
+    return 0;
+}
+
+u8 handle_input_learnable_moves_menu(u16 keys, u8* cursor_y_pos) {
+    
+    if(keys & KEY_A) {
+        if((*cursor_y_pos) >= MOVES_SIZE)
+            return DO_NOT_FORGET_MOVE;
+        return 1+(*cursor_y_pos);
+    }
+    
+    if(keys & KEY_B)
+        *cursor_y_pos = MOVES_SIZE;
+    else if(keys & KEY_UP) {
+        if(!(*cursor_y_pos))
+            *cursor_y_pos = MOVES_SIZE;
+        else
+            *cursor_y_pos -= 1;
+    }
+    else if(keys & KEY_DOWN) {
+        if((*cursor_y_pos) >= MOVES_SIZE)
+            *cursor_y_pos = 0;
+        else
+            *cursor_y_pos += 1;
+    }
     
     return 0;
 }

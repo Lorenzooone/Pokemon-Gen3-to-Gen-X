@@ -133,6 +133,7 @@
 #define GEN2_NO_MON 255
 
 #define POKEBALL_ID 4
+#define HIDDEN_POWER_ID 237
 
 #define ENIGMA_BERRY_ID 0x00AF
 #define EVERSTONE_ID 0x00C3
@@ -147,6 +148,8 @@
 #define ENGLISH_LANGUAGE 2
 
 typedef u32 gen3_party_total_t;
+
+enum LEARNABLE_MOVES_RETVAL {LEARNT, SKIPPED, LEARNABLE, COMPLETED};
 
 struct alternative_data_gen3 {
     u8 met_location;
@@ -378,6 +381,7 @@ const u8* get_hidden_power_type_name_gen3_pure(u32);
 const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc*);
 const u8* get_nature_name(u32);
 char get_nature_symbol(u32, u8);
+const u8* get_move_name_raw(u16);
 const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
 const u8* get_ability_name_raw(struct gen3_mon_data_unenc*);
 const u8* get_ribbon_name(struct gen3_mon_misc*, u8);
@@ -389,5 +393,7 @@ u8 get_pokemon_gender_kind_gen3_raw(struct gen3_mon_data_unenc*);
 void recalc_stats_gen3(struct gen3_mon_data_unenc*, struct gen3_mon*);
 void clean_mail_gen3(struct mail_gen3*, struct gen3_mon* mon);
 u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, u8);
+enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc*, u32);
+u8 forget_and_learn_move(struct gen3_mon_data_unenc*, u32, u32);
 
 #endif

@@ -61,7 +61,7 @@ void setup_trade_animation(struct gen3_mon_data_unenc* own_mon, struct gen3_mon_
     is_animating_evolution = 0;
 }
 
-u8 get_animation_state() {
+u8 has_animation_completed() {
     return animation_completed;
 }
 

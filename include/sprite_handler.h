@@ -2,6 +2,7 @@
 #define SPRITE_HANDLER__
 
 #include "print_system.h"
+#include "party_handler.h"
 #include "graphics_handler.h"
 
 #define TOP_SCREEN_SPRITE_POS SCREEN_REAL_HEIGHT
@@ -43,6 +44,14 @@
 #define BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS (SCREEN_HALF_X << 3)
 #define BASE_Y_CURSOR_TRADE_OPTIONS (SCREEN_HEIGHT-8)
 
+#define BASE_X_CURSOR_LEARN_MOVE_MESSAGE_YES 18
+#define BASE_X_CURSOR_LEARN_MOVE_MESSAGE_NO (((SCREEN_WIDTH-16)>>1) + BASE_X_CURSOR_LEARN_MOVE_MESSAGE_YES)
+#define BASE_Y_CURSOR_LEARN_MOVE_MESSAGE (SCREEN_HEIGHT-16)
+
+#define BASE_X_CURSOR_LEARN_MOVE_MENU 2
+#define BASE_Y_CURSOR_INCREMENT_LEARN_MOVE_MENU 16
+#define BASE_Y_CURSOR_LEARN_MOVE_MENU (SCREEN_HEIGHT-8-(BASE_Y_CURSOR_INCREMENT_LEARN_MOVE_MENU*(MOVES_SIZE-1+1)))
+
 #define BASE_Y_SPRITE_OFFER_MENU 0
 #define BASE_X_SPRITE_OFFER_MENU 0
 #define BASE_X_CURSOR_INCREMENT_OFFER_OPTIONS 64
@@ -69,7 +78,7 @@ void reset_sprites(u8);
 void disable_all_sprites(void);
 void enable_all_sprites(void);
 void update_normal_oam(void);
-void reset_sprites_to_cursor(void);
+void reset_sprites_to_cursor(u8);
 void reset_sprites_to_party(void);
 void fade_all_sprites_to_white(u16);
 void remove_fade_all_sprites(void);
