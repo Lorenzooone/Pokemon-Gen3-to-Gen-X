@@ -1093,6 +1093,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->is_valid_gen3 = 0;
     data_dst->is_valid_gen2 = 0;
+    data_dst->learnable_moves = NULL;
     
     // Check if valid
     if(!validate_converting_mon_of_gen2(index, src, &is_egg))
@@ -1185,6 +1186,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->is_valid_gen3 = 0;
     data_dst->is_valid_gen1 = 0;
+    data_dst->learnable_moves = NULL;
     
     // Check if valid
     if(!validate_converting_mon_of_gen1(index, src))

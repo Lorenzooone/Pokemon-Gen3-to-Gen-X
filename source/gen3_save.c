@@ -47,7 +47,6 @@ u32 read_slot_index(int);
 void read_game_data_trainer_info(int, struct game_data_t*);
 void register_dex_entry(struct game_data_t*, struct gen3_mon_data_unenc*);
 void handle_mail_trade(struct game_data_t*, u8, u8);
-void process_party_data(struct game_data_t*);
 void read_party(int, struct game_data_t*);
 void update_gift_ribbons(struct game_data_t*, const u8*);
 u8 validate_slot(int);
@@ -81,6 +80,16 @@ void init_game_data(struct game_data_t* game_data) {
     
     for(size_t i = 0; i < (OT_NAME_GEN3_SIZE+1); i++)
         game_data->trainer_name[i] = GEN3_EOL;
+    
+    for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++) {
+        for(size_t j = 0; j < sizeof(struct mail_gen3); j++)
+            ((u8*)(&game_data->mails_3[i]))[j] = 0;
+        for(size_t j = 0; j < sizeof(struct gen3_mon_data_unenc); j++)
+            ((u8*)(&game_data->party_3_undec[i]))[j] = 0;
+    }
+    
+    for(size_t i = 0; i < sizeof(struct gen3_party); i++)
+        ((u8*)(&game_data->party_3))[i] = 0;
     
     for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++)
         game_data->party_3_undec[i].is_valid_gen3 = 0;

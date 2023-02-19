@@ -62,6 +62,7 @@ void waiting_init(void);
 void invalid_init(u8);
 void waiting_offer_init(u8, u8);
 void waiting_accept_init(u8);
+void waiting_success_init(void);
 void trade_options_init(u8, u8*, u8);
 void trade_menu_init(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
 void start_trade_init(struct game_data_t*, u8, u8, u8, u8, u8*);
@@ -344,6 +345,11 @@ void waiting_accept_init(u8 decline) {
         try_to_accept_offer();
 }
 
+void waiting_success_init() {
+    waiting_init();
+    try_to_success();
+}
+
 void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos, u8 own_menu) {
     curr_state = TRADE_OPTIONS;
     set_screen(TRADE_OPTIONS_WINDOW_SCREEN);
@@ -601,6 +607,16 @@ int main(void)
                     else
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                 }
+                else if(get_trading_state() == RECEIVED_SUCCESS) {
+                    keys = 0;
+                    success = complete_write_gen_3_data();
+                    if(!success) {
+                        //TODO: Handle bad save
+                    }
+                    process_party_data(&game_data[0]);
+                    stop_transfer(master);
+                    start_trade_init(&game_data[0], target, region, master, curr_gen, &cursor_y_pos);
+                }
             }
             else if(curr_state == TRADING_ANIMATION) {
                 if(has_animation_completed()) {
@@ -610,10 +626,8 @@ int main(void)
                         learnable_moves_message_init(game_data, curr_mon);
                         curr_move = 0;
                     }
-                    else {
-                        //TODO: Handle done
-                    }
-                    //process_party_data(&game_data[0]);
+                    else
+                        waiting_success_init();
                 }
             }
             else if(curr_state == LEARNABLE_MOVES_MESSAGE) {
@@ -640,8 +654,7 @@ int main(void)
                             disable_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
                             prepare_flush();
                             move_go_on = 1;
-                            //TODO: Handle done
-                            curr_state = MAIN_MENU;
+                            waiting_success_init();
                             break;
                         default:
                             curr_move++;

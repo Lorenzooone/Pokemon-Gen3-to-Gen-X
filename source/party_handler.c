@@ -38,6 +38,7 @@
 #include "learnset_evos_gen2_bin.h"
 #include "learnset_evos_gen3_bin.h"
 #include "dex_conversion_bin.h"
+#include "pokemon_moves_pp_bin.h"
 
 #define UNOWN_B_START 415
 #define INITIAL_MAIL_GEN3 121
@@ -55,7 +56,9 @@ const u8* get_pokemon_sprite_pointer(int, u32, u8, u8);
 u8 get_pokemon_sprite_info(int, u32, u8, u8);
 u8 get_palette_references(int, u32, u8, u8);
 void load_pokemon_sprite(int, u32, u8, u8, u8, u8, u16, u16);
-u8 make_moves_legal_gen3(struct gen3_mon_attacks*);
+void teach_move(struct gen3_mon_attacks*, struct gen3_mon_growth*, u16, u8);
+void swap_move(struct gen3_mon_attacks*, struct gen3_mon_growth*, u8, u8);
+u8 make_moves_legal_gen3(struct gen3_mon_attacks*, struct gen3_mon_growth*);
 u8 is_egg_gen3(struct gen3_mon*, struct gen3_mon_misc*);
 u8 is_shiny_gen3(u32, u32, u8, u32);
 u8 get_mail_id(struct gen3_mon*, struct gen3_mon_growth*, u8);
@@ -334,8 +337,55 @@ const u8* get_move_name_gen3(struct gen3_mon_attacks* attacks, u8 slot){
     return get_move_name_raw(attacks->moves[slot]);
 }
 
-u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks){
-    u8 previous_moves[MOVES_SIZE];
+void swap_move(struct gen3_mon_attacks* attacks, struct gen3_mon_growth* growth, u8 base_index, u8 other_index) {
+    if((base_index >= MOVES_SIZE) || (other_index >= MOVES_SIZE))
+        return;
+    
+    u16 other_move = attacks->moves[other_index];
+    u8 other_pps = attacks->pp[other_index];
+    u8 other_pp_bonuses = (growth->pp_bonuses>>(2*other_index))&3;
+
+    if((attacks->moves[other_index] == 0) || (attacks->moves[other_index] > LAST_VALID_GEN_3_MOVE)) {
+        other_move = 0;
+        other_pps = 0;
+        other_pp_bonuses = 0;
+    }
+    
+    attacks->moves[other_index] = attacks->moves[base_index];
+    attacks->pp[other_index] = attacks->pp[base_index];
+    growth->pp_bonuses &= ~(3<<(2*other_index));
+    growth->pp_bonuses |= ((growth->pp_bonuses>>(2*base_index))&3)<<(2*other_index);
+
+    if((attacks->moves[other_index] == 0) || (attacks->moves[other_index] > LAST_VALID_GEN_3_MOVE)) {
+        attacks->moves[other_index] = 0;
+        attacks->pp[other_index] = 0;
+        growth->pp_bonuses &= ~(3<<(2*other_index));
+    }
+    
+    attacks->moves[base_index] = other_move;
+    attacks->pp[base_index] = other_pps;
+    growth->pp_bonuses &= ~(3<<(2*base_index));
+    growth->pp_bonuses |= other_pp_bonuses<<(2*base_index);
+}
+
+void teach_move(struct gen3_mon_attacks* attacks, struct gen3_mon_growth* growth, u16 new_move, u8 base_index) {
+    if(base_index >= MOVES_SIZE)
+        return;
+    
+    growth->pp_bonuses &= ~(3<<(2*base_index));
+
+    if((new_move == 0) || (new_move > LAST_VALID_GEN_3_MOVE)) {
+        attacks->moves[base_index] = 0;
+        attacks->pp[base_index] = 0;
+        return;
+    }
+
+    attacks->moves[base_index] = new_move;
+    attacks->pp[base_index] = pokemon_moves_pp_bin[new_move];
+}
+
+u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks, struct gen3_mon_growth* growth){
+    u16 previous_moves[MOVES_SIZE];
     u8 curr_slot = 0;
     
     for(size_t i = 0; i < MOVES_SIZE; i++) {
@@ -344,14 +394,14 @@ u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks){
             for(int j = 0; j < curr_slot; j++)
                 if(attacks->moves[i] == previous_moves[j]){
                     found = 1;
-                    attacks->moves[i] = 0;
+                    teach_move(attacks, growth, 0, i);
                     break;
                 }
             if(!found)
                 previous_moves[curr_slot++] = attacks->moves[i];
         }
         else
-            attacks->moves[i] = 0;
+            teach_move(attacks, growth, 0, i);
     }
     
     if(curr_slot)
@@ -798,7 +848,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     make_evs_legal_gen3(evs);
     
-    if(!make_moves_legal_gen3(attacks)) {
+    if(!make_moves_legal_gen3(attacks, growth)) {
         dst->is_valid_gen3 = 0;
         dst->is_valid_gen2 = 0;
         dst->is_valid_gen1 = 0;
@@ -949,6 +999,7 @@ enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc* mon, u
         return SKIPPED;
     
     struct gen3_mon_attacks* attacks = &mon->attacks;
+    struct gen3_mon_growth* growth = &mon->growth;
     
     for(size_t i = 0; i < MOVES_SIZE; i++)
         if(attacks->moves[i] == move)
@@ -956,14 +1007,14 @@ enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc* mon, u
     
     for(size_t i = 0; i < MOVES_SIZE; i++)
         if((attacks->moves[i] == 0) || (attacks->moves[i] > LAST_VALID_GEN_3_MOVE)) {
-            attacks->moves[i] = move;
+            teach_move(attacks, growth, move, i);
             return LEARNT;
         }
     
     if(mon->is_egg) {
         for(size_t i = 0; i < MOVES_SIZE-1; i++)
-            attacks->moves[i] = attacks->moves[i+1];
-        attacks->moves[MOVES_SIZE-1] = move;
+            swap_move(attacks, growth, i, i+1);
+        teach_move(attacks, growth, move, MOVES_SIZE-1);
         return LEARNT;
     }
 
@@ -990,10 +1041,11 @@ u8 forget_and_learn_move(struct gen3_mon_data_unenc* mon, u32 index, u32 forget_
         return 0;
     
     struct gen3_mon_attacks* attacks = &mon->attacks;
+    struct gen3_mon_growth* growth = &mon->growth;
     
     // Do not limit HMs' replaceability for better user experience,
     // even though normal games do it
-    attacks->moves[forget_index] = move;
+    teach_move(attacks, growth, move, forget_index);
     
     return 1;
 }

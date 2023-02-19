@@ -428,13 +428,6 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     init_game_data(game_data);
     game_data->game_identifier.game_is_jp = is_jp;
     
-    for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++)
-        for(size_t j = 0; j < sizeof(struct mail_gen3); j++)
-            ((u8*)(&game_data->mails_3[i]))[j] = 0;
-    
-    for(size_t i = 0; i < sizeof(struct gen3_party); i++)
-        ((u8*)(&game_data->party_3))[i] = 0;
-    
     copy_bytes(default_gift_ribbons_bin, game_data->giftRibbons, GIFT_RIBBONS, 0, 0);
     game_data->trainer_gender = 0;
     

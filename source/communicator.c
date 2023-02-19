@@ -31,6 +31,7 @@ void reset_transfer_data_between_sync(void);
 void init_transfer_data(void);
 u8 get_offer(u8, u8, u8);
 u8 get_accept(u8, u8);
+u8 get_success(u8, u8);
 int communicate_buffer(u8, u8);
 int check_if_continue(u8, const u8*, const u8*, size_t, int, int, u8);
 int process_data_arrived_gen1(u8, u8);
@@ -94,6 +95,7 @@ int skip_sends = 0;
 u8 base_pos_out = 0;
 u8 increment_out = 0;
 u8 last_filtered = 0;
+u8 received_once = 0;
 u8 since_last_recv_gen3 = 0;
 int own_end_gen3;
 u16 other_pos_gen3;
@@ -103,26 +105,36 @@ u8 received_gen3[(sizeof(struct gen3_trade_data)>>4)+1];
 
 void try_to_end_trade() {
     syn_transmitted = 0;
+    received_once = 0;
     trade_offer_out = CANCEL_VALUE;
     trading_state = HAVE_OFFER;
 }
 
 void try_to_offer(u8 index) {
     syn_transmitted = 0;
+    received_once = 0;
     trade_offer_out = index;
     trading_state = HAVE_OFFER;
 }
 
 void try_to_accept_offer() {
     syn_transmitted = 0;
+    received_once = 0;
     trade_offer_out = ACCEPT_VALUE;
     trading_state = HAVE_ACCEPT;
 }
 
 void try_to_decline_offer() {
     syn_transmitted = 0;
+    received_once = 0;
     trade_offer_out = DECLINE_VALUE;
     trading_state = HAVE_ACCEPT;
+}
+
+void try_to_success() {
+    syn_transmitted = 0;
+    received_once = 0;
+    trading_state = HAVE_SUCCESS;
 }
 
 int get_received_trade_offer() {
@@ -266,8 +278,12 @@ IWRAM_CODE u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
     next_long_pause = 1;
     u8 limit_trade_offer = trade_offer_start + PARTY_SIZE;
     if(((data >= trade_offer_start) && (data < limit_trade_offer)) || (data == end_trade_value)) {
-        trade_offer_in = data - trade_offer_start;
-        trading_state = RECEIVED_OFFER;
+        if(received_once) {
+            trade_offer_in = data - trade_offer_start;
+            trading_state = RECEIVED_OFFER;
+        }
+        else
+            received_once = 1;
     }
     return trade_offer_start + trade_offer_out;
 }
@@ -275,10 +291,25 @@ IWRAM_CODE u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
 IWRAM_CODE u8 get_accept(u8 data, u8 trade_offer_start) {
     next_long_pause = 1;
     if((data == (trade_offer_start + DECLINE_VALUE)) || (data == (trade_offer_start + ACCEPT_VALUE))) {
-        trade_offer_in = data - trade_offer_start;
-        trading_state = RECEIVED_ACCEPT;
+        if(received_once) {
+            trade_offer_in = data - trade_offer_start;
+            trading_state = RECEIVED_ACCEPT;
+        }
+        else
+            received_once = 1;
     }
     return trade_offer_start + trade_offer_out;
+}
+
+IWRAM_CODE u8 get_success(u8 data, u8 trade_offer_start) {
+    next_long_pause = 1;
+    if(((data & 0xF0) == (trade_offer_start & 0xF0))) {
+        if(received_once)
+            trading_state = RECEIVED_SUCCESS;
+        else
+            received_once = 1;
+    }
+    return trade_offer_start;
 }
 
 IWRAM_CODE MAX_OPTIMIZE void set_next_vcount_interrupt(void){
@@ -443,6 +474,8 @@ IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
                 return get_offer(data, GEN1_TRADE_OFFER_START, END_TRADE_BYTE_GEN1);
             case HAVE_ACCEPT:
                 return get_accept(data, GEN1_TRADE_OFFER_START);
+            case HAVE_SUCCESS:
+                return get_success(data, GEN1_TRADE_SUCCESS_BASE);
             default:
                 return SEND_NO_INFO;
         }
@@ -508,6 +541,8 @@ IWRAM_CODE int process_data_arrived_gen2(u8 data, u8 is_master) {
                 return get_offer(data, GEN2_TRADE_OFFER_START, END_TRADE_BYTE_GEN2);
             case HAVE_ACCEPT:
                 return get_accept(data, GEN2_TRADE_OFFER_START);
+            case HAVE_SUCCESS:
+                return get_success(data, GEN2_TRADE_SUCCESS_BASE);
             default:
                 return SEND_NO_INFO;
             break;
