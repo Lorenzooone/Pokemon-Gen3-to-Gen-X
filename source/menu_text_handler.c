@@ -87,11 +87,11 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
         num_parties = 1;
     
     if(is_own)
-        PRINT_FUNCTION("\x05 - Gen \x03\n", game_data[0].trainer_name, OT_NAME_GEN3_SIZE+1, game_data[0].game_identifier.game_is_jp, curr_gen);
+        PRINT_FUNCTION("\x05 - Gen \x03\n", game_data[0].trainer_name, OT_NAME_GEN3_SIZE, game_data[0].game_identifier.game_is_jp, curr_gen);
     else {
         for(int i = 0; i < num_parties; i++) {
             set_text_x(SCREEN_HALF_X * i);
-            PRINT_FUNCTION("\x05 - \x01", game_data[i].trainer_name, OT_NAME_GEN3_SIZE+1, game_data[i].game_identifier.game_is_jp, person_strings[i]);
+            PRINT_FUNCTION("\x05 - \x01", game_data[i].trainer_name, OT_NAME_GEN3_SIZE, game_data[i].game_identifier.game_is_jp, person_strings[i]);
         }
     }
 
