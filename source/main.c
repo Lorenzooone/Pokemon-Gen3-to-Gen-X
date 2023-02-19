@@ -559,109 +559,117 @@ int main(void)
             VBlankIntrWait();
             scanKeys();
             keys = keysDown();
-            if(curr_state == START_TRADE) {
-                if(get_start_state_raw() == START_TRADE_DON) {
-                    keys = 0;
-                    read_comm_buffer(&game_data[1], curr_gen, region);
-                    own_menu = 0;
-                    trade_menu_init(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
-                }
-                else
-                    print_start_trade();
-            }
-            else if(curr_state == WAITING_DATA) {
-                if(get_trading_state() == RECEIVED_OFFER) {
-                    keys = 0;
-                    result = get_received_trade_offer();
-                    if(result == TRADE_CANCELLED)
-                        conclude_trade(&game_data[0], target, region, master, &cursor_y_pos);
-                    else if(result == WANTS_TO_CANCEL)
-                        return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
-                    else {
-                        u8 is_invalid = is_invalid_offer(game_data, curr_mon, result);
-                        if(!is_invalid) {
-                            other_mon = result;
-                            offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos, 1);
-                        }
-                        else {
-                            is_invalid -= 1;
-                            return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
-                            invalid_init(is_invalid);
-                            waiting_accept_init(1);
-                        }
-                    }
-                }
-                else if(get_trading_state() == RECEIVED_ACCEPT) {
-                    keys = 0;
-                    if(has_accepted_offer()) {
-                        trading_animation_init(game_data, curr_mon, other_mon);
-                        evolved = trade_mons(game_data, curr_mon, other_mon, curr_gen);
-                        if(evolved)
-                            evolution_animation_init(game_data, curr_mon);
-                        curr_state = TRADING_ANIMATION;
-                        learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
-                        success = pre_write_gen_3_data(&game_data[0], !learnable_moves);
-                        if(!success) {
-                            //TODO: Handle bad save
-                        }
+            switch(curr_state) {
+                case START_TRADE:
+                    if(get_start_state_raw() == START_TRADE_DON) {
+                        keys = 0;
+                        read_comm_buffer(&game_data[1], curr_gen, region);
+                        own_menu = 0;
+                        trade_menu_init(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     }
                     else
-                        return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
-                }
-                else if(get_trading_state() == RECEIVED_SUCCESS) {
-                    keys = 0;
-                    success = complete_write_gen_3_data();
-                    if(!success) {
-                        //TODO: Handle bad save
-                    }
-                    process_party_data(&game_data[0]);
-                    stop_transfer(master);
-                    start_trade_init(&game_data[0], target, region, master, curr_gen, &cursor_y_pos);
-                }
-            }
-            else if(curr_state == TRADING_ANIMATION) {
-                if(has_animation_completed()) {
-                    keys = 0;
-                
-                    if(learnable_moves) {
-                        learnable_moves_message_init(game_data, curr_mon);
-                        curr_move = 0;
-                    }
-                    else
-                        waiting_success_init();
-                }
-            }
-            else if(curr_state == LEARNABLE_MOVES_MESSAGE) {
-                keys = 0;
-                move_go_on = 0;
-                while(!move_go_on) {
-                    switch(learn_if_possible(&game_data[0].party_3_undec[curr_mon], curr_move)) {
-                        case SKIPPED:
-                            curr_move++;
+                        print_start_trade();
+                    break;
+                case WAITING_DATA:
+                    switch(get_trading_state()) {
+                        case RECEIVED_OFFER:
+                            keys = 0;
+                            result = get_received_trade_offer();
+                            if(result == TRADE_CANCELLED)
+                                conclude_trade(&game_data[0], target, region, master, &cursor_y_pos);
+                            else if(result == WANTS_TO_CANCEL)
+                                return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                            else {
+                                u8 is_invalid = is_invalid_offer(game_data, curr_mon, result);
+                                if(!is_invalid) {
+                                    other_mon = result;
+                                    offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos, 1);
+                                }
+                                else {
+                                    is_invalid -= 1;
+                                    return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                                    invalid_init(is_invalid);
+                                    waiting_accept_init(1);
+                                }
+                            }
                             break;
-                        case LEARNT:
-                            handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                        case RECEIVED_ACCEPT:
+                            keys = 0;
+                            if(has_accepted_offer()) {
+                                trading_animation_init(game_data, curr_mon, other_mon);
+                                evolved = trade_mons(game_data, curr_mon, other_mon, curr_gen);
+                                if(evolved)
+                                    evolution_animation_init(game_data, curr_mon);
+                                curr_state = TRADING_ANIMATION;
+                                learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
+                                success = pre_write_gen_3_data(&game_data[0], !learnable_moves);
+                                if(!success) {
+                                    //TODO: Handle bad save
+                                }
+                            }
+                            else
+                                return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                             break;
-                        case LEARNABLE:
-                            curr_state = LEARNABLE_MOVES_MESSAGE_MENU;
-                            move_go_on = 1;
-                            handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNABLE_P);
-                            break;
-                        case COMPLETED:
-                            success = pre_write_updated_moves_gen_3_data(&game_data[0]);
+                        case RECEIVED_SUCCESS:
+                            keys = 0;
+                            success = complete_write_gen_3_data();
                             if(!success) {
                                 //TODO: Handle bad save
                             }
-                            disable_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
-                            prepare_flush();
-                            move_go_on = 1;
-                            waiting_success_init();
+                            process_party_data(&game_data[0]);
+                            stop_transfer(master);
+                            start_trade_init(&game_data[0], target, region, master, curr_gen, &cursor_y_pos);
                             break;
                         default:
-                            curr_move++;
                             break;
                     }
-                }
+                    break;
+                case TRADING_ANIMATION:
+                    if(has_animation_completed()) {
+                        keys = 0;
+                    
+                        if(learnable_moves) {
+                            learnable_moves_message_init(game_data, curr_mon);
+                            curr_move = 0;
+                        }
+                        else
+                            waiting_success_init();
+                    }
+                    break;
+                case LEARNABLE_MOVES_MESSAGE:
+                    keys = 0;
+                    move_go_on = 0;
+                    while(!move_go_on) {
+                        switch(learn_if_possible(&game_data[0].party_3_undec[curr_mon], curr_move)) {
+                            case SKIPPED:
+                                curr_move++;
+                                break;
+                            case LEARNT:
+                                handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                                break;
+                            case LEARNABLE:
+                                curr_state = LEARNABLE_MOVES_MESSAGE_MENU;
+                                move_go_on = 1;
+                                handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNABLE_P);
+                                break;
+                            case COMPLETED:
+                                success = pre_write_updated_moves_gen_3_data(&game_data[0]);
+                                if(!success) {
+                                    //TODO: Handle bad save
+                                }
+                                disable_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
+                                prepare_flush();
+                                move_go_on = 1;
+                                waiting_success_init();
+                                break;
+                            default:
+                                curr_move++;
+                                break;
+                        }
+                    }
+                    break;
+                default:
+                    break;
             }
         } while ((!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT)) && (!(keys & KEY_A)) && (!(keys & KEY_B)) && (!(keys & KEY_UP)) && (!(keys & KEY_DOWN)));
         
