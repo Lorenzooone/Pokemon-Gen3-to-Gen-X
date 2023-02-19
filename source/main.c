@@ -487,6 +487,7 @@ void return_to_trade_menu(struct game_data_t* game_data, u8 target, u8 region, u
 
 int main(void)
 {
+    curr_state = MAIN_MENU;
     counter = 0;
     input_counter = 0;
     find_optimal_ewram_settings();
