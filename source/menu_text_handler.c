@@ -102,10 +102,10 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
     for(int i = 0; i < 2; i++)
         options[i] = get_options_trade(i);
     for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++) {
-        set_text_y(2+(3 * i));
+        set_text_y((BASE_Y_CURSOR_TRADING_MENU>>3)+((BASE_Y_SPRITE_INCREMENT_TRADE_MENU>>3) * i));
         for(int j = 0; j < num_parties; j++) {
             // These two values are for debug only - They should be j and i
-            set_text_x(5 + (SCREEN_HALF_X * j));
+            set_text_x(POKEMON_SPRITE_X_TILES + ((BASE_X_SPRITE_TRADE_MENU+7)>>3) + (SCREEN_HALF_X * j));
             u8 party_index = j;
             u8 party_option_index = i;
             if(options[party_index][party_option_index] != 0xFF) {
@@ -198,15 +198,15 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
         
         if(!is_egg) {
             set_text_y(curr_text_y++);
-            set_text_x(4+(OFFER_WINDOW_X*i));
+            set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
             PRINT_FUNCTION("\x01", get_pokemon_name_raw(mon));
         
             set_text_y(curr_text_y++);
-            set_text_x(4+(OFFER_WINDOW_X*i));
+            set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
             PRINT_FUNCTION("Lv. \x03 \x02", to_valid_level_gen3(mon->src), get_pokemon_gender_char_raw(mon));
             if(is_shiny) {
                 set_text_y(curr_text_y++);
-                set_text_x(4+(OFFER_WINDOW_X*i));
+                set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
                 PRINT_FUNCTION("Shiny");
             }
             else
@@ -241,7 +241,7 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
         else {
             curr_text_y++;
             set_text_y(curr_text_y++);
-            set_text_x(4+(OFFER_WINDOW_X*i));
+            set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
             PRINT_FUNCTION("\x01", get_pokemon_name_raw(mon));
         }
     }
@@ -293,11 +293,11 @@ void print_trade_options(u8 cursor_x_pos, u8 own_menu){
         PRINT_FUNCTION("  Offer");
 }
 
-void print_waiting(){
+void print_waiting(s8 y_increase){
     reset_screen(BLANK_FILL);
-    init_waiting_window();
-    clear_waiting_window();
-    set_text_y(WAITING_WINDOW_Y);
+    init_waiting_window(y_increase);
+    clear_waiting_window(y_increase);
+    set_text_y(WAITING_WINDOW_Y + y_increase);
     set_text_x(WAITING_WINDOW_X);
     PRINT_FUNCTION("Waiting...");
 }
@@ -522,13 +522,13 @@ void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
         load_pokemon_sprite_raw(mon, 1, y, x);
     }
     
-    set_text_y((y>>3) + 2);
-    set_text_x((x>>3) + 4);
+    set_text_y((y>>3) + (POKEMON_SPRITE_Y_TILES>>1));
+    set_text_x((x>>3) + POKEMON_SPRITE_X_TILES);
     
     if(!is_egg) {
         PRINT_FUNCTION("\x05 - \x01 \x02\n", mon->src->nickname, NICKNAME_GEN3_SIZE, is_jp, get_pokemon_name_raw(mon), get_pokemon_gender_char_raw(mon));
     
-        set_text_x((x>>3) + 4);
+        set_text_x((x>>3) + POKEMON_SPRITE_X_TILES);
         
         if(is_shiny)
             PRINT_FUNCTION("Shiny");

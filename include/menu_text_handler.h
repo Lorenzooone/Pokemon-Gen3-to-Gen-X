@@ -21,7 +21,7 @@ void print_main_menu(u8, u8, u8, u8);
 void print_multiboot_mid_process(u8);
 void print_multiboot(enum MULTIBOOT_RESULTS);
 void print_start_trade(void);
-void print_waiting(void);
+void print_waiting(s8);
 void print_saving(void);
 void print_evolution_animation(struct gen3_mon_data_unenc*);
 void print_invalid(u8);

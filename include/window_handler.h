@@ -76,8 +76,8 @@ void clear_message_window(void);
 void init_offer_options_window(void);
 void clear_offer_options_window(void);
 
-void init_waiting_window(void);
-void clear_waiting_window(void);
+void init_waiting_window(s8);
+void clear_waiting_window(s8);
 
 void init_learn_move_message_window(void);
 void clear_learn_move_message_window(void);

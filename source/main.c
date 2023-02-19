@@ -58,7 +58,7 @@ void saving_print_screen(void);
 void trading_animation_init(struct game_data_t*, u8, u8);
 void evolution_animation_init(struct game_data_t*, u8);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
-void waiting_init(void);
+void waiting_init(s8);
 void invalid_init(u8);
 void waiting_offer_init(u8, u8);
 void waiting_accept_init(u8);
@@ -314,10 +314,10 @@ void offer_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8* cur
     prepare_flush();
 }
 
-void waiting_init() {
+void waiting_init(s8 y_increase) {
     curr_state = WAITING_DATA;
     set_screen(WAITING_WINDOW_SCREEN);
-    print_waiting();
+    print_waiting(y_increase);
     enable_screen(WAITING_WINDOW_SCREEN);
     prepare_flush();
 }
@@ -330,7 +330,7 @@ void invalid_init(u8 reason) {
 }
 
 void waiting_offer_init(u8 cancel, u8 cursor_y_pos) {
-    waiting_init();
+    waiting_init(0);
     if(cancel)
         try_to_end_trade();
     else
@@ -338,7 +338,7 @@ void waiting_offer_init(u8 cancel, u8 cursor_y_pos) {
 }
 
 void waiting_accept_init(u8 decline) {
-    waiting_init();
+    waiting_init(0);
     if(decline)
         try_to_decline_offer();
     else
@@ -346,7 +346,7 @@ void waiting_accept_init(u8 decline) {
 }
 
 void waiting_success_init() {
-    waiting_init();
+    waiting_init((((BASE_Y_SPRITE_TRADE_ANIMATION_SEND+(POKEMON_SPRITE_Y_TILES<<3))>>3)+1)-WAITING_WINDOW_Y);
     try_to_success();
 }
 
