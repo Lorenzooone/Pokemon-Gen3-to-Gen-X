@@ -26,7 +26,7 @@ static void convert_3bpp_forward(const u8*, u32*, size_t, u8);
 void convert_3bpp_forward_odd(const u8*, u32*, size_t);
 void convert_3bpp_forward_even(const u8*, u32*, size_t);
 
-IWRAM_CODE MAX_OPTIMIZE void load_pokemon_sprite_gfx(const u32* src, u32* dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
+MAX_OPTIMIZE void load_pokemon_sprite_gfx(const u32* src, u32* dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
     
     u32 buffer[BUFFER_SIZE];
     LZ77UnCompWram(src, buffer);
@@ -69,7 +69,7 @@ void convert_xbpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward,
     }
 }
 
-IWRAM_CODE MAX_OPTIMIZE ALWAYS_INLINE void pokemon_sprite_zero_fill(u32* src_buffer, u32* dst, u8 is_odd, u8 is_3bpp) {
+MAX_OPTIMIZE ALWAYS_INLINE void pokemon_sprite_zero_fill(u32* src_buffer, u32* dst, u8 is_odd, u8 is_3bpp) {
     u32 zero = 0;
     u32 mid_buffer[BUFFER_SIZE];
     size_t processed_size = SINGLE_POKEMON_SPRITE_SIZE-POKEMON_SPRITE_ROW_SIZE;
@@ -91,7 +91,7 @@ IWRAM_CODE MAX_OPTIMIZE ALWAYS_INLINE void pokemon_sprite_zero_fill(u32* src_buf
     CpuFastSet(mid_buffer, dst, (TOTAL_POKEMON_SPRITE_SIZE>>2));
 }
 
-IWRAM_CODE MAX_OPTIMIZE ALWAYS_INLINE void convert_3bpp_forward(const u8* src, u32* dst, size_t src_size, u8 is_odd) {
+MAX_OPTIMIZE ALWAYS_INLINE void convert_3bpp_forward(const u8* src, u32* dst, size_t src_size, u8 is_odd) {
     if(is_odd)
         convert_3bpp_forward_odd(src, dst, src_size);
     else

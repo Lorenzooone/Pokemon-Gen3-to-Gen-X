@@ -274,7 +274,7 @@ void init_start_state() {
     set_start_state(START_TRADE_UNK);
 }
 
-IWRAM_CODE u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
+u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
     next_long_pause = 1;
     u8 limit_trade_offer = trade_offer_start + PARTY_SIZE;
     if(((data >= trade_offer_start) && (data < limit_trade_offer)) || (data == end_trade_value)) {
@@ -288,7 +288,7 @@ IWRAM_CODE u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
     return trade_offer_start + trade_offer_out;
 }
 
-IWRAM_CODE u8 get_accept(u8 data, u8 trade_offer_start) {
+u8 get_accept(u8 data, u8 trade_offer_start) {
     next_long_pause = 1;
     if((data == (trade_offer_start + DECLINE_VALUE)) || (data == (trade_offer_start + ACCEPT_VALUE))) {
         if(received_once) {
@@ -301,7 +301,7 @@ IWRAM_CODE u8 get_accept(u8 data, u8 trade_offer_start) {
     return trade_offer_start + trade_offer_out;
 }
 
-IWRAM_CODE u8 get_success(u8 data, u8 trade_offer_start) {
+u8 get_success(u8 data, u8 trade_offer_start) {
     next_long_pause = 1;
     if(((data & 0xF0) == (trade_offer_start & 0xF0))) {
         if(received_once)
@@ -312,14 +312,14 @@ IWRAM_CODE u8 get_success(u8 data, u8 trade_offer_start) {
     return trade_offer_start;
 }
 
-IWRAM_CODE MAX_OPTIMIZE void set_next_vcount_interrupt(void){
+MAX_OPTIMIZE void set_next_vcount_interrupt(void){
     int next_stop = REG_VCOUNT + VCOUNT_WAIT_LINES;
     if(next_stop >= SCANLINES)
         next_stop -= SCANLINES;
     REG_DISPSTAT  = (REG_DISPSTAT &0xFF) | (next_stop<<8);
 }
 
-IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
+int communicate_buffer(u8 data, u8 is_master) {
     u8 ignore_data = 0;
     if(!has_transmitted_syn) {
         if((syn_transmitted > MAX_WAIT_FOR_SYN) && (!is_master)) {
@@ -388,7 +388,7 @@ IWRAM_CODE int check_if_continue(u8 data, const u8* sends, const u8* recvs, size
     return sends[buffer_counter];
 }
 
-IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
+int process_data_arrived_gen1(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
     if(start_state != START_TRADE_DON)
@@ -482,7 +482,7 @@ IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
     }
 }
 
-IWRAM_CODE int process_data_arrived_gen2(u8 data, u8 is_master) {
+int process_data_arrived_gen2(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
     if(start_state != START_TRADE_DON)
