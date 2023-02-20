@@ -203,9 +203,12 @@ u8 trade_mons(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8 curr_g
     return ret_val;
 }
 
-u8 is_invalid_offer(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
+u8 is_invalid_offer(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8 curr_gen, u16 received_species) {
     // Check for validity
     if(!game_data[1].party_3_undec[other_mon].is_valid_gen3)
+        return 1 + 0;
+    // For gen 3, check the correct species from the other actor
+    if((curr_gen == 3) && (game_data[1].party_3_undec[other_mon].growth.species != received_species))
         return 1 + 0;
     // Check that the receiving party has at least one active mon
     if(game_data[1].party_3_undec[other_mon].is_egg) {
@@ -231,6 +234,10 @@ void process_party_data(struct game_data_t* game_data) {
         process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
         if(game_data->party_3_undec[i].is_valid_gen3)
             found = 1;
+    }
+    for(gen3_party_total_t i = game_data->party_3.total; i < PARTY_SIZE; i++) {
+        game_data->party_3_undec[i].src = &game_data->party_3.mons[i];
+        game_data->party_3_undec[i].is_valid_gen3 = 0;
     }
     if (!found)
         game_data->party_3.total = 0;

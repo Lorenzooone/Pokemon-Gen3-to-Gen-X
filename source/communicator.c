@@ -4,6 +4,7 @@
 #include "sio_buffers.h"
 #include "vcount_basic.h"
 #include "print_system.h"
+#include "party_handler.h"
 #include "useful_qualifiers.h"
 #include <stddef.h>
 
@@ -36,7 +37,9 @@ int communicate_buffer(u8, u8);
 int check_if_continue(u8, const u8*, const u8*, size_t, int, int, u8);
 int process_data_arrived_gen1(u8, u8);
 int process_data_arrived_gen2(u8, u8);
+enum TRADING_STATE prepare_out_data_and_update_gen3(u8*, u8, u16*, u16, u8, enum TRADING_STATE, enum TRADING_STATE);
 u32 prepare_out_data_gen3(void);
+enum TRADING_STATE check_in_success_data_gen3(u8, u8, u16, u16, enum TRADING_STATE, enum TRADING_STATE, enum TRADING_STATE, u8);
 void process_in_data_gen3(u32);
 
 const u8 gen2_start_trade_enter_room[NUMBER_OF_ENTITIES][GEN2_ENTER_STATES_NUM] = {
@@ -97,15 +100,34 @@ u8 increment_out = 0;
 u8 last_filtered = 0;
 u8 received_once = 0;
 u8 since_last_recv_gen3 = 0;
+u8 schedule_update = 0;
 int own_end_gen3;
+u16 species_out_gen3;
+u16 species_in_gen3;
+u32 pid_out_gen3;
+u32 pid_in_gen3;
 u16 other_pos_gen3;
 u16 other_end_gen3;
 u8 is_done_gen3;
 u8 received_gen3[(sizeof(struct gen3_trade_data)>>4)+1];
 
+void prepare_gen3_success(struct gen3_mon_data_unenc* mon_out, struct gen3_mon_data_unenc* mon_in) {
+    pid_out_gen3 = mon_out->comm_pid;
+    pid_in_gen3 = mon_in->comm_pid;
+}
+
+void prepare_gen3_offer(struct gen3_mon_data_unenc* mon) {
+    species_out_gen3 = mon->growth.species;
+}
+
+u16 get_gen3_offer() {
+    return species_in_gen3;
+}
+
 void try_to_end_trade() {
     syn_transmitted = 0;
     received_once = 0;
+    schedule_update = 0;
     trade_offer_out = CANCEL_VALUE;
     trading_state = HAVE_OFFER;
 }
@@ -113,13 +135,15 @@ void try_to_end_trade() {
 void try_to_offer(u8 index) {
     syn_transmitted = 0;
     received_once = 0;
-    trade_offer_out = index;
+    schedule_update = 0;
+    trade_offer_out = (index & 0xF);
     trading_state = HAVE_OFFER;
 }
 
 void try_to_accept_offer() {
     syn_transmitted = 0;
     received_once = 0;
+    schedule_update = 0;
     trade_offer_out = ACCEPT_VALUE;
     trading_state = HAVE_ACCEPT;
 }
@@ -127,6 +151,7 @@ void try_to_accept_offer() {
 void try_to_decline_offer() {
     syn_transmitted = 0;
     received_once = 0;
+    schedule_update = 0;
     trade_offer_out = DECLINE_VALUE;
     trading_state = HAVE_ACCEPT;
 }
@@ -134,6 +159,7 @@ void try_to_decline_offer() {
 void try_to_success() {
     syn_transmitted = 0;
     received_once = 0;
+    schedule_update = 0;
     trading_state = HAVE_SUCCESS;
 }
 
@@ -391,7 +417,7 @@ IWRAM_CODE int check_if_continue(u8 data, const u8* sends, const u8* recvs, size
 int process_data_arrived_gen1(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
-    if(start_state != START_TRADE_DON)
+    if(start_state != START_TRADE_DON) {
         switch(start_state) {
             case START_TRADE_ENT:
                 return check_if_continue(data, gen1_start_trade_enter_room[is_master], gen1_start_trade_enter_room_next[is_master], GEN1_ENTER_STATES_NUM, START_TRADE_WAI, START_TRADE_BYTE_GEN1 | 1, 1);
@@ -462,6 +488,7 @@ int process_data_arrived_gen1(u8 data, u8 is_master) {
                 }
                 return SEND_NO_INFO;
         }
+    }
     else {
         // Space things out
         if(syn_transmitted < MIN_WAIT_FOR_SYN) {
@@ -545,9 +572,16 @@ int process_data_arrived_gen2(u8 data, u8 is_master) {
                 return get_success(data, GEN2_TRADE_SUCCESS_BASE);
             default:
                 return SEND_NO_INFO;
-            break;
         }
     }
+}
+
+enum TRADING_STATE prepare_out_data_and_update_gen3(u8* out_command_id, u8 new_command_id, u16* out_data, u16 new_data, u8 do_update, enum TRADING_STATE base_trading_state, enum TRADING_STATE success_new_trading_state) {
+    *out_data = new_data;
+    *out_command_id = new_command_id;
+    if(do_update)
+        base_trading_state = success_new_trading_state;
+    return base_trading_state;
 }
 
 u32 prepare_out_data_gen3() {
@@ -586,8 +620,68 @@ u32 prepare_out_data_gen3() {
     }
     else {
         // Do trading stuff here
-        return ((IN_PARTY_TRADE_GEN3 | DONE_GEN3) << 24);
+        out_control_byte = (IN_PARTY_TRADE_GEN3 | DONE_GEN3);
+        u8 out_command_id = 0;
+        out_data = 0;
+        switch(trading_state) {
+            case HAVE_OFFER:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, trade_offer_out|GEN3_TRADE_OFFER_START, &out_data, species_out_gen3, schedule_update, trading_state, RECEIVED_OFFER);
+                break;
+            case HAVE_ACCEPT:
+            case HAVE_ACCEPT_BASE:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, trade_offer_out|GEN3_TRADE_ACCEPT_BASE_START, &out_data, species_out_gen3, schedule_update, trading_state, HAVE_ACCEPT_FINAL);
+                break;
+            case HAVE_ACCEPT_FINAL:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, trade_offer_out|GEN3_TRADE_ACCEPT_FINAL_START, &out_data, species_out_gen3, schedule_update, trading_state, RECEIVED_ACCEPT);
+                break;
+            case HAVE_SUCCESS:
+            case HAVE_SUCCESS_SPECIES_OUT:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, GEN3_TRADE_SUCCESS_SPECIES_OUT, &out_data, species_out_gen3, schedule_update, trading_state, HAVE_SUCCESS_LOW_PID_OUT);
+                break;
+            case HAVE_SUCCESS_LOW_PID_OUT:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, GEN3_TRADE_SUCCESS_LOW_PID_OUT, &out_data, (pid_out_gen3 & 0xFFFF), schedule_update, trading_state, HAVE_SUCCESS_HIGH_PID_OUT);
+                break;
+            case HAVE_SUCCESS_HIGH_PID_OUT:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, GEN3_TRADE_SUCCESS_HIGH_PID_OUT, &out_data, (pid_out_gen3 >> 16), schedule_update, trading_state, HAVE_SUCCESS_SPECIES_IN);
+                break;
+            case HAVE_SUCCESS_SPECIES_IN:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, GEN3_TRADE_SUCCESS_SPECIES_IN, &out_data, species_in_gen3, schedule_update, trading_state, HAVE_SUCCESS_LOW_PID_IN);
+                break;
+            case HAVE_SUCCESS_LOW_PID_IN:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, GEN3_TRADE_SUCCESS_LOW_PID_IN, &out_data, (pid_in_gen3 & 0xFFFF), schedule_update, trading_state, HAVE_SUCCESS_HIGH_PID_IN);
+                break;
+            case HAVE_SUCCESS_HIGH_PID_IN:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, GEN3_TRADE_SUCCESS_HIGH_PID_IN, &out_data, (pid_in_gen3 >> 16), schedule_update, trading_state, HAVE_SUCCESS_COMPLETED);
+                break;
+            case HAVE_SUCCESS_COMPLETED:
+                trading_state = prepare_out_data_and_update_gen3(&out_command_id, GEN3_TRADE_SUCCESS_ALL_OK, &out_data, 0, schedule_update, trading_state, RECEIVED_SUCCESS);
+                break;
+            case RECEIVED_SUCCESS:
+                out_command_id = GEN3_TRADE_SUCCESS_ALL_OK;
+                out_data = 0;
+                break;
+            case FAILED_SUCCESS:
+                out_command_id = GEN3_TRADE_SUCCESS_FAILED;
+                out_data = 0;
+                break;
+            default:
+                break;
+        }
+        schedule_update = 0;
+        return out_data | (out_command_id<<16) | (out_control_byte<<24);
     }
+}
+
+enum TRADING_STATE check_in_success_data_gen3(u8 command_id, u8 cmp_command, u16 recv_data, u16 cmp_data, enum TRADING_STATE base_trading_state, enum TRADING_STATE success_new_trading_state, enum TRADING_STATE failure_new_trading_state, u8 bad_command) {
+    if(command_id == cmp_command) {
+        if(recv_data == cmp_data)
+            base_trading_state = success_new_trading_state;
+        else
+            base_trading_state = failure_new_trading_state;
+    }
+    else if(command_id == bad_command)
+        base_trading_state = failure_new_trading_state;
+    return base_trading_state;
 }
 
 void process_in_data_gen3(u32 data) {
@@ -621,8 +715,8 @@ void process_in_data_gen3(u32 data) {
                 since_last_recv_gen3 = 0;
                 if(!set_received_gen3(recv_pos))
                     buffer_counter++;
-                if(buffer_counter == sizeof(struct gen3_trade_data)) {
-                    if(are_checksum_same_gen3((struct gen3_trade_data*)in_buffer_gen3))
+                if(buffer_counter >= (sizeof(struct gen3_trade_data)>>1)) {
+                    if(are_checksum_same_gen3((struct gen3_trade_data*)in_buffer))
                         is_done_gen3 = 1;
                     else
                         init_received_gen3();
@@ -640,11 +734,73 @@ void process_in_data_gen3(u32 data) {
         }
         if((control_byte & DONE_GEN3) && is_done_gen3) {
             set_start_state(START_TRADE_DON);
+            schedule_update = 0;
             trading_state = NO_INFO;
         }
     }
     else {
         // Do trading stuff here
+        schedule_update = 0;
+        if(control_byte == (IN_PARTY_TRADE_GEN3 | DONE_GEN3)) {
+            enum TRADING_STATE base_trading_state = trading_state;
+            u8 command_id = (data >> 16) & 0xFF;
+            switch(trading_state) {
+                case HAVE_OFFER:
+                    get_offer(command_id, GEN3_TRADE_OFFER_START, END_TRADE_BYTE_GEN3);
+                    if(trading_state != base_trading_state)
+                        species_in_gen3 = recv_data;
+                    break;
+                case HAVE_ACCEPT:
+                case HAVE_ACCEPT_BASE:
+                    get_accept(command_id, GEN3_TRADE_ACCEPT_BASE_START);
+                    if(trading_state != base_trading_state) {
+                        trading_state = HAVE_ACCEPT_FINAL;
+                        if(species_in_gen3 != recv_data)
+                            trade_offer_out = DECLINE_VALUE;
+                    }
+                    break;
+                case HAVE_ACCEPT_FINAL:
+                    get_accept(command_id, GEN3_TRADE_ACCEPT_FINAL_START);
+                    if(trading_state != base_trading_state) {
+                        if(species_in_gen3 != recv_data) {
+                            trade_offer_out = DECLINE_VALUE;
+                            trade_offer_in = DECLINE_VALUE;
+                        }
+                    }
+                    break;
+                case HAVE_SUCCESS:
+                case HAVE_SUCCESS_SPECIES_OUT:
+                    trading_state = check_in_success_data_gen3(command_id, GEN3_TRADE_SUCCESS_SPECIES_OUT, recv_data, species_in_gen3, trading_state, HAVE_SUCCESS_LOW_PID_OUT, FAILED_SUCCESS, GEN3_TRADE_SUCCESS_FAILED);
+                    break;
+                case HAVE_SUCCESS_LOW_PID_OUT:
+                    trading_state = check_in_success_data_gen3(command_id, GEN3_TRADE_SUCCESS_LOW_PID_OUT, recv_data, (pid_in_gen3 & 0xFFFF), trading_state, HAVE_SUCCESS_HIGH_PID_OUT, FAILED_SUCCESS, GEN3_TRADE_SUCCESS_FAILED);
+                    break;
+                case HAVE_SUCCESS_HIGH_PID_OUT:
+                    trading_state = check_in_success_data_gen3(command_id, GEN3_TRADE_SUCCESS_HIGH_PID_OUT, recv_data, (pid_in_gen3 >> 16), trading_state, HAVE_SUCCESS_SPECIES_IN, FAILED_SUCCESS, GEN3_TRADE_SUCCESS_FAILED);
+                    break;
+                case HAVE_SUCCESS_SPECIES_IN:
+                    trading_state = check_in_success_data_gen3(command_id, GEN3_TRADE_SUCCESS_SPECIES_IN, recv_data, species_out_gen3, trading_state, HAVE_SUCCESS_LOW_PID_IN, FAILED_SUCCESS, GEN3_TRADE_SUCCESS_FAILED);
+                    break;
+                case HAVE_SUCCESS_LOW_PID_IN:
+                    trading_state = check_in_success_data_gen3(command_id, GEN3_TRADE_SUCCESS_LOW_PID_IN, recv_data, (pid_out_gen3 & 0xFFFF), trading_state, HAVE_SUCCESS_HIGH_PID_IN, FAILED_SUCCESS, GEN3_TRADE_SUCCESS_FAILED);
+                    break;
+                case HAVE_SUCCESS_HIGH_PID_IN:
+                    trading_state = check_in_success_data_gen3(command_id, GEN3_TRADE_SUCCESS_HIGH_PID_IN, recv_data, (pid_out_gen3 >> 16), trading_state, HAVE_SUCCESS_COMPLETED, FAILED_SUCCESS, GEN3_TRADE_SUCCESS_FAILED);
+                    break;
+                case HAVE_SUCCESS_COMPLETED:
+                    trading_state = check_in_success_data_gen3(command_id, GEN3_TRADE_SUCCESS_ALL_OK, recv_data, 0, trading_state, RECEIVED_SUCCESS, FAILED_SUCCESS, GEN3_TRADE_SUCCESS_FAILED);
+                    break;
+                default:
+                    break;
+            }
+            // Do one more transfer out than needed, to be sure.
+            // Update once you have the data to send out ready.
+            // Unless we failed...
+            if((base_trading_state != trading_state) && (trading_state != FAILED_SUCCESS)) {
+                trading_state = base_trading_state;
+                schedule_update = 1;
+            }
+        }
     }
 }
 

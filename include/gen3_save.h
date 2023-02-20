@@ -32,7 +32,7 @@ void process_party_data(struct game_data_t* game_data);
 struct game_data_t* get_own_game_data(void);
 void set_default_gift_ribbons(struct game_data_t*);
 u8 trade_mons(struct game_data_t*, u8, u8, u8);
-u8 is_invalid_offer(struct game_data_t*, u8, u8);
+u8 is_invalid_offer(struct game_data_t*, u8, u8, u8, u16);
 u8 pre_write_gen_3_data(struct game_data_t*, u8);
 u8 pre_write_updated_moves_gen_3_data(struct game_data_t*);
 u8 complete_write_gen_3_data(void);

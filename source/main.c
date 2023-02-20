@@ -20,6 +20,7 @@
 #include "vcount_basic.h"
 #include "animations_handler.h"
 #include <stddef.h>
+#include "optimized_swi.h"
 #include "timing_basic.h"
 //#include "save.h"
 
@@ -33,6 +34,7 @@
 #define MIN_WAITCYCLE 1
 
 #define WAITING_TIME_MOVE_MESSAGES (2*FPS)
+#define MAX_RANDOM_WAIT_TIME (1*FPS)
 
 #define BASE_SCREEN 0
 #define LEARNABLE_MOVES_MENU_SCREEN 2
@@ -538,6 +540,7 @@ int main(void)
     u8 submenu_cursor_x_pos = 0;
     u8 prev_val = 0;
     u8 curr_mon = 0;
+    u16 random_wait_time = 0;
     u32 curr_move = 0;
     u8 success = 0;
     u8 other_mon = 0;
@@ -580,7 +583,7 @@ int main(void)
                             else if(result == WANTS_TO_CANCEL)
                                 return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                             else {
-                                u8 is_invalid = is_invalid_offer(game_data, curr_mon, result);
+                                u8 is_invalid = is_invalid_offer(game_data, curr_mon, result, curr_gen, get_gen3_offer());
                                 if(!is_invalid) {
                                     other_mon = result;
                                     offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos, 1);
@@ -597,6 +600,7 @@ int main(void)
                             keys = 0;
                             if(has_accepted_offer()) {
                                 trading_animation_init(game_data, curr_mon, other_mon);
+                                prepare_gen3_success(&game_data[0].party_3_undec[curr_mon], &game_data[1].party_3_undec[other_mon]);
                                 evolved = trade_mons(game_data, curr_mon, other_mon, curr_gen);
                                 if(evolved)
                                     evolution_animation_init(game_data, curr_mon);
@@ -610,11 +614,22 @@ int main(void)
                             else
                                 return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                             break;
+                        case FAILED_SUCCESS:
+                            keys = 0;
+                            //TODO: Handle bad transfer
+                            break;
                         case RECEIVED_SUCCESS:
                             keys = 0;
                             success = complete_write_gen_3_data();
                             if(!success) {
                                 //TODO: Handle bad save
+                            }
+                            if(curr_gen == 3) {
+                                random_wait_time = SWI_DivMod(get_rng() & 0x7FFFFFFF, MAX_RANDOM_WAIT_TIME);
+                                while(random_wait_time) {
+                                    VBlankIntrWait();
+                                    random_wait_time--;
+                                }
                             }
                             process_party_data(&game_data[0]);
                             stop_transfer(master);
@@ -758,8 +773,10 @@ int main(void)
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else if(own_menu)
                             iv_fix_menu_init(game_data, cursor_x_pos, curr_mon);
-                        else if(!cursor_x_pos)
+                        else if(!cursor_x_pos) {
+                            prepare_gen3_offer(&game_data[0].party_3_undec[curr_mon]);
                             waiting_offer_init(0, cursor_y_pos);
+                        }
                         else
                             nature_menu_init(game_data, cursor_x_pos, curr_mon, &submenu_cursor_y_pos);
                     }

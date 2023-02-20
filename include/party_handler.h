@@ -240,6 +240,7 @@ struct gen3_mon_data_unenc {
     const u16* learnable_moves;
     struct alternative_data_gen3 alter_nature;
     struct alternative_data_gen3 fixed_ivs;
+    u32 comm_pid;
 };
 
 struct gen3_mon {

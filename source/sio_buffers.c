@@ -340,13 +340,18 @@ void prepare_gen3_trade_data(struct game_data_t* game_data, u32* buffer, size_t*
         copy_bytes(&game_data->mails_3[i], &td->mails_3[i], sizeof(struct mail_gen3), 0, 0);
         u32* mail_buf = (u32*)&td->mails_3[i];
         for(size_t j = 0; j < (sizeof(struct mail_gen3)>>2); j++)
-            checksum += mail_buf[i];
+            checksum += mail_buf[j];
     }
     
     td->checksum_mail = checksum;
     checksum = 0;
     
+    if(game_data->party_3.total > PARTY_SIZE)
+        game_data->party_3.total = PARTY_SIZE;
+    
     copy_bytes(&game_data->party_3, &td->party_3, sizeof(struct gen3_party), 0, 0);
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
+        game_data->party_3_undec[i].comm_pid = game_data->party_3_undec[i].src->pid;
     u32* party_buf = (u32*)&td->party_3;
     for(size_t i = 0; i < (sizeof(struct gen3_party)>>2); i++)
         checksum += party_buf[i];
@@ -491,6 +496,7 @@ void read_gen3_trade_data(struct game_data_t* game_data, u32* buffer) {
     
     u8 found = 0;
     for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++) {
+        game_data->party_3_undec[i].comm_pid = game_data->party_3.mons[i].pid;
         process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
         if(game_data->party_3_undec[i].is_valid_gen3)
             found = 1;
