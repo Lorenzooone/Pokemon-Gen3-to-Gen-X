@@ -45,6 +45,7 @@
 
 void vblank_update_function(void);
 void find_optimal_ewram_settings(void);
+void disable_all_irqs(void);
 u8 init_cursor_y_pos_main_menu(void);
 void cursor_update_learnable_move_message_menu(u8);
 void cursor_update_learnable_move_menu(u8);
@@ -76,6 +77,10 @@ void learnable_moves_message_init(struct game_data_t*, u8);
 void learnable_move_menu_init(struct game_data_t*, u8, u8, u8*);
 void conclude_trade(struct game_data_t*, u8, u8, u8, u8*);
 void return_to_trade_menu(struct game_data_t*, u8, u8, u8, u8, u8, u8*, u8*);
+void prepare_crash_screen(enum CRASH_REASONS);
+void crash_on_cartridge_removed(void);
+void crash_on_bad_save(u8, u8);
+void crash_on_bad_trade(void);
 void wait_frames(int);
 int main(void);
 
@@ -88,6 +93,9 @@ IWRAM_CODE void vblank_update_function() {
 	REG_IF |= IRQ_VBLANK;
 	
     flush_screens();
+    
+    if(has_cartridge_been_removed())
+        crash_on_cartridge_removed();
     
     move_sprites(counter);
     move_cursor_x(counter);
@@ -150,7 +158,12 @@ IWRAM_CODE void find_optimal_ewram_settings() {
     }
 }
 
-u8 init_cursor_y_pos_main_menu(){
+void disable_all_irqs() {
+    REG_IE = 0;
+    REG_IME = 0;
+}
+
+u8 init_cursor_y_pos_main_menu() {
     if(!get_valid_options_main())
         return 4;
     return 0;
@@ -487,6 +500,52 @@ void return_to_trade_menu(struct game_data_t* game_data, u8 target, u8 region, u
     prepare_flush();
 }
 
+void prepare_crash_screen(enum CRASH_REASONS reason) {
+    set_screen(BASE_SCREEN);
+    default_reset_screen();
+    enable_screen(BASE_SCREEN);
+    reset_sprites_to_cursor(1);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    set_screen(CRASH_WINDOW_SCREEN);
+    print_crash(reason);
+    enable_screen(CRASH_WINDOW_SCREEN);
+    prepare_flush();
+}
+
+void crash_on_cartridge_removed() {
+    prepare_crash_screen(CARTRIDGE_REMOVED);
+    base_stop_transfer(0);
+    base_stop_transfer(1);
+    u8 curr_vcount = REG_VCOUNT + 1 + 1;
+    if(curr_vcount >= SCANLINES)
+        curr_vcount -= SCANLINES;
+    while(REG_VCOUNT != curr_vcount);
+    while(REG_VCOUNT != VBLANK_SCANLINES);
+    flush_screens();
+    disable_all_irqs();
+    while(1)
+        Halt();
+}
+
+void crash_on_bad_save(u8 disable_transfer, u8 master) {
+    prepare_crash_screen(BAD_SAVE);
+    if(disable_transfer)
+        stop_transfer(master);
+    VBlankIntrWait();
+    disable_all_irqs();
+    while(1)
+        Halt();
+}
+
+void crash_on_bad_trade() {
+    prepare_crash_screen(BAD_TRADE);
+    VBlankIntrWait();
+    irqDisable(IRQ_VBLANK);
+    while(1)
+        VBlankIntrWait();
+}
+
 int main(void)
 {
     curr_state = MAIN_MENU;
@@ -496,6 +555,7 @@ int main(void)
     init_text_system();
     init_enc_positions();
     init_rng(0,0);
+    init_save_data();
     u16 keys;
     struct game_data_t game_data[2];
     
@@ -517,7 +577,6 @@ int main(void)
     irqEnable(IRQ_VBLANK);
     irqDisable(IRQ_SERIAL);
     
-    init_save_data();
     read_gen_3_data(&game_data[0]);
     
     init_item_icon();
@@ -607,23 +666,21 @@ int main(void)
                                 curr_state = TRADING_ANIMATION;
                                 learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
                                 success = pre_write_gen_3_data(&game_data[0], !learnable_moves);
-                                if(!success) {
-                                    //TODO: Handle bad save
-                                }
+                                if(!success)
+                                    crash_on_bad_save(1, master);
                             }
                             else
                                 return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                             break;
                         case FAILED_SUCCESS:
                             keys = 0;
-                            //TODO: Handle bad transfer
+                            crash_on_bad_trade();
                             break;
                         case RECEIVED_SUCCESS:
                             keys = 0;
                             success = complete_write_gen_3_data();
-                            if(!success) {
-                                //TODO: Handle bad save
-                            }
+                            if(!success)
+                                crash_on_bad_save(1, master);
                             if(curr_gen == 3) {
                                 random_wait_time = SWI_DivMod(get_rng() & 0x7FFFFFFF, MAX_RANDOM_WAIT_TIME);
                                 while(random_wait_time) {
@@ -669,9 +726,8 @@ int main(void)
                                 break;
                             case COMPLETED:
                                 success = pre_write_updated_moves_gen_3_data(&game_data[0]);
-                                if(!success) {
-                                    //TODO: Handle bad save
-                                }
+                                if(!success)
+                                    crash_on_bad_save(1, master);
                                 disable_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
                                 prepare_flush();
                                 move_go_on = 1;
@@ -818,9 +874,8 @@ int main(void)
                                 success = pre_write_gen_3_data(&game_data[0], 1);
                                 if(success)
                                     success = complete_write_gen_3_data();
-                                if(!success) {
-                                    // TODO: Handle bad save
-                                }
+                                if(!success)
+                                    crash_on_bad_save(0, master);
                             }
                         }
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);

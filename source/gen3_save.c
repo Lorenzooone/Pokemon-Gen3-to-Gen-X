@@ -51,6 +51,8 @@ void read_party(int, struct game_data_t*);
 void update_gift_ribbons(struct game_data_t*, const u8*);
 u8 validate_slot(int);
 u8 get_slot(void);
+void unload_cartridge(void);
+void load_cartridge(void);
 u8 pre_update_save(struct game_data_t*, u8, enum SAVING_KIND);
 u8 complete_save(u8);
 static u8 get_next_slot(u8);
@@ -66,6 +68,8 @@ const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0
 
 struct game_data_t* own_game_data_ptr;
 u8 in_use_slot;
+u8 is_cartridge_loaded;
+u16 loaded_checksum;
 
 struct game_data_t* get_own_game_data() {
     return own_game_data_ptr;
@@ -403,7 +407,6 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND
         target_section++;
     }
     
-    
     return 1;
 }
 
@@ -448,9 +451,28 @@ u8 get_slot(){
 }
 
 void init_save_data(){
+    unload_cartridge();
+}
+
+void unload_cartridge(){
+    is_cartridge_loaded = 0;
+}
+
+void load_cartridge(){
+    loaded_checksum = read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS);
+    is_cartridge_loaded = 1;
+}
+
+u8 has_cartridge_been_removed(){
+    u8 retval = 0;
+    if(is_cartridge_loaded)
+        if(read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS) != loaded_checksum)
+            retval = 1;
+    return retval;
 }
 
 u8 read_gen_3_data(struct game_data_t* game_data){
+    unload_cartridge();
     init_bank();
     
     u8 slot = get_slot();
@@ -460,11 +482,14 @@ u8 read_gen_3_data(struct game_data_t* game_data){
     
     read_party(slot, game_data);
     own_game_data_ptr = game_data;
-    
+
+    load_cartridge();
+
     return 1;
 }
 
 u8 pre_write_gen_3_data(struct game_data_t* game_data, u8 is_full){
+    unload_cartridge();
     init_bank();
 
     u8 base_slot = in_use_slot;
@@ -483,10 +508,13 @@ u8 pre_write_gen_3_data(struct game_data_t* game_data, u8 is_full){
             return 0;
     }
 
+    load_cartridge();
+
     return 1;
 }
 
 u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data){
+    unload_cartridge();
     init_bank();
 
     u8 base_slot = in_use_slot;
@@ -499,10 +527,13 @@ u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data){
     if(!validate_slot(get_next_slot(base_slot)))
         return 0;
 
+    load_cartridge();
+
     return 1;
 }
 
 u8 complete_write_gen_3_data(){
+    unload_cartridge();
     init_bank();
 
     u8 base_slot = in_use_slot;
@@ -513,6 +544,8 @@ u8 complete_write_gen_3_data(){
         return 0;
     
     in_use_slot = get_next_slot(in_use_slot);
+
+    load_cartridge();
 
     return 1;
 }

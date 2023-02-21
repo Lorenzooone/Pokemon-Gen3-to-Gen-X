@@ -48,6 +48,7 @@ typedef void (*print_info_functions_t)(struct gen3_mon_data_unenc*);
 print_info_functions_t print_info_functions[PAGES_TOTAL] = {print_pokemon_page1, print_pokemon_page2, print_pokemon_page3, print_pokemon_page4, print_pokemon_page5};
 
 void print_game_info(struct game_data_t* game_data, int index) {
+    default_reset_screen();
     PRINT_FUNCTION("\n Game: ");
     const char* chosen_str = game_strings[game_data[index].game_identifier.game_main_version];
     switch(game_data[index].game_identifier.game_main_version) {
@@ -66,6 +67,33 @@ void print_game_info(struct game_data_t* game_data, int index) {
             break;
     }
     PRINT_FUNCTION("\x01\n", chosen_str);
+}
+
+void print_crash(enum CRASH_REASONS reason) {
+    reset_screen(BLANK_FILL);
+    
+    init_crash_window();
+    clear_crash_window();
+    
+    set_text_y(CRASH_WINDOW_Y);
+    set_text_x(CRASH_WINDOW_X);
+    PRINT_FUNCTION("      CRASHED!\n\n");
+    set_text_x(CRASH_WINDOW_X);
+    switch(reason) {
+        case BAD_SAVE:
+            PRINT_FUNCTION("ISSUES WHILE SAVING!\n\n");
+            break;
+        case BAD_TRADE:
+            PRINT_FUNCTION("ISSUES WHILE TRADING!\n\n");
+            break;
+        case CARTRIDGE_REMOVED:
+            PRINT_FUNCTION(" CARTRIDGE REMOVED!\n\n");
+            break;
+        default:
+            break;
+    }
+    set_text_x(CRASH_WINDOW_X);
+    PRINT_FUNCTION("TURN OFF THE CONSOLE.");
 }
 
 void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 load_sprites, u8 is_own) {

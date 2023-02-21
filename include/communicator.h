@@ -70,6 +70,7 @@ int get_received_trade_offer(void);
 int has_accepted_offer(void);
 void start_transfer(u8, u8);
 void set_next_vcount_interrupt(void);
+void base_stop_transfer(u8);
 void stop_transfer(u8);
 int increment_last_tranfer(void);
 void init_start_state(void);

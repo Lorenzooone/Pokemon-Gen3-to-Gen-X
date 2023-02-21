@@ -6,9 +6,11 @@
 #include "multiboot_handler.h"
 
 enum MOVES_PRINTING_TYPE{LEARNT_P, DID_NOT_LEARN_P, LEARNABLE_P};
+enum CRASH_REASONS{BAD_SAVE, BAD_TRADE, CARTRIDGE_REMOVED};
 
 void print_learnable_move(struct gen3_mon_data_unenc*, u16, enum MOVES_PRINTING_TYPE);
 void print_game_info(struct game_data_t*, int);
+void print_crash(enum CRASH_REASONS);
 void print_trade_menu(struct game_data_t*, u8, u8, u8, u8);
 void print_trade_menu_cancel(u8);
 void print_trade_animation_send(struct gen3_mon_data_unenc*);

@@ -25,6 +25,14 @@ void clear_message_window() {
     reset_window(MESSAGE_WINDOW_X, MESSAGE_WINDOW_Y, MESSAGE_WINDOW_X_SIZE, MESSAGE_WINDOW_Y_SIZE, MESSAGE_WINDOW_SCREEN);
 }
 
+void init_crash_window() {
+    create_window(CRASH_WINDOW_X, CRASH_WINDOW_Y, CRASH_WINDOW_X_SIZE, CRASH_WINDOW_Y_SIZE, CRASH_WINDOW_SCREEN);
+}
+
+void clear_crash_window() {
+    reset_window(CRASH_WINDOW_X, CRASH_WINDOW_Y, CRASH_WINDOW_X_SIZE, CRASH_WINDOW_Y_SIZE, CRASH_WINDOW_SCREEN);
+}
+
 void init_waiting_window(s8 y_increase) {
     create_window(WAITING_WINDOW_X, WAITING_WINDOW_Y + y_increase, WAITING_WINDOW_X_SIZE, WAITING_WINDOW_Y_SIZE, WAITING_WINDOW_SCREEN);
 }

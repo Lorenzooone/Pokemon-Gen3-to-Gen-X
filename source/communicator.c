@@ -919,10 +919,7 @@ void start_transfer(u8 is_master, u8 curr_gen)
     }
 }
 
-void stop_transfer(u8 is_master)
-{
-    buffer_counter = 0;
-    while(next_long_pause);
+void base_stop_transfer(u8 is_master) {
     if(!is_master) {
         irqDisable(IRQ_SERIAL);
         sio_stop_irq_slave();
@@ -931,4 +928,10 @@ void stop_transfer(u8 is_master)
         irqDisable(IRQ_VCOUNT);
         REG_DISPSTAT &= ~LCDC_VCNT;
     }
+}
+
+void stop_transfer(u8 is_master) {
+    buffer_counter = 0;
+    while(next_long_pause);
+    base_stop_transfer(is_master);
 }

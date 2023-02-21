@@ -40,6 +40,12 @@
 #define WAITING_WINDOW_X ((TOTAL_X_SIZE>>1)-((WAITING_WINDOW_X_SIZE+1)>>1))
 #define WAITING_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((WAITING_WINDOW_Y_SIZE+1)>>1))
 
+#define CRASH_WINDOW_SCREEN 3
+#define CRASH_WINDOW_X_SIZE 21
+#define CRASH_WINDOW_Y_SIZE 5
+#define CRASH_WINDOW_X ((TOTAL_X_SIZE>>1)-((CRASH_WINDOW_X_SIZE+1)>>1))
+#define CRASH_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((CRASH_WINDOW_Y_SIZE+1)>>1))
+
 #define SAVING_WINDOW_SCREEN 3
 #define SAVING_WINDOW_X_SIZE 9
 #define SAVING_WINDOW_Y_SIZE 1
@@ -78,6 +84,9 @@ void clear_offer_options_window(void);
 
 void init_waiting_window(s8);
 void clear_waiting_window(s8);
+
+void init_crash_window(void);
+void clear_crash_window(void);
 
 void init_learn_move_message_window(void);
 void clear_learn_move_message_window(void);
