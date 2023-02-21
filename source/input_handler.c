@@ -254,7 +254,7 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
                     (*cursor_y_pos) += 1;
             }
             else if(keys & KEY_UP) {
-                (*cursor_y_pos) = 8;
+                (*cursor_y_pos) = 9;
             }
             break;
         case 1:
@@ -310,34 +310,54 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
             }
             break;
         case 3:
-            if((keys & KEY_A) && (get_valid_options_main()))
+            if((keys & KEY_A) && get_valid_options_main())
                 return curr_gen;
             else if(keys & KEY_DOWN)
                 (*cursor_y_pos) += 1;
             else if(keys & KEY_UP)
                 (*cursor_y_pos) -= 1;
             break;
-        default:
-            if(keys & KEY_A) {
+        case 4:
+            if(keys & KEY_A)
                 return START_MULTIBOOT;
-            }
-            else if((keys & KEY_DOWN) && (get_valid_options_main())) {
-                (*cursor_y_pos) = 8;
-            }
-            else if((keys & KEY_UP) && (get_valid_options_main())) {
-                (*cursor_y_pos) = 3;
-            }
+            else if(keys & KEY_DOWN)
+                (*cursor_y_pos) = 7;
+            else if((keys & KEY_UP) && get_valid_options_main())
+                (*cursor_y_pos) -= 1;
+            else if(keys & KEY_UP)
+                (*cursor_y_pos) = 9;
+            break;
+        case 7:
+            if(keys & KEY_A)
+                return START_SWAP_CARTRIDGE;
+            else if((keys & KEY_DOWN) && get_valid_options_main())
+                (*cursor_y_pos) += 1;
+            else if(keys & KEY_DOWN)
+                (*cursor_y_pos) = 9;
+            else if(keys & KEY_UP)
+                (*cursor_y_pos) = 4;
             break;
         case 8:
-            if(keys & KEY_A) {
+            if(keys & KEY_A)
                 return VIEW_OWN_PARTY + curr_gen;
-            }
-            else if((keys & KEY_DOWN) && (get_valid_options_main())) {
+            else if(keys & KEY_DOWN)
+                (*cursor_y_pos) += 1;
+            else if(keys & KEY_UP)
+                (*cursor_y_pos) -= 1;
+            break;
+        case 9:
+            if(keys & KEY_A)
+                return START_SETTINGS_MENU;
+            else if((keys & KEY_DOWN) && get_valid_options_main())
                 (*cursor_y_pos) = 0;
-            }
-            else if((keys & KEY_UP) && (get_valid_options_main())) {
+            else if(keys & KEY_DOWN)
                 (*cursor_y_pos) = 4;
-            }
+            else if((keys & KEY_UP) && get_valid_options_main())
+                (*cursor_y_pos) -= 1;
+            else if(keys & KEY_UP)
+                (*cursor_y_pos) = 7;
+            break;
+        default:
             break;
     }
     return 0;
@@ -448,6 +468,14 @@ u8 handle_input_trade_options(u16 keys, u8* cursor_x_pos) {
     //    cursor_x_pos = 0;
     //if((keys & KEY_RIGHT) && ((*cursor_x_pos) == 0))
     //    cursor_x_pos = 1;
+
+    return 0;
+}
+
+u8 handle_input_swap_cartridge_menu(u16 keys) {
+
+    if(keys & KEY_A)
+        return 1;
 
     return 0;
 }

@@ -49,8 +49,14 @@
 #define SAVING_WINDOW_SCREEN 3
 #define SAVING_WINDOW_X_SIZE 9
 #define SAVING_WINDOW_Y_SIZE 1
-#define SAVING_WINDOW_X ((TOTAL_X_SIZE>>1)-((WAITING_WINDOW_X_SIZE+1)>>1))
-#define SAVING_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((WAITING_WINDOW_Y_SIZE+1)>>1))
+#define SAVING_WINDOW_X ((TOTAL_X_SIZE>>1)-((SAVING_WINDOW_X_SIZE+1)>>1))
+#define SAVING_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((SAVING_WINDOW_Y_SIZE+1)>>1))
+
+#define LOADING_WINDOW_SCREEN 3
+#define LOADING_WINDOW_X_SIZE 10
+#define LOADING_WINDOW_Y_SIZE 1
+#define LOADING_WINDOW_X ((TOTAL_X_SIZE>>1)-((LOADING_WINDOW_X_SIZE+1)>>1))
+#define LOADING_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((LOADING_WINDOW_Y_SIZE+1)>>1))
 
 #define MESSAGE_WINDOW_SCREEN 2
 #define MESSAGE_WINDOW_X 1
@@ -102,5 +108,8 @@ void clear_evolution_animation_window(void);
 
 void init_saving_window(void);
 void clear_saving_window(void);
+
+void init_loading_window(void);
+void clear_loading_window(void);
 
 #endif

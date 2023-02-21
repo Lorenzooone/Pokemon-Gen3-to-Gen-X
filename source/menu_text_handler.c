@@ -158,6 +158,13 @@ void print_trade_menu_cancel(u8 update) {
     PRINT_FUNCTION("Cancel");
 }
 
+void print_swap_cartridge_menu() {
+    default_reset_screen();
+
+    PRINT_FUNCTION("Insert the new cartridge,\n\n");
+    PRINT_FUNCTION("then press A to continue.\n\n");
+}
+
 void print_learnable_move(struct gen3_mon_data_unenc* mon, u16 index, enum MOVES_PRINTING_TYPE moves_printing_type) {
     reset_screen(BLANK_FILL);
     
@@ -403,6 +410,15 @@ void print_saving(){
     set_text_y(SAVING_WINDOW_Y);
     set_text_x(SAVING_WINDOW_X);
     PRINT_FUNCTION("Saving...");
+}
+
+void print_loading(){
+    reset_screen(BLANK_FILL);
+    init_loading_window();
+    clear_loading_window();
+    set_text_y(LOADING_WINDOW_Y);
+    set_text_x(LOADING_WINDOW_X);
+    PRINT_FUNCTION("Loading...");
 }
 
 void print_start_trade(){
@@ -714,6 +730,12 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
         set_text_y(9);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         PRINT_FUNCTION("Send Multiboot");
+        set_text_y(Y_LIMIT-5);
+        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
+        PRINT_FUNCTION("Load Cartridge");
+        set_text_y(Y_LIMIT-1);
+        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
+        PRINT_FUNCTION("Settings");
     }
     else {
         if(curr_gen >= TOTAL_GENS)
@@ -749,9 +771,15 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
         set_text_y(9);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         PRINT_FUNCTION("Send Multiboot");
-        set_text_y(0x11);
+        set_text_y(Y_LIMIT-5);
+        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
+        PRINT_FUNCTION("Swap Cartridge");
+        set_text_y(Y_LIMIT-3);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         PRINT_FUNCTION("View Party \x01", target_strings[curr_gen-1]);
+        set_text_y(Y_LIMIT-1);
+        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
+        PRINT_FUNCTION("Settings");
     }
 }
 

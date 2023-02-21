@@ -19,6 +19,8 @@
 #define CANCEL_TRADE_OPTIONS 0xFF
 #define OFFER_INFO_DISPLAY 0x12
 #define START_MULTIBOOT 0x49
+#define START_SWAP_CARTRIDGE 0xA3
+#define START_SETTINGS_MENU 0x84
 #define VIEW_OWN_PARTY 0x65
 
 #define PAGES_TOTAL 5
@@ -35,6 +37,7 @@ u8 handle_input_trade_options(u16, u8*);
 u8 handle_input_nature_menu(u16);
 u8 handle_input_iv_fix_menu(u16);
 u8 handle_input_offer_options(u16, u8*, u8*);
+u8 handle_input_swap_cartridge_menu(u16);
 u8 handle_input_trade_setup(u16, u8);
 
 #endif

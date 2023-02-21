@@ -58,6 +58,7 @@ void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
 void trade_cancel_print_screen(u8);
 void saving_print_screen(void);
+void loading_print_screen(void);
 void trading_animation_init(struct game_data_t*, u8, u8);
 void evolution_animation_init(struct game_data_t*, u8);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
@@ -84,7 +85,7 @@ void crash_on_bad_trade(void);
 void wait_frames(int);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, SETTINGS_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -278,6 +279,15 @@ void saving_print_screen() {
     set_screen(SAVING_WINDOW_SCREEN);
     print_saving();
     enable_screen(SAVING_WINDOW_SCREEN);
+    set_screen(prev_screen);
+    prepare_flush();
+}
+
+void loading_print_screen() {
+    u8 prev_screen = get_screen_num();
+    set_screen(LOADING_WINDOW_SCREEN);
+    print_loading();
+    enable_screen(LOADING_WINDOW_SCREEN);
     set_screen(prev_screen);
     prepare_flush();
 }
@@ -561,8 +571,6 @@ int main(void)
     struct game_data_t game_data[2];
     
     init_game_data(&game_data[0]);
-    init_game_data(&game_data[1]);
-    
     get_game_id(&game_data[0].game_identifier);
     
     init_sprites();
@@ -758,6 +766,14 @@ int main(void)
                     disable_cursor();
                     print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + MULTIBOOT_MAX_SIZE)));
                 }
+                else if(returned_val == START_SWAP_CARTRIDGE) {
+                    curr_state = SWAP_CARTRIDGE_MENU;
+                    disable_cursor();
+                    init_save_data();
+                    print_swap_cartridge_menu();
+                }
+                else if(returned_val == START_SETTINGS_MENU) {
+                }
                 else if(returned_val > VIEW_OWN_PARTY && returned_val <= VIEW_OWN_PARTY + TOTAL_GENS) {
                     curr_gen = returned_val - VIEW_OWN_PARTY;
                     own_menu = 1;
@@ -881,6 +897,18 @@ int main(void)
                         }
                         return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     }
+                }
+                break;
+            case SETTINGS_MENU:
+                break;
+            case SWAP_CARTRIDGE_MENU:
+                returned_val = handle_input_swap_cartridge_menu(keys);
+                if(returned_val) {
+                    loading_print_screen();
+                    init_game_data(&game_data[0]);
+                    get_game_id(&game_data[0].game_identifier);
+                    read_gen_3_data(&game_data[0]);
+                    main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                 }
                 break;
             case OFFER_MENU:
