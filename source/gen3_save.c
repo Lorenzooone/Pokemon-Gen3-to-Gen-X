@@ -465,9 +465,12 @@ void load_cartridge(){
 
 u8 has_cartridge_been_removed(){
     u8 retval = 0;
-    if(is_cartridge_loaded)
+    if(is_cartridge_loaded) {
         if(read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS) != loaded_checksum)
             retval = 1;
+        if(read_int_save((in_use_slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS) != MAGIC_NUMBER)
+            retval = 1;
+    }
     return retval;
 }
 

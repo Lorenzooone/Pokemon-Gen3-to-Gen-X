@@ -678,8 +678,10 @@ int main(void)
                                 if(!success)
                                     crash_on_bad_save(1, master);
                             }
-                            else
+                            else {
+                                // TODO: Print a message here
                                 return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                            }
                             break;
                         case FAILED_SUCCESS:
                             keys = 0;
@@ -773,6 +775,7 @@ int main(void)
                     print_swap_cartridge_menu();
                 }
                 else if(returned_val == START_SETTINGS_MENU) {
+                    // TODO: Transition to the Settings menu
                 }
                 else if(returned_val > VIEW_OWN_PARTY && returned_val <= VIEW_OWN_PARTY + TOTAL_GENS) {
                     curr_gen = returned_val - VIEW_OWN_PARTY;
@@ -900,6 +903,7 @@ int main(void)
                 }
                 break;
             case SETTINGS_MENU:
+                // TODO: Handle the Settings menu
                 break;
             case SWAP_CARTRIDGE_MENU:
                 returned_val = handle_input_swap_cartridge_menu(keys);
