@@ -522,6 +522,7 @@ void crash_on_cartridge_removed() {
         curr_vcount -= SCANLINES;
     while(REG_VCOUNT != curr_vcount);
     while(REG_VCOUNT != VBLANK_SCANLINES);
+    disable_sprites_rendering();
     flush_screens();
     disable_all_irqs();
     while(1)
@@ -567,7 +568,7 @@ int main(void)
     init_sprites();
     init_oam_palette();
     init_sprite_counter();
-    REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
+    enable_sprites_rendering();
     init_numbers();
     
     init_unown_tsv();

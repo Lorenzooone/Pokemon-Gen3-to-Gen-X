@@ -60,6 +60,8 @@
 #define BASE_Y_CURSOR_OFFER_OPTIONS (SCREEN_HEIGHT-16-(BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS*(2-1)))
 
 void init_sprites(void);
+void enable_sprites_rendering(void);
+void disable_sprites_rendering(void);
 void init_sprite_counter(void);
 void init_oam_palette(void);
 void init_item_icon(void);

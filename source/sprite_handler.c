@@ -94,6 +94,14 @@ void set_party_sprite_counter(){
     __party_inner_sprite_counter = __inner_sprite_counter;
 }
 
+void enable_sprites_rendering(){
+    REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
+}
+
+void disable_sprites_rendering(){
+    REG_DISPCNT &= ~(OBJ_ON);
+}
+
 void init_sprites(){
     reset_sprites(0);
     update_normal_oam();
