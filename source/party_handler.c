@@ -743,10 +743,13 @@ u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev,
         species = 0;
     if(stat_index >= GEN2_STATS_TOTAL)
         stat_index = GEN2_STATS_TOTAL-1;
-    
+
+    if((species == SHEDINJA_SPECIES) && (stat_index == HP_STAT_INDEX))
+        return 1;
+
     u8 nature = get_nature(pid);
     u16 mon_index = get_mon_index(species, pid, 0, deoxys_form);
-    
+
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
