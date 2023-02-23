@@ -229,13 +229,14 @@ struct gen3_mon_data_unenc {
     struct gen3_mon_attacks attacks;
     struct gen3_mon_evs evs;
     struct gen3_mon_misc misc;
-    u8 is_valid_gen3 :1;
-    u8 is_valid_gen2 :1;
-    u8 is_valid_gen1 :1;
-    u8 is_egg :1;
-    u8 deoxys_form :2;
-    u8 can_roamer_fix :1;
-    u8 fix_has_altered_ot :1;
+    u8 is_valid_gen3 : 1;
+    u8 is_valid_gen2 : 1;
+    u8 is_valid_gen1 : 1;
+    u8 is_egg : 1;
+    u8 deoxys_form : 2;
+    u8 can_roamer_fix : 1;
+    u8 fix_has_altered_ot : 1;
+    u8 successfully_decrypted : 1;
     const u8* pre_evo_string;
     const u16* learnable_moves;
     struct alternative_data_gen3 alter_nature;
@@ -396,5 +397,8 @@ void clean_mail_gen3(struct mail_gen3*, struct gen3_mon* mon);
 u8 trade_evolve(struct gen3_mon*, struct gen3_mon_data_unenc*, u8);
 enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc*, u32);
 u8 forget_and_learn_move(struct gen3_mon_data_unenc*, u32, u32);
+void update_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
+void give_pokerus_gen3(struct gen3_mon_data_unenc*);
+u8 would_update_end_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
 
 #endif

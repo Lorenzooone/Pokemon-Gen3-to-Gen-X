@@ -85,7 +85,7 @@ void crash_on_bad_trade(void);
 void wait_frames(int);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, SETTINGS_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -672,6 +672,9 @@ int main(void)
                                 evolved = trade_mons(game_data, curr_mon, other_mon, curr_gen);
                                 if(evolved)
                                     evolution_animation_init(game_data, curr_mon);
+                                game_data[0].num_trades_stat++;
+                                if(game_data[0].num_trades_stat > 0xFFFFFF)
+                                    game_data[0].num_trades_stat = 0xFFFFFF;
                                 curr_state = TRADING_ANIMATION;
                                 learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
                                 success = pre_write_gen_3_data(&game_data[0], !learnable_moves);
@@ -689,7 +692,7 @@ int main(void)
                             break;
                         case RECEIVED_SUCCESS:
                             keys = 0;
-                            success = complete_write_gen_3_data();
+                            success = complete_write_gen_3_data(&game_data[0]);
                             if(!success)
                                 crash_on_bad_save(1, master);
                             if(curr_gen == 3) {
@@ -775,7 +778,9 @@ int main(void)
                     print_swap_cartridge_menu();
                 }
                 else if(returned_val == START_SETTINGS_MENU) {
-                    // TODO: Transition to the Settings menu
+                    curr_state = BASE_SETTINGS_MENU;
+                    disable_cursor();
+                    print_base_settings_menu(&game_data[0], get_is_cartridge_loaded());
                 }
                 else if(returned_val > VIEW_OWN_PARTY && returned_val <= VIEW_OWN_PARTY + TOTAL_GENS) {
                     curr_gen = returned_val - VIEW_OWN_PARTY;
@@ -893,7 +898,7 @@ int main(void)
                                 saving_print_screen();
                                 success = pre_write_gen_3_data(&game_data[0], 1);
                                 if(success)
-                                    success = complete_write_gen_3_data();
+                                    success = complete_write_gen_3_data(&game_data[0]);
                                 if(!success)
                                     crash_on_bad_save(0, master);
                             }
@@ -902,8 +907,16 @@ int main(void)
                     }
                 }
                 break;
-            case SETTINGS_MENU:
+            case BASE_SETTINGS_MENU:
                 // TODO: Handle the Settings menu
+                returned_val = handle_input_base_settings_menu(keys, &cursor_y_pos, &game_data[0], get_is_cartridge_loaded());
+                if(returned_val) {
+                    if(returned_val == EXIT_BASE_SETTINGS)
+                        main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
+                }
+                else {
+                
+                }
                 break;
             case SWAP_CARTRIDGE_MENU:
                 returned_val = handle_input_swap_cartridge_menu(keys);

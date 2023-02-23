@@ -485,6 +485,38 @@ u8 has_pokerus_gen3_raw(struct gen3_mon_data_unenc* data_src){
     return HAD_POKERUS;
 }
 
+void update_pokerus_gen3(struct gen3_mon_data_unenc* data_src, u16 days_increase){
+    if(data_src->successfully_decrypted)
+        if(data_src->misc.pokerus & 0xF) {
+            if(((data_src->misc.pokerus & 0xF) < days_increase) || (days_increase > 4))
+                data_src->misc.pokerus &= 0xF0;
+            else
+                data_src->misc.pokerus -= days_increase;
+
+            if(!data_src->misc.pokerus)
+                data_src->misc.pokerus = 0x10;
+            place_and_encrypt_gen3_data(data_src, data_src->src);
+        }
+}
+
+void give_pokerus_gen3(struct gen3_mon_data_unenc* data_src){
+    if(data_src->successfully_decrypted)
+        if(!data_src->misc.pokerus) {
+            // This is for resolving the issue in FRLG, not for cheating,
+            // so a non-spreadable Pokérus is given
+            data_src->misc.pokerus = 0x10;
+            place_and_encrypt_gen3_data(data_src, data_src->src);
+        }
+}
+
+u8 would_update_end_pokerus_gen3(struct gen3_mon_data_unenc* data_src, u16 days_increase){
+    if(data_src->successfully_decrypted)
+        if(data_src->misc.pokerus & 0xF)
+            if(((data_src->misc.pokerus & 0xF) <= days_increase) || (days_increase > 4))
+                return 1;
+    return 0;
+}
+
 u8 is_shiny_gen3(u32 pid, u32 ot_id, u8 is_egg, u32 trainer_id){
     // The one who hatches the egg influences the shinyness
     if(is_egg)
@@ -795,6 +827,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     // Default learnable moves values
     dst->learnable_moves = NULL;
+    dst->successfully_decrypted = 0;
 
     u32 decryption[ENC_DATA_SIZE>>2];
     
@@ -807,12 +840,13 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     }
     
     u8 index = get_index_key(src->pid);
+    dst->successfully_decrypted = 1;
     
     // Makes the compiler happy
     struct gen3_mon_growth* growth = (struct gen3_mon_growth*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3)));
     struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3)));
-    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3)));;
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3)));;
+    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3)));
+    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3)));
     
     for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
         ((u8*)(&dst->growth))[i] = ((u8*)growth)[i];

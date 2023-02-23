@@ -432,6 +432,14 @@ u8 handle_input_learnable_moves_menu(u16 keys, u8* cursor_y_pos) {
     return 0;
 }
 
+u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, struct game_data_t* game_data, u8 is_loaded) {
+
+    if(keys & KEY_B)
+        return EXIT_BASE_SETTINGS;
+
+    return 0;
+}
+
 u8 handle_input_offer_options(u16 keys, u8* cursor_y_pos, u8* cursor_x_pos) {
     
     if(keys & KEY_B)

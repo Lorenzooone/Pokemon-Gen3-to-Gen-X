@@ -30,6 +30,7 @@ void print_loading(void);
 void print_evolution_animation(struct gen3_mon_data_unenc*);
 void print_invalid(u8);
 void print_offer_screen(struct game_data_t*, u8, u8);
+void print_base_settings_menu(struct game_data_t*, u8);
 void print_offer_options_screen(struct game_data_t*, u8, u8);
 void print_trade_options(u8, u8);
 

@@ -1093,6 +1093,8 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->is_valid_gen3 = 0;
     data_dst->is_valid_gen2 = 0;
+    data_dst->is_valid_gen1 = 0;
+    data_dst->successfully_decrypted = 0;
     data_dst->learnable_moves = NULL;
     
     // Check if valid
@@ -1101,6 +1103,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->is_valid_gen3 = 1;
     data_dst->is_valid_gen2 = 1;
+    data_dst->successfully_decrypted = 1;
     
     // Set base data
     dst->has_species = 1;
@@ -1185,7 +1188,9 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
         ((u8*)(dst))[i] = 0;
     
     data_dst->is_valid_gen3 = 0;
+    data_dst->is_valid_gen2 = 0;
     data_dst->is_valid_gen1 = 0;
+    data_dst->successfully_decrypted = 0;
     data_dst->learnable_moves = NULL;
     
     // Check if valid
@@ -1194,6 +1199,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     data_dst->is_valid_gen3 = 1;
     data_dst->is_valid_gen1 = 1;
+    data_dst->successfully_decrypted = 1;
     
     // Set base data
     dst->has_species = 1;

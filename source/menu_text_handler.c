@@ -1,5 +1,6 @@
 #include <gba.h>
 #include "menu_text_handler.h"
+#include "gen3_clock_events.h"
 #include "text_handler.h"
 #include "options_handler.h"
 #include "input_handler.h"
@@ -310,6 +311,25 @@ void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 ot
     PRINT_FUNCTION("No");
     set_text_x(OFFER_OPTIONS_WINDOW_X + (OFFER_OPTIONS_WINDOW_X_SIZE - SUMMARY_LINE_MAX_SIZE));
     PRINT_FUNCTION("Summary: Receiving");
+}
+
+void print_base_settings_menu(struct game_data_t* game_data, u8 is_loaded) {
+    default_reset_screen();
+    PRINT_FUNCTION("AAAA\n\n");
+    if(is_loaded) {
+        if(is_daytime(game_data))
+            PRINT_FUNCTION("Time: Day\n\n");
+        else
+            PRINT_FUNCTION("Time: Night\n\n");
+        if(is_high_tide(game_data))
+            PRINT_FUNCTION("Tide: High\n\n");
+        else
+            PRINT_FUNCTION("Tide: Low\n\n");
+        PRINT_FUNCTION("\x03 \x03", game_data->clock_events.enable_rtc_reset_flag, game_data->clock_events.enable_rtc_reset_var);
+    }
+    
+    set_text_y(Y_LIMIT-1);
+    PRINT_FUNCTION("B: Go Back");
 }
 
 void print_trade_options(u8 cursor_x_pos, u8 own_menu){

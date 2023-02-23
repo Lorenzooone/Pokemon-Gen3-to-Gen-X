@@ -56,6 +56,31 @@ u8 id_to_version(struct game_identity* identifier){
     return base_game;
 }
 
+u8 determine_possible_main_game_for_slot(u8 slot, u8 section_pos, u16 total_bytes) {
+    u32 game_code = -1;
+    game_code = read_int_save((slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + SECTION_GAME_CODE);
+    if((game_code != FRLG_GAME_CODE) && (game_code != RS_GAME_CODE)) {
+        u8 found = 0;
+        for(int i = RS_END_BATTLE_TOWER; i < total_bytes; i++)
+            if(read_byte_save((slot * SAVE_SLOT_SIZE) + (section_pos * SECTION_SIZE) + i)) {
+                found = 1;
+                break;
+            }
+        if(found)
+            return 1 << E_MAIN_GAME_CODE;
+        else
+            return (1 << E_MAIN_GAME_CODE) | (1 << RS_MAIN_GAME_CODE);
+    }
+    switch(game_code) {
+        case RS_GAME_CODE:
+            return 1 << RS_MAIN_GAME_CODE;
+        case FRLG_GAME_CODE:
+            return 1 << FRLG_MAIN_GAME_CODE;
+        default:
+            return 1 << E_MAIN_GAME_CODE;
+    }
+}
+
 void determine_game_with_save(struct game_identity* identifier, u8 slot, u8 section_pos, u16 total_bytes) {
     u32 game_code = -1;
     if(identifier->game_main_version == UNDETERMINED) {

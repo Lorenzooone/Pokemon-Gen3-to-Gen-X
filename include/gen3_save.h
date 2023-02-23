@@ -3,6 +3,8 @@
 
 #include "party_handler.h"
 #include "version_identifier.h"
+#include "gen3_clock_events_t.h"
+#include "useful_qualifiers.h"
 #include "save.h"
 
 #define SAVE_SLOT_SIZE 0xE000
@@ -17,17 +19,21 @@ struct game_data_t {
     u8 giftRibbons[GIFT_RIBBONS];
     u8 trainer_name[OT_NAME_GEN3_SIZE+1];
     u8 trainer_gender;
+    u32 stat_enc_key;
+    u32 num_trades_stat;
     u32 trainer_id;
     struct mail_gen3 mails_3[PARTY_SIZE];
     struct gen3_party party_3;
     struct gen3_mon_data_unenc party_3_undec[PARTY_SIZE];
     struct gen2_party party_2;
     struct gen1_party party_1;
+    struct clock_events_t clock_events;
 };
 
 void init_game_data(struct game_data_t*);
 void init_save_data(void);
 u8 has_cartridge_been_removed(void);
+u8 get_is_cartridge_loaded(void);
 u8 read_gen_3_data(struct game_data_t*);
 void process_party_data(struct game_data_t* game_data);
 struct game_data_t* get_own_game_data(void);
@@ -36,6 +42,6 @@ u8 trade_mons(struct game_data_t*, u8, u8, u8);
 u8 is_invalid_offer(struct game_data_t*, u8, u8, u8, u16);
 u8 pre_write_gen_3_data(struct game_data_t*, u8);
 u8 pre_write_updated_moves_gen_3_data(struct game_data_t*);
-u8 complete_write_gen_3_data(void);
+u8 complete_write_gen_3_data(struct game_data_t*);
 
 #endif
