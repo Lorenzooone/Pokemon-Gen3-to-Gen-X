@@ -338,6 +338,7 @@ void read_party(int slot, struct game_data_t* game_data) {
             normalize_time(&game_data->clock_events.saved_berry_time);
         }
         if(section_id == SECTION_SYS_FLAGS_ID) {
+            // TODO: Load everything clock-related
             game_data->clock_events.enable_rtc_reset_flag = get_sys_flag_save(slot, i, game_id, enable_rtc_flag_num[game_id]);
         }
         if(section_id == SECTION_VARS_ID) {
@@ -484,6 +485,7 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND
                     buffer_8[DEX_POS_SEEN_0+j] = ((u8*)game_data->pokedex_seen)[j];
             }
             if(section_id == SECTION_SYS_FLAGS_ID) {
+                // TODO: Store everything clock-related
                 set_sys_flag_save(buffer_8, game_id, enable_rtc_flag_num[game_id], game_data->clock_events.enable_rtc_reset_flag);
             }
             if(section_id == SECTION_VARS_ID) {

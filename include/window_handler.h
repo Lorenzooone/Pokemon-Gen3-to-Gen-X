@@ -64,6 +64,12 @@
 #define MESSAGE_WINDOW_X_SIZE (TOTAL_X_SIZE - MESSAGE_WINDOW_X - 1)
 #define MESSAGE_WINDOW_Y_SIZE (TOTAL_Y_SIZE - MESSAGE_WINDOW_Y - 1)
 
+#define REJECTED_WINDOW_SCREEN 3
+#define REJECTED_WINDOW_X 1
+#define REJECTED_WINDOW_Y_SIZE 3
+#define REJECTED_WINDOW_Y (TOTAL_Y_SIZE-(REJECTED_WINDOW_Y_SIZE+1))
+#define REJECTED_WINDOW_X_SIZE (TOTAL_X_SIZE - REJECTED_WINDOW_X - 1)
+
 #define OFFER_WINDOW_SCREEN 1
 #define OFFER_WINDOW_X (TOTAL_X_SIZE>>1)
 #define OFFER_WINDOW_Y 0
@@ -84,6 +90,9 @@ void clear_offer_window(void);
 
 void init_message_window(void);
 void clear_message_window(void);
+
+void init_rejected_window(void);
+void clear_rejected_window(void);
 
 void init_offer_options_window(void);
 void clear_offer_options_window(void);

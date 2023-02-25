@@ -34,6 +34,7 @@
 #define MIN_WAITCYCLE 1
 
 #define WAITING_TIME_MOVE_MESSAGES (2*FPS)
+#define WAITING_TIME_REJECTED (2*FPS)
 #define MAX_RANDOM_WAIT_TIME (1*FPS)
 
 #define BASE_SCREEN 0
@@ -59,6 +60,7 @@ void check_bad_trade_received(struct game_data_t*, u8, u8, u8, u8, u8, u8*);
 void trade_cancel_print_screen(u8);
 void saving_print_screen(void);
 void loading_print_screen(void);
+void rejected_print_screen(u8);
 void trading_animation_init(struct game_data_t*, u8, u8);
 void evolution_animation_init(struct game_data_t*, u8);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
@@ -272,6 +274,15 @@ void trade_cancel_print_screen(u8 update) {
     print_trade_menu_cancel(update);
     enable_screen(TRADE_CANCEL_SCREEN);
     set_screen(prev_screen);
+}
+
+void rejected_print_screen(u8 reason) {
+    u8 prev_screen = get_screen_num();
+    set_screen(REJECTED_WINDOW_SCREEN);
+    print_rejected(reason);
+    enable_screen(REJECTED_WINDOW_SCREEN);
+    set_screen(prev_screen);
+    prepare_flush();
 }
 
 void saving_print_screen() {
@@ -608,7 +619,6 @@ int main(void)
     u8 submenu_cursor_x_pos = 0;
     u8 prev_val = 0;
     u8 curr_mon = 0;
-    u16 random_wait_time = 0;
     u32 curr_move = 0;
     u8 success = 0;
     u8 other_mon = 0;
@@ -648,8 +658,11 @@ int main(void)
                             result = get_received_trade_offer();
                             if(result == TRADE_CANCELLED)
                                 conclude_trade(&game_data[0], target, region, master, &cursor_y_pos);
-                            else if(result == WANTS_TO_CANCEL)
+                            else if(result == WANTS_TO_CANCEL) {
+                                rejected_print_screen(1);
+                                wait_frames(WAITING_TIME_REJECTED);
                                 return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                            }
                             else {
                                 u8 is_invalid = is_invalid_offer(game_data, curr_mon, result, curr_gen, get_gen3_offer());
                                 if(!is_invalid) {
@@ -682,7 +695,8 @@ int main(void)
                                     crash_on_bad_save(1, master);
                             }
                             else {
-                                // TODO: Print a message here
+                                rejected_print_screen(0);
+                                wait_frames(WAITING_TIME_REJECTED);
                                 return_to_trade_menu(game_data, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                             }
                             break;
@@ -695,13 +709,8 @@ int main(void)
                             success = complete_write_gen_3_data(&game_data[0]);
                             if(!success)
                                 crash_on_bad_save(1, master);
-                            if(curr_gen == 3) {
-                                random_wait_time = SWI_DivMod(get_rng() & 0x7FFFFFFF, MAX_RANDOM_WAIT_TIME);
-                                while(random_wait_time) {
-                                    VBlankIntrWait();
-                                    random_wait_time--;
-                                }
-                            }
+                            if(curr_gen == 3)
+                                wait_frames(SWI_DivMod(get_rng() & 0x7FFFFFFF, MAX_RANDOM_WAIT_TIME));
                             process_party_data(&game_data[0]);
                             stop_transfer(master);
                             start_trade_init(&game_data[0], target, region, master, curr_gen, &cursor_y_pos);
@@ -803,6 +812,7 @@ int main(void)
                     if(returned_val == CANCEL_TRADING)
                         main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                     else if(returned_val) {
+                        // TODO: Handle Eevee into Umbreon/Espeon
                         if(game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3 && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg) && game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix)
                             trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu);
                         else
@@ -852,8 +862,10 @@ int main(void)
                     else {
                         if(!submenu_cursor_x_pos)
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
-                        else if(own_menu)
+                        else if(own_menu) {
+                            // TODO: Handle Eevee into Umbreon/Espeon
                             iv_fix_menu_init(game_data, cursor_x_pos, curr_mon);
+                        }
                         else if(!cursor_x_pos) {
                             prepare_gen3_offer(&game_data[0].party_3_undec[curr_mon]);
                             waiting_offer_init(0, cursor_y_pos);
@@ -925,6 +937,7 @@ int main(void)
                     init_game_data(&game_data[0]);
                     get_game_id(&game_data[0].game_identifier);
                     read_gen_3_data(&game_data[0]);
+                    // TODO: Print warnings for bad location/no nat dex/other
                     main_menu_init(&game_data[0], target, region, master, &cursor_y_pos);
                 }
                 break;

@@ -42,7 +42,7 @@ const char* contest_strings[] = {"Coolness", "Beauty", "Cuteness", "Smartness", 
 const char* language_strings[NUM_LANGUAGES] = {"???", "Japanese", "English", "French", "Italian", "German", "Korean", "Spanish"};
 const char* trade_start_state_strings[] = {"Unknown", "Entering Room", "Starting Trade", "Ending Trade", "Waiting Trade", "Trading Party Data", "Synchronizing", "Completed"};
 const char* offer_strings[] = {" Sending ", "Receiving"};
-const char* invalid_strings[][PRINTABLE_INVALID_STRINGS] = {{"      TRADE REJECTED!", "The Pokémon offered by the", "other player has issues!"}, {"      TRADE REJECTED!", "The trade would leave you", "with no usable Pokémon!"}};
+const char* invalid_strings[][PRINTABLE_INVALID_STRINGS] = {{"      TRADE REJECTED!", "The Pok\xE9mon offered by the", "other player has issues!"}, {"      TRADE REJECTED!", "The trade would leave you", "with no usable Pok\xE9mon!"}};
 
 const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
 typedef void (*print_info_functions_t)(struct gen3_mon_data_unenc*);
@@ -292,6 +292,18 @@ void print_invalid(u8 reason) {
         set_text_x(MESSAGE_WINDOW_X);
         PRINT_FUNCTION("\x01", invalid_strings[reason][i]);
     }
+}
+
+void print_rejected(u8 reason) {
+    reset_screen(BLANK_FILL);
+    init_rejected_window();
+    clear_rejected_window();
+    set_text_y(REJECTED_WINDOW_Y);
+    set_text_x(REJECTED_WINDOW_X);
+    if(!reason)
+        PRINT_FUNCTION("The trade offer was denied!");
+    else
+        PRINT_FUNCTION("  The trade was rejected!");
 }
 
 void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
