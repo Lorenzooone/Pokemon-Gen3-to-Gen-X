@@ -1080,12 +1080,18 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
                     found = 1;
                     // Load the pre-evo name
                     mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
-                    //Evolve
+                    // Determine if we're going to change the name
+                    u8 replace_name = 0;
+                    if(text_gen3_is_same(get_pokemon_name(growth->species, mon->pid, mon_data->is_egg, mon_data->deoxys_form, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))
+                        replace_name = 1;
+                    // Evolve
                     growth->species = trade_evolutions_evo_ids[i];
                     // Consume the evolution item, if needed
                     if(growth->item == trade_evolutions_item_ids[i])
                         growth->item = NO_ITEM_ID;
-                    // TODO: Handle names
+                    // Update the name, if needed
+                    if(replace_name)
+                        text_gen3_copy(get_pokemon_name(growth->species, mon->pid, mon_data->is_egg, mon_data->deoxys_form, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language));
                     break;
                 }
     
