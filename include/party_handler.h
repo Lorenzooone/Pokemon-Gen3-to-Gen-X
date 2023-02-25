@@ -145,8 +145,20 @@
 #define ROAMER_ENCOUNTER 2
 #define UNOWN_ENCOUNTER 3
 
+#define NUM_LANGUAGES 8
+#define NUM_POKEMON_NAME_LANGUAGES 4
 #define JAPANESE_LANGUAGE 1
 #define ENGLISH_LANGUAGE 2
+
+#define GET_LANGUAGE_IS_JAPANESE(x) ((x) == JAPANESE_LANGUAGE)
+#define GET_LANGUAGE_NICKNAME_LIMIT(x) (GET_LANGUAGE_IS_JAPANESE(x) ? NICKNAME_JP_GEN3_SIZE : NICKNAME_GEN3_SIZE)
+#define GET_LANGUAGE_OT_NAME_LIMIT(x) (GET_LANGUAGE_IS_JAPANESE(x) ? OT_NAME_JP_GEN3_SIZE : OT_NAME_GEN3_SIZE)
+#define GET_LANGUAGE_OT_NAME_LIMIT_DIRECT(x) ((x) ? OT_NAME_JP_GEN3_SIZE : OT_NAME_GEN3_SIZE)
+
+#define SYS_LANGUAGE ENGLISH_LANGUAGE
+#define IS_SYS_LANGUAGE_JAPANESE GET_LANGUAGE_IS_JAPANESE(SYS_LANGUAGE)
+#define SYS_LANGUAGE_LIMIT GET_LANGUAGE_NICKNAME_LIMIT(SYS_LANGUAGE)
+#define DEFAULT_NAME_BAD_LANGUAGE ENGLISH_LANGUAGE
 
 typedef u32 gen3_party_total_t;
 
@@ -345,7 +357,7 @@ u8 get_index_key(u32);
 u8 get_nature(u32);
 u16 get_mon_index(int, u32, u8, u8);
 u8 get_unown_letter_gen3(u32);
-const u8* get_pokemon_name(int, u32, u8, u8);
+const u8* get_pokemon_name(int, u32, u8, u8, u8);
 u8 has_mail(struct gen3_mon*, struct gen3_mon_growth*, u8);
 s32 get_proper_exp(struct gen3_mon*, struct gen3_mon_growth*, u8);
 u8 to_valid_level(u8);
@@ -354,6 +366,8 @@ u8 get_pokemon_gender_gen3(int, u32, u8, u8);
 u16 calc_stats_gen3(u16, u32, u8, u8, u8, u8, u8);
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc*, struct gen3_mon*);
 
+u8 get_valid_language(u8);
+const u8* get_pokemon_name_language(u16, u8);
 const u16* get_learnset_for_species(const u16*, u16);
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);
 u16 get_mon_index_raw(struct gen3_mon_data_unenc*);

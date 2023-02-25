@@ -2,14 +2,11 @@
 #include "gen12_methods.h"
 #include "party_handler.h"
 #include "text_handler.h"
-#include "bin_table_handler.h"
 #include "fast_pokemon_methods.h"
 
 #include "gen3_to_1_conv_table_bin.h"
 #include "gen1_to_3_conv_table_bin.h"
 #include "pokemon_gender_bin.h"
-#include "pokemon_names_bin.h"
-#include "gen2_names_jap_bin.h"
 #include "pokemon_stats_gen1_bin.h"
 #include "pokemon_stats_bin.h"
 
@@ -173,17 +170,21 @@ u8 get_pokemon_gender_kind_gen2(u8 index, u8 is_egg, u8 curr_gen) {
     return pokemon_gender_bin[get_mon_index_gen2(index, is_egg)];
 }
 
-const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 is_jp, u8* buffer) {
-    if(is_jp)
-        return &(gen2_names_jap_bin[get_mon_index_gen2(index, is_egg)*STRING_GEN2_JP_CAP]);
-    u8 buffer_two[STRING_GEN2_INT_SIZE];
+const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 language, u8* buffer) {
+    u8 string_cap = STRING_GEN2_INT_CAP;
+    u8 is_jp = 0;
+    if(language == JAPANESE_LANGUAGE) {
+        string_cap = STRING_GEN2_JP_CAP;
+        is_jp = 1;
+    }
+
     u16 mon_index = get_mon_index_gen2(index, is_egg);
     if (mon_index == MR_MIME_SPECIES)
         mon_index = MR_MIME_OLD_NAME_POS;
     if (mon_index == UNOWN_SPECIES)
         mon_index = UNOWN_REAL_NAME_POS;
-    text_generic_to_gen3(get_table_pointer(pokemon_names_bin, mon_index), buffer_two, NAME_SIZE, STRING_GEN2_INT_CAP, 0, 0);
-    text_gen3_to_gen12(buffer_two, buffer, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP, 0, 0);
+
+    text_gen3_to_gen12(get_pokemon_name_language(mon_index, language), buffer, string_cap, string_cap, is_jp, is_jp);
     return buffer;
 }
 

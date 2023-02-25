@@ -15,6 +15,8 @@
 
 #include "pokemon_gender_bin.h"
 #include "pokemon_names_bin.h"
+#include "egg_names_bin.h"
+#include "language_names_index_bin.h"
 #include "item_names_bin.h"
 #include "location_names_bin.h"
 #include "pokeball_names_bin.h"
@@ -48,7 +50,7 @@
 
 #define PID_POSITIONS 24
 
-const u8* get_pokemon_name_pure(int, u32, u8);
+const u8* get_pokemon_name_pure(int, u32, u8, u8);
 const u8* get_item_name(int, u8);
 u8 get_ability_pokemon(int, u32, u8, u8, u8);
 u8 is_ability_valid(u16, u32, u8, u8, u8, u8);
@@ -89,6 +91,12 @@ void init_enc_positions() {
                         for(int l = 0; l < 4; l++)
                             if((l != i) && (l != j) && (l != k))
                                 enc_positions[pos++] = (0<<(i*2)) | (1<<(j*2)) | (2<<(k*2)) | (3<<(l*2));
+}
+
+u8 get_valid_language(u8 language) {
+    if(language >= NUM_LANGUAGES)
+        language = DEFAULT_NAME_BAD_LANGUAGE;
+    return language;
 }
 
 u8 get_index_key(u32 pid){
@@ -132,24 +140,24 @@ u16 get_mon_index_raw(struct gen3_mon_data_unenc* data_src){
     return get_mon_index(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form);
 }
 
-const u8* get_pokemon_name(int index, u32 pid, u8 is_egg, u8 deoxys_form){
-    return get_table_pointer(pokemon_names_bin, get_mon_index(index, pid, is_egg, deoxys_form));
+const u8* get_pokemon_name(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 language){
+    return get_pokemon_name_language(get_mon_index(index, pid, is_egg, deoxys_form), language);
 }
 
-const u8* get_pokemon_name_pure(int index, u32 pid, u8 is_egg){
+const u8* get_pokemon_name_pure(int index, u32 pid, u8 is_egg, u8 language){
     u16 mon_index = get_mon_index(index, pid, is_egg, 0);
     if ((index == UNOWN_SPECIES) && !is_egg)
         mon_index = UNOWN_REAL_NAME_POS;
     if ((index == DEOXYS_SPECIES) && !is_egg)
         mon_index = DEOXYS_SPECIES;
-    return get_table_pointer(pokemon_names_bin, mon_index);
+    return get_pokemon_name_language(mon_index, language);
 }
 
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
-        return get_pokemon_name(0,0,0,0);
+        return get_pokemon_name(0,0,0,0, SYS_LANGUAGE);
 
-    return get_pokemon_name(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form);
+    return get_pokemon_name(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, SYS_LANGUAGE);
 }
 
 const u16* get_learnset_for_species(const u16* learnsets, u16 species){
@@ -160,6 +168,13 @@ const u16* get_learnset_for_species(const u16* learnsets, u16 species){
             return &learnsets[base_pos];
     }
     return NULL;
+}
+
+const u8* get_pokemon_name_language(u16 index, u8 language) {
+    language = get_valid_language(language);
+    if(index == EGG_SPECIES)
+        return get_table_pointer(egg_names_bin, language);
+    return get_table_pointer(pokemon_names_bin, (index * NUM_POKEMON_NAME_LANGUAGES) + language_names_index_bin[language]);
 }
 
 const u8* get_item_name(int index, u8 is_egg){
@@ -922,6 +937,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     src->level = to_valid_level_gen3(src);
     
     growth->exp = get_proper_exp_raw(dst);
+    
+    // TODO: Fix Nincada evolving to Shedinja in a Japanese game
     
     // Set the new "cleaned" data
     place_and_encrypt_gen3_data(dst, src);

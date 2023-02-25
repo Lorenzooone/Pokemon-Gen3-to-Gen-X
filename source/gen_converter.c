@@ -67,10 +67,12 @@ void set_ivs(struct gen3_mon_misc*, u32);
 void preset_alter_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
 void set_origin_pid_iv(struct gen3_mon*, struct gen3_mon_data_unenc*, u16, u16, u8, u8, u8, u8);
 u8 are_trainers_same(struct gen3_mon*, u8);
-void fix_name_change_from_gen3(struct gen3_mon*, u16,  u8*, u8, u8);
+void fix_name_change_from_gen3(struct gen3_mon*, u16, u8*, u8, u8, u8);
 void fix_name_change_to_gen3(struct gen3_mon*, u8);
 void convert_strings_of_gen3(struct gen3_mon*, u16, u8*, u8*, u8*, u8*, u8, u8);
 void convert_strings_of_gen12(struct gen3_mon*, u8, u8*, u8*, u8);
+
+u8 target_int_language = ENGLISH_LANGUAGE;
 
 u16 swap_endian_short(u16 shrt) {
     return ((shrt & 0xFF00) >> 8) | ((shrt & 0xFF) << 8);
@@ -799,31 +801,37 @@ u8 are_trainers_same(struct gen3_mon* dst, u8 is_jp) {
     
 }
 
-void fix_name_change_from_gen3(struct gen3_mon* src, u16 species,  u8* nickname, u8 is_egg, u8 is_gen2) {
-    u8 tmp_text_buffer[NAME_SIZE];
-    
-    // Get the string to compare to
-    text_generic_to_gen3(get_pokemon_name(species, src->pid, is_egg, 0), tmp_text_buffer, NAME_SIZE, NICKNAME_GEN3_SIZE, 0, 0);
+void fix_name_change_from_gen3(struct gen3_mon* src, u16 species, u8* nickname, u8 is_egg, u8 is_gen2, u8 language) {
+    u8 tmp_text_buffer[STRING_GEN2_INT_SIZE];
+    u8 is_jp = language == JAPANESE_LANGUAGE;
+    u8 name_cap = STRING_GEN2_INT_CAP;
+    if(is_jp)
+        name_cap = STRING_GEN2_JP_CAP;
     
     // If it's the same, update the nickname with the new one
-    if(text_gen3_is_same(src->nickname, tmp_text_buffer, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE)) {
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0, tmp_text_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+    if(text_gen3_is_same(src->nickname, get_pokemon_name(species, src->pid, is_egg, 0, language), NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE)) {
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, language, tmp_text_buffer), nickname, name_cap, name_cap);
         // Gen 1 used the wrong dot symbol
         if(!is_gen2)
-            text_gen2_replace(nickname, STRING_GEN2_INT_CAP, GEN2_DOT, GEN1_DOT);
+            text_gen2_replace(nickname, name_cap, GEN2_DOT, GEN1_DOT);
     }
 }
 
 void fix_name_change_to_gen3(struct gen3_mon* dst, u8 species) {
-    u8 tmp_text_buffer[STRING_GEN2_INT_CAP];
+    u8 tmp_text_buffer[STRING_GEN2_INT_SIZE];
     u8 tmp_text_buffer2[NICKNAME_GEN3_SIZE];
+    u8 language = dst->language;
+    u8 is_jp = language == JAPANESE_LANGUAGE;
+    u8 name_cap = STRING_GEN2_INT_CAP;
+    if(is_jp)
+        name_cap = STRING_GEN2_JP_CAP;
     
     // Get the string to compare to
-    text_gen12_to_gen3(get_pokemon_name_gen2(species, 0, 0, tmp_text_buffer), tmp_text_buffer2, STRING_GEN2_INT_CAP, NICKNAME_GEN3_SIZE, 0, 0);
+    text_gen12_to_gen3(get_pokemon_name_gen2(species, 0, language, tmp_text_buffer), tmp_text_buffer2, name_cap, NICKNAME_GEN3_SIZE, 0, 0);
     
     // If it's the same, update the nickname with the new one
     if(text_gen3_is_same(dst->nickname, tmp_text_buffer2, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE))
-        text_generic_to_gen3(get_pokemon_name(species, 0, 0, 0), dst->nickname, NAME_SIZE, NICKNAME_GEN3_SIZE, 0, 0);
+        text_gen3_copy(get_pokemon_name(species, 0, 0, 0, language), dst->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
 }
 
 void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8* ot_name_jp, u8* nickname, u8* nickname_jp, u8 is_egg, u8 is_gen2) {
@@ -843,25 +851,24 @@ void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8*
     
     // Fix text up
     // "MR.MIME" gen 2 == "MR. MIME" gen 3
-    // Idk if something similar happens in Jap...
-    // Maybe there are some French things with accents...
+    // In French, "M.MIME" == "M. MIME"
     if((species == MR_MIME_SPECIES) && !is_egg)
-        fix_name_change_from_gen3(src, species,  nickname, is_egg, is_gen2);
+        fix_name_change_from_gen3(src, species,  nickname, is_egg, is_gen2, target_int_language);
     
     // Put the "EGG" name
     if(is_gen2 && is_egg) {
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1, gen2_buffer), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, target_int_language, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, JAPANESE_LANGUAGE, gen2_buffer), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
     }
     
     // Handle bad naming conversions (? >= half the name) and empty names
     size_t question_marks_count = text_gen2_count_question(nickname, STRING_GEN2_INT_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
     if((question_marks_count >= (text_gen2_size(nickname, STRING_GEN2_INT_CAP) >> 1)) || (text_gen2_size(nickname, STRING_GEN2_INT_CAP) == 0))
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 0, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, target_int_language, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
     // For the japanese nickname too
     question_marks_count = text_gen2_count_question(nickname_jp, STRING_GEN2_JP_CAP) - text_gen3_count_question(src->nickname, NICKNAME_GEN3_SIZE);
     if((question_marks_count >= (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) >> 1)) || (text_gen2_size(nickname_jp, STRING_GEN2_JP_CAP) == 0))
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, 1, gen2_buffer), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, JAPANESE_LANGUAGE, gen2_buffer), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
 
 }
 
@@ -899,13 +906,13 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     // Put the "EGG" name
     if(is_egg) {
         dst->language = JAPANESE_LANGUAGE;
-        text_gen12_to_gen3(get_pokemon_name_gen2(species, 1, 1, gen2_buffer), dst->nickname, STRING_GEN2_JP_CAP, NICKNAME_GEN3_SIZE, 1, 1);
+        text_gen12_to_gen3(get_pokemon_name_gen2(species, 1, JAPANESE_LANGUAGE, gen2_buffer), dst->nickname, STRING_GEN2_JP_CAP, NICKNAME_GEN3_SIZE, 1, 1);
     }
     else {
         // Handle bad naming conversions (? >= half the name) and empty names
         size_t question_marks_count = text_gen3_count_question(dst->nickname, NICKNAME_GEN3_SIZE) - text_gen2_count_question(nickname, name_cap);    
         if((question_marks_count >= (text_gen3_size(dst->nickname, NICKNAME_GEN3_SIZE) >> 1)) || (text_gen3_size(dst->nickname, NICKNAME_GEN3_SIZE) == 0))
-            text_gen12_to_gen3(get_pokemon_name_gen2(species, 0, is_jp, gen2_buffer), dst->nickname, name_cap, NICKNAME_GEN3_SIZE, is_jp, is_jp);
+            text_gen12_to_gen3(get_pokemon_name_gen2(species, 0, dst->language, gen2_buffer), dst->nickname, name_cap, NICKNAME_GEN3_SIZE, is_jp, is_jp);
     }
 }
 
@@ -1113,7 +1120,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     if(is_jp)
         dst->language = JAPANESE_LANGUAGE;
     else
-        dst->language = ENGLISH_LANGUAGE;
+        dst->language = target_int_language;
     
     // Handle Nickname + OT conversion
     convert_strings_of_gen12(dst, src->species, ot_name, nickname, is_egg);
@@ -1209,7 +1216,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     if(is_jp)
         dst->language = JAPANESE_LANGUAGE;
     else
-        dst->language = ENGLISH_LANGUAGE;
+        dst->language = target_int_language;
     
     // Handle Nickname + OT conversion
     convert_strings_of_gen12(dst, get_mon_index_gen1_to_3(src->species), ot_name, nickname, 0);
