@@ -318,12 +318,8 @@ void read_party(int slot, struct game_data_t* game_data) {
         slot = 1;
     
     read_game_data_trainer_info(slot, game_data);
-    if(game_data->game_identifier.game_is_jp == UNDETERMINED) {
-        if(game_data->trainer_name[OT_NAME_JP_GEN3_SIZE+1] == 0)
-            game_data->game_identifier.game_is_jp = 1;
-        else
-            game_data->game_identifier.game_is_jp = 0;
-    }
+    if(game_data->game_identifier.game_is_jp == UNDETERMINED)
+        game_data->game_identifier.game_is_jp = is_trainer_name_japanese(game_data->trainer_name);
     
     u8 game_id = game_data->game_identifier.game_main_version;
 

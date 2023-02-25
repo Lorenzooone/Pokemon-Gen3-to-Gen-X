@@ -2,6 +2,7 @@
 #include "version_identifier.h"
 #include "save.h"
 #include "text_handler.h"
+#include "party_handler.h"
 #include "gen3_save.h"
 
 #define ROM 0x8000000
@@ -24,6 +25,13 @@ void init_game_identifier(struct game_identity* identifier) {
     identifier->game_main_version = UNDETERMINED;
     identifier->game_sub_version = UNDETERMINED;
     identifier->game_is_jp = UNDETERMINED;
+}
+
+u8 is_trainer_name_japanese(u8* buffer) {
+    for(size_t i = OT_NAME_JP_GEN3_SIZE+2; i < OT_NAME_GEN3_SIZE+1; i++)
+        if(buffer[i])
+            return 0;
+    return 1;
 }
 
 void get_game_id(struct game_identity* identifier){
