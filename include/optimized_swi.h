@@ -15,7 +15,7 @@ ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_DivMod(const uint32_t dividend, const uint32_
 
     asm volatile(
         "swi 0x06;" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
-        "r"(divid_), "r"(divis_) :
+        "r"(divid_), "r"(divis_), "r"(abs_divis_) :
     );
     
     return divis_;
@@ -29,7 +29,7 @@ ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_Div(const uint32_t dividend, const uint32_t d
 
     asm volatile(
         "swi 0x06;" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
-        "r"(divid_), "r"(divis_) :
+        "r"(divid_), "r"(divis_), "r"(abs_divis_) :
     );
     
     return divid_;
@@ -43,7 +43,7 @@ ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_DivDivMod(const uint32_t dividend, const uint
 
     asm volatile(
         "swi 0x06;" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
-        "r"(divid_), "r"(divis_) :
+        "r"(divid_), "r"(divis_), "r"(abs_divis_) :
     );
     
     *mod = divis_;

@@ -17,22 +17,34 @@
 #define CHECKSUM_POS 0xFF6
 #define MAGIC_NUMBER_POS 0xFF8
 #define SAVE_NUMBER_POS 0xFFC
+#define MAX_SECTION_SIZE 0xF80
 #define SECTION_TOTAL 14
 
 #define SECTION_TRAINER_INFO_ID 0
 #define SECTION_PARTY_INFO_ID 1
 #define SECTION_SAVED_TIME_ID 0
+#define SECTION_SAVE_LOCATION_FLAGS_ID 0
+#define SECTION_LOCATION_ID 1
 #define SECTION_BASE_DEX_ID 0
+#define SECTION_WEATHER_ID 1
+#define SECTION_TV_ID 3
+#define SECTION_NEWS_ID 3
+#define SECTION_OUTBREAK_ID 3
 #define SECTION_DEX_SEEN_1_ID 1
 #define SECTION_SYS_FLAGS_ID 2
 #define SECTION_VARS_ID 2
+#define SECTION_GAME_STATS_ID 2
 #define SECTION_DEX_SEEN_2_ID 4
 #define SECTION_MAIL_ID 3
 #define SECTION_GIFT_RIBBON_ID 4
 
 #define TRAINER_NAME_POS 0
 #define TRAINER_GENDER_POS 8
+#define SAVE_LOCATION_FLAGS_POS 9
 #define TRAINER_ID_POS 10
+#define LOCATION_POS 4
+#define IN_POKEMON_CENTER_FLAG 2
+#define WEATHER_POS 0x2F
 #define DEX_BASE_POS 0x18
 #define DEX_UNOWN_PID_POS (DEX_BASE_POS+4)
 #define DEX_SPINDA_PID_POS (DEX_BASE_POS+8)
@@ -40,13 +52,19 @@
 #define DEX_POS_SEEN_0 (DEX_BASE_POS+DEX_BYTES+0x10)
 #define SAVED_TIME_POS 0x98
 #define SAVED_BERRY_TIME_POS 0xA0
+#define DEWFORD_E_POS 0xF68
+#define DEWFORD_CHUNK_1_SIZE (MAX_SECTION_SIZE - DEWFORD_E_POS)
 
 #define RTC_ENABLE_VAR_VALUE 0x920
+
+#define SAVED_GAME_STAT_NUM 0
+#define STEPS_STAT_NUM 5
+#define NUM_TRADES_STAT_NUM 21
 
 #define RSE_PARTY 0x234
 #define FRLG_PARTY 0x34
 
-#define VALID_MAPS 36
+#define VALID_MAPS 35
 
 enum SAVING_KIND {FULL_SAVE, NON_PARTY_SAVE, PARTY_ONLY_SAVE};
 
@@ -68,27 +86,56 @@ u8 get_sys_flag_save(u8, int, u8, u16);
 void set_sys_flag_save(u8*, u8, u16, u8);
 u16 get_var_save(u8, int, u8, u16);
 void set_var_save(u8*, u8, u16, u16);
+u32 get_stat_save(u8, int, u8, u16);
+void set_stat_save(u8*, u8, u16, u32);
 u32 calc_checksum_save_buffer(u32*, u16);
 
-const u16 summable_bytes[SECTION_TOTAL] = {3884, 3968, 3968, 3968, 3848, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 3968, 2000};
+const u16 summable_bytes[SECTION_TOTAL] = {3884, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 3848, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 2000};
 const u16 summable_bytes_section0[NUM_MAIN_GAME_ID] = {0x890, 0xF24, 0xF2C};
 const u16 summable_bytes_section4[NUM_MAIN_GAME_ID] = {0xC40, 0xEE8, 0xF08};
+const u8 section_dewford_chunk_1[NUM_MAIN_GAME_ID] = {3, 4, 3};
+const u8 section_dewford_chunk_2[NUM_MAIN_GAME_ID] = {3, 4, 4};
+const u16 dewford_chunk_1_pos[NUM_MAIN_GAME_ID] = {0xED4, 0xD8, DEWFORD_E_POS};
+const u16 dewford_chunk_2_pos[NUM_MAIN_GAME_ID] = {dewford_chunk_1_pos[0]+DEWFORD_CHUNK_1_SIZE, dewford_chunk_1_pos[1]+DEWFORD_CHUNK_1_SIZE, 0};
+const u16 tv_shows_pos[NUM_MAIN_GAME_ID] = {0x838, 0, 0x8CC};
+const u16 news_pos[NUM_MAIN_GAME_ID] = {0xBBC, 0, 0xC50};
+const u16 outbreak_pos[NUM_MAIN_GAME_ID] = {0xBFC, 0, 0xC90};
 const u16 pokedex_extra_pos_1[NUM_MAIN_GAME_ID] = {0x938, 0x5F8, 0x988};
 const u16 pokedex_extra_pos_2[NUM_MAIN_GAME_ID] = {0xC0C, 0xB98, 0xCA4};
+const u16 nat_dex_magic_pos[NUM_MAIN_GAME_ID] = {DEX_BASE_POS+2, DEX_BASE_POS+3, DEX_BASE_POS+2};
+const u8 nat_dex_magic_value[NUM_MAIN_GAME_ID] = {0xDA, 0xB9, 0xDA};
 const u16 mail_pos[NUM_MAIN_GAME_ID] = {0xC4C, 0xDD0, 0xCE0};
 const u16 ribbon_pos[NUM_MAIN_GAME_ID] = {0x290, 0x21C, 0x328};
 const u16 party_pos[NUM_MAIN_GAME_ID] = {RSE_PARTY, FRLG_PARTY, RSE_PARTY};
+const u16 num_saves_stat_num[NUM_MAIN_GAME_ID] = {0x62, 0x37, 0x62};
 const u16 enable_rtc_flag_num[NUM_MAIN_GAME_ID] = {0x62, 0x37, 0x62};
-const u16 shoal_tide_flag_num[NUM_MAIN_GAME_ID] = {0x3A, 0, 0x3A};
+const u16 game_clear_flag_num[NUM_MAIN_GAME_ID] = {4, 0x2C, 4};
+//const u16 shoal_tide_flag_num[NUM_MAIN_GAME_ID] = {0x3A, 0, 0x3A};
 const u16 shoal_items_flag_num[NUM_MAIN_GAME_ID] = {0x5F, 0, 0x5F};
-const u16 daily_flags_start_num[NUM_MAIN_GAME_ID] = {0xC0, 0, 0x120};
+const u16 nat_dex_flag_num[NUM_MAIN_GAME_ID] = {0x36, 0x40, 0x36};
+const u16 full_link_flag_num[NUM_MAIN_GAME_ID] = {0, 0x44, 0x1F};
+const u16 dex_obtained_flag_num[NUM_MAIN_GAME_ID] = {0x1, 0x29, 1};
+const u16 daily_flags_start_num[NUM_MAIN_GAME_ID] = {0xC0, 0, 0xC0};
 const u8 has_stat_enc_key[NUM_MAIN_GAME_ID] = {0, 1, 1};
 const u16 stat_enc_key_pos[NUM_MAIN_GAME_ID] = {0, 0xF20, 0xAC};
 const u16 enable_rtc_var_num[NUM_MAIN_GAME_ID] = {0x2C, 0x32, 0x2C};
+const u16 lottery_consumed_var_num[NUM_MAIN_GAME_ID] = {0x45, 0, 0x45};
+const u16 birch_state_var_num[NUM_MAIN_GAME_ID] = {0x49, 0, 0x49};
+const u16 nat_dex_var_num[NUM_MAIN_GAME_ID] = {0x46, 0x4E, 0x46};
+const u16 nat_dex_var_value[NUM_MAIN_GAME_ID] = {0x302, 0x6258, 0x302};
+const u16 lottery_low_var_num[NUM_MAIN_GAME_ID] = {0x4B, 0, 0x4B};
+const u16 mirage_high_var_num[NUM_MAIN_GAME_ID] = {0x24, 0, 0x24};
+const u16 days_var_num[NUM_MAIN_GAME_ID] = {0x40, 0, 0x40};
+const u16 frontier_maniac_var_num[NUM_MAIN_GAME_ID] = {0, 0, 0x2F};
+const u16 frontier_gambler_var_num[NUM_MAIN_GAME_ID] = {0, 0, 0x30};
+const u16 daily_vars_num[TOTAL_DAILY_SHOW_VARS] = {0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xF1};
 const u16 sys_flags_pos[NUM_MAIN_GAME_ID] = {0x3A0, 0x60, 0x3FC};
 const u16 vars_pos[NUM_MAIN_GAME_ID] = {0x3C0, 0x80, 0x41C};
-const u16 special_area[NUM_MAIN_GAME_ID] = {0, 9, 9};
-const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0x0406, 0x0503, 0x0504, 0x0603, 0x0604, 0x0700, 0x0701, 0x0804, 0x0805, 0x090a, 0x090b, 0x0a05, 0x0a06, 0x0b05, 0x0b06, 0x0c02, 0x0c03, 0x0d06, 0x0d07, 0x0e03, 0x0e04, 0x0f02, 0x0f03, 0x100c, 0x100d, 0x100a, 0x1918, 0x1919, 0x191a, 0x191b, 0x1a05};
+const u16 game_stats_pos[NUM_MAIN_GAME_ID] = {0x5C0, 0x280, 0x61C};
+const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0x0406, 0x0503, 0x0504, 0x0603, 0x0604, 0x0700, 0x0701, 0x0804, 0x0805, 0x090a, 0x090b, 0x0a05, 0x0a06, 0x0b05, 0x0b06, 0x0c02, 0x0c03, 0x0d06, 0x0d07, 0x0e03, 0x0e04, 0x0f02, 0x0f03, 0x100c, 0x100d, 0x100a, 0x1918, 0x1919, 0x191a, 0x191b};
+// 0x1A05 is the Battle Tower's lobby. I think it's fine...?
+// Since you have access to a PC and all, so...
+// But Emerald does not count it in...
 
 struct game_data_t* own_game_data_ptr;
 u8 in_use_slot;
@@ -121,6 +168,27 @@ void init_game_data(struct game_data_t* game_data) {
     
     for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++)
         game_data->party_3_undec[i].is_valid_gen3 = 0;
+}
+
+enum TRADE_POSSIBILITY can_trade(struct game_data_t* game_data) {
+    u8 game_id = game_data->game_identifier.game_main_version;
+    if(!game_data->dex_obtained_flag)
+        return TRADE_IMPOSSIBLE;
+    if((game_data->nat_dex_var == nat_dex_var_value[game_id]) && game_data->nat_dex_flag && (game_data->nat_dex_magic == nat_dex_magic_value[game_id]) && game_data->game_cleared_flag && game_data->full_link_flag)
+        return FULL_TRADE_POSSIBLE;
+    return PARTIAL_TRADE_POSSIBLE;
+}
+
+u8 is_in_pokemon_center(struct game_data_t* game_data) {
+    u8 game_id = game_data->game_identifier.game_main_version;
+    
+    if(game_id != RS_MAIN_GAME_CODE)
+        return game_data->save_warp_flags & IN_POKEMON_CENTER_FLAG;
+    
+    for(size_t i = 0; i < VALID_MAPS; i++)
+        if(rs_valid_maps[i] == game_data->curr_map)
+            return 1;
+    return 0;
 }
 
 u16 read_section_id(int slot, int section_pos) {
@@ -278,6 +346,15 @@ void set_var_save(u8* buffer_8, u8 game_id, u16 var_num, u16 value) {
         buffer_8[vars_pos[game_id] + (var_num<<1) + j] = (value >> (8*j)) & 0xFF;
 }
 
+u32 get_stat_save(u8 slot, int section, u8 game_id, u16 stat_num) {
+    return read_int_save((slot * SAVE_SLOT_SIZE) + (section * SECTION_SIZE) + game_stats_pos[game_id] + (stat_num<<2));
+}
+
+void set_stat_save(u8* buffer_8, u8 game_id, u16 stat_num, u32 value) {
+    for(size_t j = 0; j < sizeof(u32); j++)
+        buffer_8[game_stats_pos[game_id] + (stat_num<<2) + j] = (value >> (8*j)) & 0xFF;
+}
+
 void process_party_data(struct game_data_t* game_data) {
     if(game_data->party_3.total > PARTY_SIZE)
         game_data->party_3.total = PARTY_SIZE;
@@ -338,13 +415,71 @@ void read_party(int slot, struct game_data_t* game_data) {
             normalize_time(&game_data->clock_events.saved_berry_time);
         }
         if(section_id == SECTION_SYS_FLAGS_ID) {
-            // TODO: Load everything clock-related
             game_data->clock_events.enable_rtc_reset_flag = get_sys_flag_save(slot, i, game_id, enable_rtc_flag_num[game_id]);
+            game_data->game_cleared_flag = get_sys_flag_save(slot, i, game_id, game_clear_flag_num[game_id]);
+            game_data->nat_dex_flag = get_sys_flag_save(slot, i, game_id, nat_dex_flag_num[game_id]);
+            if(game_id == RS_MAIN_GAME_CODE) {
+                game_data->full_link_flag = 1;
+                game_data->nat_dex_flag = 1;
+            }
+            else
+                game_data->full_link_flag = get_sys_flag_save(slot, i, game_id, full_link_flag_num[game_id]);
+            game_data->dex_obtained_flag = get_sys_flag_save(slot, i, game_id, dex_obtained_flag_num[game_id]);
+            if(has_rtc_events(&game_data->game_identifier)) {
+                game_data->clock_events.shoal_cave_items_reset_flag = get_sys_flag_save(slot, i, game_id, shoal_items_flag_num[game_id]);
+                for(size_t j = 0; j < (DAILY_FLAGS_TOTAL>>3); j++)
+                    game_data->clock_events.daily_flags[j] = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + sys_flags_pos[game_id] + (daily_flags_start_num[game_id]>>3) + j);
+            }
         }
         if(section_id == SECTION_VARS_ID) {
             game_data->clock_events.enable_rtc_reset_var = get_var_save(slot, i, game_id, enable_rtc_var_num[game_id]);
+            game_data->nat_dex_var = get_var_save(slot, i, game_id, nat_dex_var_num[game_id]);
+            if(game_id == RS_MAIN_GAME_CODE)
+                game_data->nat_dex_var = nat_dex_var_value[game_id];
+            if(has_rtc_events(&game_data->game_identifier)) {
+                game_data->clock_events.lottery_low_var = get_var_save(slot, i, game_id, lottery_low_var_num[game_id]);
+                game_data->clock_events.lottery_high_var = get_var_save(slot, i, game_id, lottery_low_var_num[game_id]+1);
+                game_data->clock_events.mirage_high_var = get_var_save(slot, i, game_id, mirage_high_var_num[game_id]);
+                game_data->clock_events.mirage_low_var = get_var_save(slot, i, game_id, mirage_high_var_num[game_id]+1);
+                game_data->clock_events.days_var = get_var_save(slot, i, game_id, days_var_num[game_id]);
+                game_data->clock_events.birch_state_var = get_var_save(slot, i, game_id, birch_state_var_num[game_id]);
+                game_data->clock_events.lottery_consumed_var = get_var_save(slot, i, game_id, lottery_consumed_var_num[game_id]);
+                if(game_id == E_MAIN_GAME_CODE) {
+                    game_data->clock_events.frontier_maniac_var = get_var_save(slot, i, game_id, frontier_maniac_var_num[game_id]);
+                    game_data->clock_events.frontier_gambler_var = get_var_save(slot, i, game_id, frontier_gambler_var_num[game_id]);
+                    for(int j = 0; j < TOTAL_DAILY_SHOW_VARS; j++)
+                        game_data->clock_events.daily_show_vars[j] = get_var_save(slot, i, game_id, daily_vars_num[j]);
+                }
+            }
+        }
+        if(section_id == SECTION_GAME_STATS_ID) {
+            game_data->num_saves_stat = get_stat_save(slot, i, game_id, SAVED_GAME_STAT_NUM) ^ game_data->stat_enc_key;
+            game_data->num_trades_stat = get_stat_save(slot, i, game_id, NUM_TRADES_STAT_NUM) ^ game_data->stat_enc_key;
+            game_data->clock_events.steps_stat = get_stat_save(slot, i, game_id, STEPS_STAT_NUM) ^ game_data->stat_enc_key;
+        }
+        if(section_id == SECTION_SAVE_LOCATION_FLAGS_ID)
+            game_data->save_warp_flags = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SAVE_LOCATION_FLAGS_POS);
+        if(section_id == SECTION_LOCATION_ID)
+            game_data->curr_map = read_short_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + LOCATION_POS);
+        if(section_id == SECTION_WEATHER_ID)
+            game_data->clock_events.weather_stage = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + WEATHER_POS);
+        
+        if(has_rtc_events(&game_data->game_identifier)) {
+            if(section_id == section_dewford_chunk_1[game_id])
+                copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + dewford_chunk_1_pos[game_id], (u8*)game_data->clock_events.dewford_trends, DEWFORD_CHUNK_1_SIZE);
+            if(section_id == section_dewford_chunk_2[game_id])
+                copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + dewford_chunk_2_pos[game_id], ((u8*)game_data->clock_events.dewford_trends) + DEWFORD_CHUNK_1_SIZE, sizeof(game_data->clock_events.dewford_trends)-DEWFORD_CHUNK_1_SIZE);
+            if(section_id == SECTION_TV_ID)
+                copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + tv_shows_pos[game_id], (u8*)game_data->clock_events.tv_shows, sizeof(game_data->clock_events.tv_shows));
+            if(section_id == SECTION_NEWS_ID)
+                copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + news_pos[game_id], (u8*)game_data->clock_events.news, sizeof(game_data->clock_events.news));
+            if(section_id == SECTION_OUTBREAK_ID)
+                copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + outbreak_pos[game_id], (u8*)&game_data->clock_events.outbreak, sizeof(game_data->clock_events.outbreak));
         }
         if(section_id == SECTION_BASE_DEX_ID) {
+            game_data->nat_dex_magic = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + nat_dex_magic_pos[game_id]);
+            if(game_id == RS_MAIN_GAME_CODE)
+                game_data->nat_dex_magic = nat_dex_magic_value[game_id];
             game_data->seen_unown_pid = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_UNOWN_PID_POS);
             game_data->seen_spinda_pid = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_SPINDA_PID_POS);
             copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + DEX_POS_OWNED, game_data->pokedex_owned, sizeof(game_data->pokedex_owned));
@@ -475,6 +610,7 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND
                     buffer_8[ribbon_pos[game_id]+j] = ((u8*)game_data->giftRibbons)[j];
             
             if(section_id == SECTION_BASE_DEX_ID) {
+                buffer_8[nat_dex_magic_pos[game_id]] = game_data->nat_dex_magic;
                 for(size_t j = 0; j < sizeof(game_data->seen_unown_pid); j++)
                     buffer_8[DEX_UNOWN_PID_POS+j] = ((u8*)&game_data->seen_unown_pid)[j];
                 for(size_t j = 0; j < sizeof(game_data->seen_spinda_pid); j++)
@@ -485,20 +621,64 @@ u8 pre_update_save(struct game_data_t* game_data, u8 base_slot, enum SAVING_KIND
                     buffer_8[DEX_POS_SEEN_0+j] = ((u8*)game_data->pokedex_seen)[j];
             }
             if(section_id == SECTION_SYS_FLAGS_ID) {
-                // TODO: Store everything clock-related
                 set_sys_flag_save(buffer_8, game_id, enable_rtc_flag_num[game_id], game_data->clock_events.enable_rtc_reset_flag);
+                set_sys_flag_save(buffer_8, game_id, nat_dex_flag_num[game_id], game_data->nat_dex_flag);
+                if(has_rtc_events(&game_data->game_identifier)) {
+                    set_sys_flag_save(buffer_8, game_id, shoal_items_flag_num[game_id], game_data->clock_events.shoal_cave_items_reset_flag);
+                    for(size_t j = 0; j < (DAILY_FLAGS_TOTAL>>3); j++)
+                        buffer_8[sys_flags_pos[game_id] + (daily_flags_start_num[game_id]>>3) + j] = game_data->clock_events.daily_flags[j];
+                }
             }
             if(section_id == SECTION_VARS_ID) {
                 set_var_save(buffer_8, game_id, enable_rtc_var_num[game_id], game_data->clock_events.enable_rtc_reset_var);
+                set_var_save(buffer_8, game_id, nat_dex_var_num[game_id], game_data->nat_dex_var);
+                if(has_rtc_events(&game_data->game_identifier)) {
+                    set_var_save(buffer_8, game_id, lottery_low_var_num[game_id], game_data->clock_events.lottery_low_var);
+                    set_var_save(buffer_8, game_id, lottery_low_var_num[game_id]+1, game_data->clock_events.lottery_high_var);
+                    set_var_save(buffer_8, game_id, mirage_high_var_num[game_id], game_data->clock_events.mirage_high_var);
+                    set_var_save(buffer_8, game_id, mirage_high_var_num[game_id]+1, game_data->clock_events.mirage_low_var);
+                    set_var_save(buffer_8, game_id, days_var_num[game_id], game_data->clock_events.days_var);
+                    set_var_save(buffer_8, game_id, birch_state_var_num[game_id], game_data->clock_events.birch_state_var);
+                    set_var_save(buffer_8, game_id, lottery_consumed_var_num[game_id], game_data->clock_events.lottery_consumed_var);
+                    if(game_id == E_MAIN_GAME_CODE) {
+                        set_var_save(buffer_8, game_id, frontier_maniac_var_num[game_id], game_data->clock_events.frontier_maniac_var);
+                        set_var_save(buffer_8, game_id, frontier_gambler_var_num[game_id], game_data->clock_events.frontier_gambler_var);
+                        for(int j = 0; j < TOTAL_DAILY_SHOW_VARS; j++)
+                            set_var_save(buffer_8, game_id, daily_vars_num[j], game_data->clock_events.daily_show_vars[j]);
+                    }
+                }
+            }
+            if(section_id == SECTION_GAME_STATS_ID) {
+                set_stat_save(buffer_8, game_id, SAVED_GAME_STAT_NUM, game_data->num_saves_stat ^ game_data->stat_enc_key);
+                set_stat_save(buffer_8, game_id, NUM_TRADES_STAT_NUM, game_data->num_trades_stat ^ game_data->stat_enc_key);
             }
             
+            if(section_id == SECTION_WEATHER_ID)
+                buffer_8[WEATHER_POS] = game_data->clock_events.weather_stage;
             if(section_id == SECTION_SAVED_TIME_ID) {
                 for(size_t j = 0; j < sizeof(struct saved_time_t); j++)
                     buffer_8[SAVED_TIME_POS+j] = ((u8*)&game_data->clock_events.saved_time)[j];
                 for(size_t j = 0; j < sizeof(struct saved_time_t); j++)
                     buffer_8[SAVED_BERRY_TIME_POS+j] = ((u8*)&game_data->clock_events.saved_berry_time)[j];
             }
-            
+            if(has_rtc_events(&game_data->game_identifier)) {
+                if(section_id == section_dewford_chunk_1[game_id])
+                    for(size_t j = 0; j < DEWFORD_CHUNK_1_SIZE; j++)
+                        buffer_8[dewford_chunk_1_pos[game_id]+j] = ((u8*)game_data->clock_events.dewford_trends)[j];
+                if(section_id == section_dewford_chunk_2[game_id])
+                    for(size_t j = 0; j < (sizeof(game_data->clock_events.dewford_trends)-DEWFORD_CHUNK_1_SIZE); j++)
+                        buffer_8[dewford_chunk_2_pos[game_id]+j] = ((u8*)game_data->clock_events.dewford_trends)[DEWFORD_CHUNK_1_SIZE+j];
+                if(section_id == SECTION_TV_ID)
+                    for(size_t j = 0; j < sizeof(game_data->clock_events.tv_shows); j++)
+                        buffer_8[tv_shows_pos[game_id]+j] = ((u8*)game_data->clock_events.tv_shows)[j];
+                if(section_id == SECTION_NEWS_ID)
+                    for(size_t j = 0; j < sizeof(game_data->clock_events.news); j++)
+                        buffer_8[news_pos[game_id]+j] = ((u8*)game_data->clock_events.news)[j];
+                if(section_id == SECTION_OUTBREAK_ID)
+                    for(size_t j = 0; j < sizeof(game_data->clock_events.outbreak); j++)
+                        buffer_8[outbreak_pos[game_id]+j] = ((u8*)&game_data->clock_events.outbreak)[j];
+            }
+
             if(section_id == SECTION_DEX_SEEN_1_ID)
                 for(size_t j = 0; j < sizeof(game_data->pokedex_seen); j++)
                     buffer_8[pokedex_extra_pos_1[game_id]+j] = ((u8*)game_data->pokedex_seen)[j];

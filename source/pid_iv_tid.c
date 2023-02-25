@@ -342,85 +342,87 @@ MAX_OPTIMIZE void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, 
     
     u8 base_spe = (start_seed >> 0) & 1;
     u8 base_spd = (start_seed >> 1) & 3;
-    u8 initial_spa = SWI_DivMod((start_seed>>3)&0x1FFF, (limit-start));
-    
-    for(int i = 0; i < (limit-start); i++) {
-        u8 new_spa_ivs = start + (initial_spa-i);
-        u8 base_spd_ivs = min_sum - new_spa_ivs;
-        if(min_sum < new_spa_ivs)
-            base_spd_ivs = 0;
-        u8 spd_limit = limit_sum - new_spa_ivs;
-        if(spd_limit > 0x20)
-            spd_limit = 0x20;
-        u8 spd_offset = base_spd;
-        while((spd_limit-base_spd_ivs) <= spd_offset)
-            spd_offset -= (spd_limit-base_spd_ivs);
-        for(int j = 0; j < (spd_limit-base_spd_ivs); j++) {
-            u8 new_spd_ivs = base_spd_ivs + spd_offset - j;
-            for(int u = 0; u < 2; u++) {
-                u8 new_spe_ivs = spe_ivs + (u^base_spe);
-                for(int k = 0; k < 2; k++) {
-                    for(int l = 0; l < NUM_SEEDS; l++) {
-                        u32 pid = 0;
-                        u32 ivs = 0;
-                        u32 seed = (k<<31) | (new_spe_ivs << 16) | (new_spa_ivs << 21) | (new_spd_ivs << 26) | l;
-                        
-                        u16 generated_ivs = get_prev_seed(seed) >> 16;
-                        u8 new_atk_ivs = (((generated_ivs >> 5)&0x1F)>>(1+get_gender_useless_atk_ivs_gen12(gender_kind))) << (1+get_gender_useless_atk_ivs_gen12(gender_kind));
-                        u8 new_def_ivs = (((generated_ivs >> 10)&0x1F)>>1) << 1;
-                        
-                        if(new_atk_ivs == atk_ivs && new_def_ivs == def_ivs) {
-                            ivs = (generated_ivs & 0x7FFF) | (((seed>>16) & 0x7FFF)<<15);
-                            seed = get_prev_seed(seed);
-                            seed = get_prev_seed(seed);
-                            u16 high_pid = seed >> 16;
-                            u32 inner_seed = get_prev_seed(start_seed>>0x10);
-                            u16 lower_pid = 0;
-                            do {
-                                inner_seed = get_prev_seed(inner_seed);
-                                lower_pid = inner_seed >> 0x10;
-                                if(gender_values[gender_kind] != 0) {
-                                    if((gender == M_GENDER) && ((lower_pid & 0xFF) < gender_values[gender_kind]))
-                                        lower_pid = lower_pid | (gender_values[gender_kind]+1);
-                                    else if((gender == F_GENDER) && ((lower_pid & 0xFF) >= gender_values[gender_kind])){
-                                        lower_pid = (lower_pid & 0xFF00) | (lower_pid & gender_values[gender_kind]);
-                                        if((lower_pid & 0xFF) == gender_values[gender_kind])
-                                            lower_pid -= 1;
+    if(limit-start) {
+        u8 initial_spa = SWI_DivMod((start_seed>>3)&0x1FFF, (limit-start));
+        
+        for(int i = 0; i < (limit-start); i++) {
+            u8 new_spa_ivs = start + (initial_spa-i);
+            u8 base_spd_ivs = min_sum - new_spa_ivs;
+            if(min_sum < new_spa_ivs)
+                base_spd_ivs = 0;
+            u8 spd_limit = limit_sum - new_spa_ivs;
+            if(spd_limit > 0x20)
+                spd_limit = 0x20;
+            u8 spd_offset = base_spd;
+            while((spd_limit-base_spd_ivs) <= spd_offset)
+                spd_offset -= (spd_limit-base_spd_ivs);
+            for(int j = 0; j < (spd_limit-base_spd_ivs); j++) {
+                u8 new_spd_ivs = base_spd_ivs + spd_offset - j;
+                for(int u = 0; u < 2; u++) {
+                    u8 new_spe_ivs = spe_ivs + (u^base_spe);
+                    for(int k = 0; k < 2; k++) {
+                        for(int l = 0; l < NUM_SEEDS; l++) {
+                            u32 pid = 0;
+                            u32 ivs = 0;
+                            u32 seed = (k<<31) | (new_spe_ivs << 16) | (new_spa_ivs << 21) | (new_spd_ivs << 26) | l;
+                            
+                            u16 generated_ivs = get_prev_seed(seed) >> 16;
+                            u8 new_atk_ivs = (((generated_ivs >> 5)&0x1F)>>(1+get_gender_useless_atk_ivs_gen12(gender_kind))) << (1+get_gender_useless_atk_ivs_gen12(gender_kind));
+                            u8 new_def_ivs = (((generated_ivs >> 10)&0x1F)>>1) << 1;
+                            
+                            if(new_atk_ivs == atk_ivs && new_def_ivs == def_ivs) {
+                                ivs = (generated_ivs & 0x7FFF) | (((seed>>16) & 0x7FFF)<<15);
+                                seed = get_prev_seed(seed);
+                                seed = get_prev_seed(seed);
+                                u16 high_pid = seed >> 16;
+                                u32 inner_seed = get_prev_seed(start_seed>>0x10);
+                                u16 lower_pid = 0;
+                                do {
+                                    inner_seed = get_prev_seed(inner_seed);
+                                    lower_pid = inner_seed >> 0x10;
+                                    if(gender_values[gender_kind] != 0) {
+                                        if((gender == M_GENDER) && ((lower_pid & 0xFF) < gender_values[gender_kind]))
+                                            lower_pid = lower_pid | (gender_values[gender_kind]+1);
+                                        else if((gender == F_GENDER) && ((lower_pid & 0xFF) >= gender_values[gender_kind])){
+                                            lower_pid = (lower_pid & 0xFF00) | (lower_pid & gender_values[gender_kind]);
+                                            if((lower_pid & 0xFF) == gender_values[gender_kind])
+                                                lower_pid -= 1;
+                                        }
                                     }
-                                }
-                                else if(gender_kind == NIDORAN_F_GENDER_INDEX)
-                                    lower_pid &= 0x7FFF;
+                                    else if(gender_kind == NIDORAN_F_GENDER_INDEX)
+                                        lower_pid &= 0x7FFF;
+                                    
+                                    lower_pid &= 0xFFE0;
+                                    
+                                } while((lower_pid == 0) || (lower_pid == 0xFFE0) || (((high_pid) ^ (lower_pid) ^ tsv) < 0x20));
                                 
-                                lower_pid &= 0xFFE0;
+                                pid = (high_pid << 0x10) | lower_pid;
+                                u8 nature = get_nature_fast(pid);
+                                u8 nature_diff = wanted_nature - nature;
+                                if(nature > wanted_nature)
+                                    nature_diff = wanted_nature - nature + NUM_NATURES;
+                                lower_pid += nature_diff;
                                 
-                            } while((lower_pid == 0) || (lower_pid == 0xFFE0) || (((high_pid) ^ (lower_pid) ^ tsv) < 0x20));
-                            
-                            pid = (high_pid << 0x10) | lower_pid;
-                            u8 nature = get_nature_fast(pid);
-                            u8 nature_diff = wanted_nature - nature;
-                            if(nature > wanted_nature)
-                                nature_diff = wanted_nature - nature + NUM_NATURES;
-                            lower_pid += nature_diff;
-                            
-                            if(nature_diff < (0x20-NUM_NATURES))
-                                if((start_seed >> 2) & 1) {
-                                    lower_pid += NUM_NATURES;
-                                    if((gender == F_GENDER) && (gender_values[gender_kind] == 0x1F) && ((lower_pid & 0xFF) == 0x1F))
-                                        lower_pid -= NUM_NATURES;
-                                }
-                            *dst_ivs = ivs;
-                            *dst_pid = lower_pid | (high_pid << 0x10);
-                            return;
+                                if(nature_diff < (0x20-NUM_NATURES))
+                                    if((start_seed >> 2) & 1) {
+                                        lower_pid += NUM_NATURES;
+                                        if((gender == F_GENDER) && (gender_values[gender_kind] == 0x1F) && ((lower_pid & 0xFF) == 0x1F))
+                                            lower_pid -= NUM_NATURES;
+                                    }
+                                *dst_ivs = ivs;
+                                *dst_pid = lower_pid | (high_pid << 0x10);
+                                return;
+                            }
                         }
+                        pass_counter++;
                     }
-                    pass_counter++;
                 }
+                if(spd_offset == j)
+                    spd_offset += (spd_limit-base_spd_ivs);
             }
-            if(spd_offset == j)
-                spd_offset += (spd_limit-base_spd_ivs);
+            if(initial_spa == i)
+                initial_spa += (limit-start);
         }
-        if(initial_spa == i)
-            initial_spa += (limit-start);
     }
 }
 

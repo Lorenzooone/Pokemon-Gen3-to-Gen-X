@@ -19,7 +19,16 @@ struct game_data_t {
     u8 giftRibbons[GIFT_RIBBONS];
     u8 trainer_name[OT_NAME_GEN3_SIZE+1];
     u8 trainer_gender;
+    u16 nat_dex_var;
+    u8 nat_dex_flag : 1;
+    u8 full_link_flag : 1;
+    u8 dex_obtained_flag : 1;
+    u8 game_cleared_flag : 1;
+    u8 nat_dex_magic;
+    u8 save_warp_flags;
+    u16 curr_map;
     u32 stat_enc_key;
+    u32 num_saves_stat;
     u32 num_trades_stat;
     u32 trainer_id;
     struct mail_gen3 mails_3[PARTY_SIZE];
@@ -30,10 +39,14 @@ struct game_data_t {
     struct clock_events_t clock_events;
 };
 
+enum TRADE_POSSIBILITY {FULL_TRADE_POSSIBLE, PARTIAL_TRADE_POSSIBLE, TRADE_IMPOSSIBLE};
+
 void init_game_data(struct game_data_t*);
 void init_save_data(void);
 u8 has_cartridge_been_removed(void);
 u8 get_is_cartridge_loaded(void);
+enum TRADE_POSSIBILITY can_trade(struct game_data_t*);
+u8 is_in_pokemon_center(struct game_data_t*);
 u8 read_gen_3_data(struct game_data_t*);
 void process_party_data(struct game_data_t* game_data);
 struct game_data_t* get_own_game_data(void);

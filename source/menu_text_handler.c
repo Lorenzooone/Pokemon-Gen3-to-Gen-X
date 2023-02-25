@@ -303,7 +303,7 @@ void print_rejected(u8 reason) {
     if(!reason)
         PRINT_FUNCTION("The trade offer was denied!");
     else
-        PRINT_FUNCTION("  The trade was rejected!");
+        PRINT_FUNCTION("   The trade was refused!");
 }
 
 void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
@@ -329,6 +329,8 @@ void print_base_settings_menu(struct game_data_t* game_data, u8 is_loaded) {
     default_reset_screen();
     PRINT_FUNCTION("AAAA\n\n");
     if(is_loaded) {
+        //change_time_of_day(game_data);
+        //enable_rtc_reset(&game_data->clock_events);
         if(is_daytime(game_data))
             PRINT_FUNCTION("Time: Day\n\n");
         else

@@ -688,6 +688,10 @@ int main(void)
                                 game_data[0].num_trades_stat++;
                                 if(game_data[0].num_trades_stat > 0xFFFFFF)
                                     game_data[0].num_trades_stat = 0xFFFFFF;
+                                if(game_data[0].num_saves_stat < 0xFFFFFF)
+                                    game_data[0].num_saves_stat--;
+                                if(game_data[0].num_saves_stat > 0xFFFFFF)
+                                    game_data[0].num_saves_stat = 0xFFFFFF;
                                 curr_state = TRADING_ANIMATION;
                                 learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
                                 success = pre_write_gen_3_data(&game_data[0], !learnable_moves);

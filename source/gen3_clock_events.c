@@ -6,6 +6,7 @@
 #include "rng.h"
 #include "optimized_swi.h"
 #include "text_handler.h"
+#include "print_system.h"
 #include <stddef.h>
 
 #define MAX_DAYS 0xFFFF
@@ -62,9 +63,12 @@ void update_birch_state(struct clock_events_t*, u16);
 void update_frontier_maniac(struct clock_events_t*, u16);
 void update_frontier_gambler(struct clock_events_t*, u16);
 u32 get_next_seed_time(u32);
-void increase_clock(struct saved_time_t*, struct saved_time_t*, u16, u8, u8, u8);
+void increase_clock(struct saved_time_t*, u16, u8, u8, u8, u8);
+void swap_time(struct saved_time_t*);
+void subtract_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
 
 const u16 daily_show_thresholds[TOTAL_DAILY_SHOW_VARS] = {100, 50, 100, 20, 20, 20, 30};
+struct saved_time_t base_rtc_time = {.d = 1, .h = 0, .m = 0, .s = 0};
 
 u32 get_next_seed_time(u32 seed) {
     return (seed * TIME_RNG_MULT) + TIME_RNG_ADD;
@@ -79,20 +83,25 @@ u8 has_rtc_events(struct game_identity* game_id) {
 }
 
 u8 is_daytime(struct game_data_t* game_data) {
-    return game_data->clock_events.saved_time.h >= DAY_START;
+    swap_time(&game_data->clock_events.saved_time);
+    u8 retval = game_data->clock_events.saved_time.h >= DAY_START;
+    swap_time(&game_data->clock_events.saved_time);
+    return retval;
 }
 
 void change_time_of_day(struct game_data_t* game_data) {
     u16 curr_d = game_data->clock_events.saved_time.d;
-    increase_clock(&game_data->clock_events.saved_time, &game_data->clock_events.saved_berry_time, 0, MAX_HOURS>>1, 0, 0);
+    increase_clock(&game_data->clock_events.saved_time, 0, MAX_HOURS>>1, 0, 0, 1);
     if(game_data->clock_events.saved_time.d != curr_d)
-        increase_clock(&game_data->clock_events.saved_time, &game_data->clock_events.saved_berry_time, 0xFFFF, 0, 0, 0);
+        increase_clock(&game_data->clock_events.saved_time, 0xFFFF, 0, 0, 0, 1);
 }
 
 u8 is_high_tide(struct game_data_t* game_data) {
+    swap_time(&game_data->clock_events.saved_time);
     u8 tidal_hours = game_data->clock_events.saved_time.h - TIDE_OFFSET;
     if(game_data->clock_events.saved_time.h < TIDE_OFFSET)
         tidal_hours = game_data->clock_events.saved_time.h + MAX_HOURS - TIDE_OFFSET;
+    swap_time(&game_data->clock_events.saved_time);
     if(tidal_hours >= (MAX_HOURS>>1))
         tidal_hours -= MAX_HOURS>>1;
     if(tidal_hours >= (MAX_HOURS>>2))
@@ -103,15 +112,17 @@ u8 is_high_tide(struct game_data_t* game_data) {
 void change_tide(struct game_data_t* game_data) {
     u16 curr_d = game_data->clock_events.saved_time.d;
     u8 curr_daytime = is_daytime(game_data);
-    increase_clock(&game_data->clock_events.saved_time, &game_data->clock_events.saved_berry_time, 0, MAX_HOURS>>2, 0, 0);
+    increase_clock(&game_data->clock_events.saved_time, 0, MAX_HOURS>>2, 0, 0, 1);
     if(is_daytime(game_data) != curr_daytime)
         change_time_of_day(game_data);
     if(game_data->clock_events.saved_time.d != curr_d)
-        increase_clock(&game_data->clock_events.saved_time, &game_data->clock_events.saved_berry_time, 0xFFFF, 0, 0, 0);
+        increase_clock(&game_data->clock_events.saved_time, 0xFFFF, 0, 0, 0, 1);
 }
 
 void run_daily_update(struct game_data_t* game_data, u16 days_increase) {
-    increase_clock(&game_data->clock_events.saved_time, &game_data->clock_events.saved_berry_time, days_increase, 0, 0, 0);
+    increase_clock(&game_data->clock_events.saved_time, days_increase, 0, 0, 0, 1);
+    // To be 100% faithful, events should be stopped inside of a Pokémon Center...
+    // But doing that would defeat the purpose of this
     if(has_rtc_events(&game_data->game_identifier)) {
         reset_daily_flags(&game_data->clock_events);
         update_dewford_trends(game_data->clock_events.dewford_trends, days_increase);
@@ -126,10 +137,48 @@ void run_daily_update(struct game_data_t* game_data, u16 days_increase) {
         }
         reset_shoal_cave_items(&game_data->clock_events);
         reset_lottery(&game_data->clock_events);
+        game_data->clock_events.days_var += days_increase;
     }
 }
 
-void increase_clock(struct saved_time_t* saved_time, struct saved_time_t* other_time, u16 d, u8 h, u8 m, u8 s) {
+void subtract_time(struct saved_time_t* base, struct saved_time_t* sub, struct saved_time_t* target) {
+    int s = base->s;
+    int m = base->m;
+    int h = base->h;
+    u16 d = base->d;
+    while(sub->s > s) {
+        s += MAX_SECONDS;
+        m--;
+    }
+    s -= sub->s;
+    while(sub->m > m) {
+        m += MAX_MINUTES;
+        h--;
+    }
+    m -= sub->m;
+    while(sub->h > h) {
+        h += MAX_HOURS;
+        d--;
+    }
+    h -= sub->h;
+    d -= sub->d;
+    target->s = (u8)s;
+    target->m = (u8)m;
+    target->h = (u8)h;
+    target->d = d;
+    normalize_time(target);
+}
+
+void swap_time(struct saved_time_t* saved_time) {
+    // 0 0 0 0 should result in 1 0 0 0
+    // That is because the base time with an expired battery is 1 0 0 0, Jan 1 2000
+    subtract_time(&base_rtc_time, saved_time, saved_time);
+}
+
+void increase_clock(struct saved_time_t* saved_time, u16 d, u8 h, u8 m, u8 s, u8 is_offset) {
+    // This value is subtracted, so we need to get it to the positives...
+    if(is_offset)
+        swap_time(saved_time);
     u32 res = saved_time->s + s;
     while(res >= MAX_SECONDS) {
         res -= MAX_SECONDS;
@@ -163,20 +212,10 @@ void increase_clock(struct saved_time_t* saved_time, struct saved_time_t* other_
     res = saved_time->d + d;
     saved_time->d = res & 0xFFFF;
     
+    if(is_offset)
+        swap_time(saved_time);
+
     normalize_time(saved_time);
-    normalize_time(other_time);
-    if(other_time->d >= saved_time->d) {
-        other_time->d = saved_time->d;
-        if(other_time->h >= saved_time->h) {
-            other_time->h = saved_time->h;
-            if(other_time->m >= saved_time->m) {
-                other_time->m = saved_time->m;
-                if(other_time->s >= saved_time->s) {
-                    other_time->s = saved_time->s;
-                }
-            }
-        }
-    }
 }
 
 void normalize_time(struct saved_time_t* saved_time) {
@@ -186,6 +225,7 @@ void normalize_time(struct saved_time_t* saved_time) {
 }
 
 void reset_daily_flags(struct clock_events_t* clock_events) {
+    default_reset_screen();
     for(size_t i = 0; i < (DAILY_FLAGS_TOTAL>>3); i++)
         clock_events->daily_flags[i] = 0;
 }
@@ -373,7 +413,7 @@ void update_outbreak(struct outbreak_t* outbreak, u16 days_increase) {
 void update_tv_shows(struct game_data_t* game_data, u16 days_increase) {
     update_outbreak_tv(game_data->clock_events.tv_shows, &game_data->clock_events.outbreak, days_increase);
     update_outbreak(&game_data->clock_events.outbreak, days_increase);
-    update_news(game_data->clock_events.news, game_data->clock_events.game_cleared_flag, days_increase);
+    update_news(game_data->clock_events.news, game_data->game_cleared_flag, days_increase);
     schedule_world_of_masters_show(game_data->clock_events.tv_shows, game_data->clock_events.steps_stat, game_data->trainer_id & 0xFFFF, game_data->trainer_name, game_data->game_identifier.game_is_jp);
     if(game_data->game_identifier.game_main_version == E_MAIN_GAME_CODE)
         schedule_number_one_show(game_data->clock_events.tv_shows, game_data->clock_events.daily_show_vars, game_data->trainer_id & 0xFFFF, game_data->trainer_name, game_data->game_identifier.game_is_jp);
@@ -428,43 +468,45 @@ void update_frontier_gambler(struct clock_events_t* clock_events, u16 days_incre
 void update_dewford_trends(struct dewford_trend_t* dewford_trends, u16 days_increase) {
     u32 base_inc = 5 * days_increase;
     for(int i = 0; i < TOTAL_DEWFORD_TRENDS; i++) {
-        u32 trendiness;
         u32 inc = base_inc;
         struct dewford_trend_t *trend = &dewford_trends[i];
 
-        if (!trend->gaining_trendiness) {
-            // This trend is "boring"
-            // Lose trendiness until it becomes 0
-            if (trend->trendiness >= base_inc) {
-                trend->trendiness -= base_inc;
-                if (trend->trendiness == 0)
-                    trend->gaining_trendiness = 1;
-                continue;
+        // Prevent division by 0
+        if(trend->max_trendiness) {
+            if (!trend->gaining_trendiness) {
+                // This trend is "boring"
+                // Lose trendiness until it becomes 0
+                if (trend->trendiness >= ((u16)inc)) {
+                    trend->trendiness -= inc;
+                    if (trend->trendiness == 0)
+                        trend->gaining_trendiness = 1;
+                    continue;
+                }
+                inc -= trend->trendiness;
+                trend->trendiness = 0;
+                trend->gaining_trendiness = 1;
             }
-            inc = base_inc - trend->trendiness;
-            trend->trendiness = 0;
-            trend->gaining_trendiness = 1;
-        }
 
-        trendiness = trend->trendiness + inc;
-        if ((u16)trendiness > trend->max_trendiness) {
-            // Reached limit, reset trendiness
-            u32 new_trendiness = SWI_DivMod(trendiness, trend->max_trendiness);
-            trendiness = SWI_Div(trendiness, trend->max_trendiness);
+            u32 trendiness = trend->trendiness + inc;
+            if (((u16)trendiness) > trend->max_trendiness) {
+                // Reached limit, reset trendiness
+                u32 new_trendiness = 0;
+                trendiness = SWI_DivDivMod(trendiness, trend->max_trendiness, (int*)&new_trendiness);
 
-            trend->gaining_trendiness = trendiness ^ 1;
-            if (trend->gaining_trendiness)
-                trend->trendiness = new_trendiness;
-            else
-                trend->trendiness = trend->max_trendiness - new_trendiness;
-        }
-        else {
-            // Increase trendiness
-            trend->trendiness = trendiness;
+                trend->gaining_trendiness = trendiness ^ 1;
+                if (trend->gaining_trendiness)
+                    trend->trendiness = new_trendiness;
+                else
+                    trend->trendiness = trend->max_trendiness - new_trendiness;
+            }
+            else {
+                // Increase trendiness
+                trend->trendiness = trendiness;
 
-            // Trend has reached its max, becoming "boring" and start losing trendiness
-            if (trend->trendiness == trend->max_trendiness)
-                trend->gaining_trendiness = 0;
+                // Trend has reached its max, becoming "boring" and start losing trendiness
+                if (trend->trendiness == trend->max_trendiness)
+                    trend->gaining_trendiness = 0;
+            }
         }
     }
 
@@ -489,7 +531,7 @@ void reset_lottery(struct clock_events_t* clock_events) {
     u32 val = get_rng();
     clock_events->lottery_low_var = val & 0xFFFF;
     clock_events->lottery_high_var = val >> 16;
-    clock_events->lottery_consumed = 0;
+    clock_events->lottery_consumed_var = 0;
 }
 
 void enable_rtc_reset(struct clock_events_t* clock_events) {

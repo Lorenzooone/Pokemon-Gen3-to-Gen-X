@@ -15,7 +15,7 @@ struct saved_time_t {
     u8 h;
     u8 m;
     u8 s;
-} PACKED;
+} PACKED ALIGNED(4);
 
 struct dewford_trend_t {
     u16 trendiness : 7;
@@ -24,7 +24,7 @@ struct dewford_trend_t {
     u16 padding : 1;
     u16 rand_val;
     u16 words[2];
-} PACKED;
+} PACKED ALIGNED(4);
 
 struct tv_show_t {
     u8 kind;
@@ -67,7 +67,7 @@ struct news_t {
     u8 kind;
     u8 state;
     u16 days;
-} PACKED;
+} PACKED ALIGNED(4);
 
 struct outbreak_t {
     u16 species;
@@ -79,14 +79,13 @@ struct outbreak_t {
     u8 unused_1;
     u8 chance;
     u16 days;
-} PACKED;
+} PACKED ALIGNED(4);
 
 struct clock_events_t {
     struct saved_time_t saved_time;
     struct saved_time_t saved_berry_time;
     u8 shoal_cave_items_reset_flag : 1;
     u8 enable_rtc_reset_flag : 1;
-    u8 game_cleared_flag : 1;
     u16 enable_rtc_reset_var;
     u16 lottery_low_var;
     u16 lottery_high_var;
@@ -95,7 +94,7 @@ struct clock_events_t {
     u16 birch_state_var;
     u16 frontier_maniac_var;
     u16 frontier_gambler_var;
-    u16 lottery_consumed;
+    u16 lottery_consumed_var;
     u8 daily_flags[DAILY_FLAGS_TOTAL>>3];
     u16 daily_show_vars[TOTAL_DAILY_SHOW_VARS];
     u16 days_var;
