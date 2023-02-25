@@ -906,7 +906,7 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     // Put the "EGG" name
     if(is_egg) {
         dst->language = JAPANESE_LANGUAGE;
-        text_gen12_to_gen3(get_pokemon_name_gen2(species, 1, JAPANESE_LANGUAGE, gen2_buffer), dst->nickname, STRING_GEN2_JP_CAP, NICKNAME_GEN3_SIZE, 1, 1);
+        text_gen3_copy(get_pokemon_name(species, 0, 1, 0, JAPANESE_LANGUAGE), dst->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
     }
     else {
         // Handle bad naming conversions (? >= half the name) and empty names

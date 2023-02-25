@@ -17,6 +17,9 @@
 #include "pokemon_names_bin.h"
 #include "egg_names_bin.h"
 #include "language_names_index_bin.h"
+#include "gen3_german_valid_chars_bin.h"
+#include "gen3_int_valid_chars_bin.h"
+#include "gen3_jap_valid_chars_bin.h"
 #include "item_names_bin.h"
 #include "location_names_bin.h"
 #include "pokeball_names_bin.h"
@@ -70,12 +73,16 @@ u8 get_hidden_power_type_gen3_pure(u32);
 u8 get_hidden_power_type_gen3(struct gen3_mon_misc*);
 void make_evs_legal_gen3(struct gen3_mon_evs*);
 u8 to_valid_level_gen3(struct gen3_mon*);
+const u8* get_validity_keyboard(u8);
+void sanitize_nickname(u8*, u8, u8, u16);
+void sanitize_ot_name(u8*, u8);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
 
-u8 gender_thresholds_gen3[TOTAL_GENDER_KINDS] = {127, 0, 31, 63, 191, 225, 254, 255, 0, 254};
-u8 stat_index_conversion_gen3[] = {0, 1, 2, 4, 5, 3};
+const u8 gender_thresholds_gen3[TOTAL_GENDER_KINDS] = {127, 0, 31, 63, 191, 225, 254, 255, 0, 254};
+const u8 stat_index_conversion_gen3[GEN2_STATS_TOTAL] = {0, 1, 2, 4, 5, 3};
+const u8 language_keyboard_kind[NUM_LANGUAGES] = {1,0,1,1,1,2,1,1};
 
 const u16* pokemon_abilities_bin_16 = (const u16*)pokemon_abilities_bin;
 const struct exp_level* exp_table = (const struct exp_level*)exp_table_bin;
@@ -836,6 +843,72 @@ void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mo
     encrypt_data(dst);
 }
 
+const u8* get_validity_keyboard(u8 language) {
+    language = get_valid_language(language);
+    u8 kind = language_keyboard_kind[language];
+    const u8* validity_keyboard = gen3_int_valid_chars_bin;
+    if(kind == 0)
+        validity_keyboard = gen3_jap_valid_chars_bin;
+    else if(kind == 1)
+        validity_keyboard = gen3_int_valid_chars_bin;
+    else if(kind == 2)
+        validity_keyboard = gen3_german_valid_chars_bin;
+    return validity_keyboard;
+}
+
+void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species) {
+    language = get_valid_language(language);
+    const u8* validity_keyboard = get_validity_keyboard(language);
+    size_t name_limit = NICKNAME_GEN3_SIZE;
+    if(GET_LANGUAGE_IS_JAPANESE(language))
+        name_limit = NICKNAME_JP_GEN3_SIZE;
+
+    for(size_t i = name_limit; i < NICKNAME_GEN3_SIZE; i++)
+        if(i == name_limit)
+            nickname[i] = GEN3_EOL;
+        else
+            nickname[i] = 0;
+    
+    if(!is_egg) {
+        u8 found_illegal_char = 0;
+        for(size_t i = 0; i < name_limit; i++) {
+            u8 selected_char = nickname[i];
+            if(selected_char == GEN3_EOL)
+                break;
+            if(!(validity_keyboard[selected_char>>3] & (1<<(selected_char&7)))) {
+                found_illegal_char = 1;
+                break;
+            }
+        }
+        if(found_illegal_char)
+            text_gen3_copy(get_pokemon_name(species, 0, 0, 0, language), nickname, name_limit, name_limit);
+    }
+    else
+        text_gen3_copy(get_pokemon_name(species, 0, 1, 0, JAPANESE_LANGUAGE), nickname, NICKNAME_JP_GEN3_SIZE, name_limit);
+}
+
+void sanitize_ot_name(u8* ot_name, u8 language) {
+    language = get_valid_language(language);
+    const u8* validity_keyboard = get_validity_keyboard(language);
+    size_t name_limit = OT_NAME_GEN3_SIZE;
+    if(GET_LANGUAGE_IS_JAPANESE(language))
+        name_limit = OT_NAME_JP_GEN3_SIZE;
+
+    for(size_t i = name_limit; i < OT_NAME_GEN3_SIZE; i++)
+        if(i == name_limit)
+            ot_name[i] = GEN3_EOL;
+        else
+            ot_name[i] = 0;
+
+    for(size_t i = 0; i < name_limit; i++) {
+        u8 selected_char = ot_name[i];
+        if(selected_char == GEN3_EOL)
+            break;
+        if(!(validity_keyboard[selected_char>>3] & (1<<(selected_char&7))))
+            ot_name[i] = GEN3_QUESTION;
+    }
+}
+
 void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
     dst->src = src;
 
@@ -924,6 +997,10 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     // We reuse this SOOOO much...
     dst->is_egg = is_egg_gen3(src, misc);
+    if(dst->is_egg) {
+        src->use_egg_name = 1;
+        src->language = JAPANESE_LANGUAGE;
+    }
     
     // Eggs should not have items or mails
     if(dst->is_egg) {
@@ -938,8 +1015,15 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     growth->exp = get_proper_exp_raw(dst);
     
-    // TODO: Fix Nincada evolving to Shedinja in a Japanese game
-    
+    // Fix Nincada evolving to Shedinja in a Japanese game
+    if((!dst->is_egg) && (growth->species == SHEDINJA_SPECIES))
+        if((src->language != JAPANESE_LANGUAGE) && text_gen3_is_same(src->nickname, get_pokemon_name(SHEDINJA_SPECIES, 0, 0, 0, JAPANESE_LANGUAGE), NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE))
+            text_gen3_copy(get_pokemon_name(SHEDINJA_SPECIES, 0, 0, 0, src->language), src->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
+
+    // Sanitize text to avoid crashes in-game
+    sanitize_nickname(src->nickname, src->language, dst->is_egg, growth->species);
+    sanitize_ot_name(src->ot_name, src->language);
+
     // Set the new "cleaned" data
     place_and_encrypt_gen3_data(dst, src);
     
