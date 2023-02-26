@@ -15,6 +15,23 @@
 #define TIDE_OFFSET 3
 #define DAY_START 12
 
+#define SECTION_SAVED_TIME_ID 0
+
+#define SAVED_TIME_POS 0x98
+#define SAVED_BERRY_TIME_POS 0xA0
+
+#define RTC_ENABLE_VAR_VALUE 0x920
+
+#if ACTUALLY_RUN_EVENTS
+#define SECTION_WEATHER_ID 1
+#define SECTION_TV_ID 3
+#define SECTION_NEWS_ID 3
+#define SECTION_OUTBREAK_ID 3
+
+#define WEATHER_POS 0x2F
+#define DEWFORD_E_POS 0xF68
+#define DEWFORD_CHUNK_1_SIZE (MAX_SECTION_SIZE - DEWFORD_E_POS)
+
 #define TV_SHOW_OUTBREAK_DAYS_DATA_POS 0x14
 #define TV_SHOW_OUTBREAK_ID 41
 #define TV_SHOW_WOM_ID 25
@@ -28,10 +45,17 @@
 #define NUM_FRONTIER_MANIAC_STATES 10
 #define NUM_FRONTIER_GAMBLER_STATES 12
 
-#define RTC_ENABLE_VAR_VALUE 0x920
 #define TIME_RNG_MULT 1103515245
 #define TIME_RNG_ADD 12345
 
+#define STEPS_STAT_NUM 5
+#endif
+
+void increase_clock(struct saved_time_t*, u16, u8, u8, u8, u8);
+void swap_time(struct saved_time_t*);
+void subtract_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
+#if ACTUALLY_RUN_EVENTS
+u32 get_next_seed_time(u32);
 void reset_daily_flags(struct clock_events_t*);
 void reset_shoal_cave_items(struct clock_events_t*);
 void reset_lottery(struct clock_events_t*);
@@ -61,17 +85,33 @@ void update_mirage_island(struct clock_events_t*, u16);
 void update_birch_state(struct clock_events_t*, u16);
 void update_frontier_maniac(struct clock_events_t*, u16);
 void update_frontier_gambler(struct clock_events_t*, u16);
-u32 get_next_seed_time(u32);
-void increase_clock(struct saved_time_t*, u16, u8, u8, u8, u8);
-void swap_time(struct saved_time_t*);
-void subtract_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
+#endif
+
+struct saved_time_t base_rtc_time = {.d = 1, .h = 0, .m = 0, .s = 0};
+const u16 enable_rtc_flag_num[NUM_MAIN_GAME_ID] = {0x62, 0x37, 0x62};
+const u16 enable_rtc_var_num[NUM_MAIN_GAME_ID] = {0x2C, 0x32, 0x2C};
+const u16 days_var_num[NUM_MAIN_GAME_ID] = {0x40, 0, 0x40};
+#if ACTUALLY_RUN_EVENTS
+//const u16 shoal_tide_flag_num[NUM_MAIN_GAME_ID] = {0x3A, 0, 0x3A};
+const u16 shoal_items_flag_num[NUM_MAIN_GAME_ID] = {0x5F, 0, 0x5F};
+const u16 daily_flags_start_num[NUM_MAIN_GAME_ID] = {0xC0, 0, 0xC0};
+const u16 lottery_consumed_var_num[NUM_MAIN_GAME_ID] = {0x45, 0, 0x45};
+const u16 birch_state_var_num[NUM_MAIN_GAME_ID] = {0x49, 0, 0x49};
+const u16 lottery_low_var_num[NUM_MAIN_GAME_ID] = {0x4B, 0, 0x4B};
+const u16 mirage_high_var_num[NUM_MAIN_GAME_ID] = {0x24, 0, 0x24};
+const u16 frontier_maniac_var_num[NUM_MAIN_GAME_ID] = {0, 0, 0x2F};
+const u16 frontier_gambler_var_num[NUM_MAIN_GAME_ID] = {0, 0, 0x30};
+const u16 daily_vars_num[TOTAL_DAILY_SHOW_VARS] = {0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xF1};
+const u8 section_dewford_chunk_1[NUM_MAIN_GAME_ID] = {3, 4, 3};
+const u8 section_dewford_chunk_2[NUM_MAIN_GAME_ID] = {3, 4, 4};
+const u16 dewford_chunk_1_pos[NUM_MAIN_GAME_ID] = {0xED4, 0xD8, DEWFORD_E_POS};
+const u16 dewford_chunk_2_pos[NUM_MAIN_GAME_ID] = {dewford_chunk_1_pos[0]+DEWFORD_CHUNK_1_SIZE, dewford_chunk_1_pos[1]+DEWFORD_CHUNK_1_SIZE, 0};
+const u16 tv_shows_pos[NUM_MAIN_GAME_ID] = {0x838, 0, 0x8CC};
+const u16 news_pos[NUM_MAIN_GAME_ID] = {0xBBC, 0, 0xC50};
+const u16 outbreak_pos[NUM_MAIN_GAME_ID] = {0xBFC, 0, 0xC90};
 
 const u16 daily_show_thresholds[TOTAL_DAILY_SHOW_VARS] = {100, 50, 100, 20, 20, 20, 30};
-struct saved_time_t base_rtc_time = {.d = 1, .h = 0, .m = 0, .s = 0};
-
-u32 get_next_seed_time(u32 seed) {
-    return (seed * TIME_RNG_MULT) + TIME_RNG_ADD;
-}
+#endif
 
 u8 has_rtc_events(struct game_identity* game_id) {
     if(game_id->game_main_version == RS_MAIN_GAME_CODE)
@@ -116,28 +156,6 @@ void change_tide(struct game_data_t* game_data) {
         change_time_of_day(game_data);
     if(game_data->clock_events.saved_time.d != curr_d)
         increase_clock(&game_data->clock_events.saved_time, 0xFFFF, 0, 0, 0, 1);
-}
-
-void run_daily_update(struct game_data_t* game_data, u16 days_increase) {
-    increase_clock(&game_data->clock_events.saved_time, days_increase, 0, 0, 0, 1);
-    // To be 100% faithful, events should be stopped inside of a Pokémon Center...
-    // But doing that would defeat the purpose of this
-    if(has_rtc_events(&game_data->game_identifier)) {
-        reset_daily_flags(&game_data->clock_events);
-        update_dewford_trends(game_data->clock_events.dewford_trends, days_increase);
-        update_tv_shows(game_data, days_increase);
-        update_weather(&game_data->clock_events, days_increase);
-        update_pokerus_daily(game_data, days_increase);
-        update_mirage_island(&game_data->clock_events, days_increase);
-        update_birch_state(&game_data->clock_events, days_increase);
-        if(game_data->game_identifier.game_main_version == E_MAIN_GAME_CODE) {
-            update_frontier_maniac(&game_data->clock_events, days_increase);
-            update_frontier_gambler(&game_data->clock_events, days_increase);
-        }
-        reset_shoal_cave_items(&game_data->clock_events);
-        reset_lottery(&game_data->clock_events);
-        game_data->clock_events.days_var += days_increase;
-    }
 }
 
 void subtract_time(struct saved_time_t* base, struct saved_time_t* sub, struct saved_time_t* target) {
@@ -221,6 +239,180 @@ void normalize_time(struct saved_time_t* saved_time) {
     saved_time->h = SWI_DivMod(saved_time->h, MAX_HOURS);
     saved_time->m = SWI_DivMod(saved_time->m, MAX_MINUTES);
     saved_time->s = SWI_DivMod(saved_time->s, MAX_SECONDS);
+}
+
+void run_daily_update(struct game_data_t* game_data, u16 days_increase) {
+    increase_clock(&game_data->clock_events.saved_time, days_increase, 0, 0, 0, 1);
+
+    #if ACTUALLY_RUN_EVENTS
+    // To be 100% faithful, events should be stopped inside of a Pokémon Center...
+    // But doing that would defeat the purpose of this
+    if(has_rtc_events(&game_data->game_identifier)) {
+        reset_daily_flags(&game_data->clock_events);
+        update_dewford_trends(game_data->clock_events.dewford_trends, days_increase);
+        update_tv_shows(game_data, days_increase);
+        update_weather(&game_data->clock_events, days_increase);
+        update_pokerus_daily(game_data, days_increase);
+        update_mirage_island(&game_data->clock_events, days_increase);
+        update_birch_state(&game_data->clock_events, days_increase);
+        if(game_data->game_identifier.game_main_version == E_MAIN_GAME_CODE) {
+            update_frontier_maniac(&game_data->clock_events, days_increase);
+            update_frontier_gambler(&game_data->clock_events, days_increase);
+        }
+        reset_shoal_cave_items(&game_data->clock_events);
+        reset_lottery(&game_data->clock_events);
+        game_data->clock_events.days_var += days_increase;
+    }
+    #endif
+}
+
+void enable_rtc_reset(struct clock_events_t* clock_events) {
+    clock_events->enable_rtc_reset_flag = 1;
+    clock_events->enable_rtc_reset_var = RTC_ENABLE_VAR_VALUE;
+}
+
+void disable_rtc_reset(struct clock_events_t* clock_events) {
+    clock_events->enable_rtc_reset_flag = 0;
+    clock_events->enable_rtc_reset_var = 0;
+}
+
+u8 is_rtc_reset_enabled(struct clock_events_t* clock_events) {
+    return (clock_events->enable_rtc_reset_flag == 1) && (clock_events->enable_rtc_reset_var == RTC_ENABLE_VAR_VALUE);
+}
+
+u8 can_clock_run(struct clock_events_t* clock_events) {
+    return clock_events->days_var < 0x7FFF;
+}
+
+void load_time_data(struct game_data_t* game_data, u16 section_id, int slot, int index, u8 game_id) {
+    if(section_id == SECTION_SAVED_TIME_ID) {
+        copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + SAVED_TIME_POS, (u8*)&game_data->clock_events.saved_time, sizeof(struct saved_time_t));
+        normalize_time(&game_data->clock_events.saved_time);
+        copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + SAVED_BERRY_TIME_POS, (u8*)&game_data->clock_events.saved_berry_time, sizeof(struct saved_time_t));
+        normalize_time(&game_data->clock_events.saved_berry_time);
+    }
+
+    if(section_id == SECTION_SYS_FLAGS_ID) {
+        game_data->clock_events.enable_rtc_reset_flag = get_sys_flag_save(slot, index, game_id, enable_rtc_flag_num[game_id]);
+        #if ACTUALLY_RUN_EVENTS
+        if(has_rtc_events(&game_data->game_identifier)) {
+            game_data->clock_events.shoal_cave_items_reset_flag = get_sys_flag_save(slot, index, game_id, shoal_items_flag_num[game_id]);
+            for(size_t j = 0; j < (DAILY_FLAGS_TOTAL>>3); j++)
+                game_data->clock_events.daily_flags[j] = get_sys_flag_byte_save(slot, index, game_id, daily_flags_start_num[game_id] + (j<<3));
+        }
+        #endif
+    }
+
+    if(section_id == SECTION_VARS_ID) {
+        game_data->clock_events.enable_rtc_reset_var = get_var_save(slot, index, game_id, enable_rtc_var_num[game_id]);
+        if(has_rtc_events(&game_data->game_identifier)) {
+            game_data->clock_events.days_var = get_var_save(slot, index, game_id, days_var_num[game_id]);
+            #if ACTUALLY_RUN_EVENTS
+            game_data->clock_events.lottery_low_var = get_var_save(slot, index, game_id, lottery_low_var_num[game_id]);
+            game_data->clock_events.lottery_high_var = get_var_save(slot, index, game_id, lottery_low_var_num[game_id]+1);
+            game_data->clock_events.mirage_high_var = get_var_save(slot, index, game_id, mirage_high_var_num[game_id]);
+            game_data->clock_events.mirage_low_var = get_var_save(slot, index, game_id, mirage_high_var_num[game_id]+1);
+            game_data->clock_events.birch_state_var = get_var_save(slot, index, game_id, birch_state_var_num[game_id]);
+            game_data->clock_events.lottery_consumed_var = get_var_save(slot, index, game_id, lottery_consumed_var_num[game_id]);
+            if(game_id == E_MAIN_GAME_CODE) {
+                game_data->clock_events.frontier_maniac_var = get_var_save(slot, index, game_id, frontier_maniac_var_num[game_id]);
+                game_data->clock_events.frontier_gambler_var = get_var_save(slot, index, game_id, frontier_gambler_var_num[game_id]);
+                for(int j = 0; j < TOTAL_DAILY_SHOW_VARS; j++)
+                    game_data->clock_events.daily_show_vars[j] = get_var_save(slot, index, game_id, daily_vars_num[j]);
+            }
+            #endif
+        }
+    }
+
+    #if ACTUALLY_RUN_EVENTS
+    if(section_id == SECTION_GAME_STATS_ID)
+        game_data->clock_events.steps_stat = get_stat_save(slot, index, game_id, STEPS_STAT_NUM) ^ game_data->stat_enc_key;
+
+    if(section_id == SECTION_WEATHER_ID)
+        game_data->clock_events.weather_stage = read_byte_save((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + WEATHER_POS);
+    
+    if(has_rtc_events(&game_data->game_identifier)) {
+        if(section_id == section_dewford_chunk_1[game_id])
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + dewford_chunk_1_pos[game_id], (u8*)game_data->clock_events.dewford_trends, DEWFORD_CHUNK_1_SIZE);
+        if(section_id == section_dewford_chunk_2[game_id])
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + dewford_chunk_2_pos[game_id], ((u8*)game_data->clock_events.dewford_trends) + DEWFORD_CHUNK_1_SIZE, sizeof(game_data->clock_events.dewford_trends)-DEWFORD_CHUNK_1_SIZE);
+        if(section_id == SECTION_TV_ID)
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + tv_shows_pos[game_id], (u8*)game_data->clock_events.tv_shows, sizeof(game_data->clock_events.tv_shows));
+        if(section_id == SECTION_NEWS_ID)
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + news_pos[game_id], (u8*)game_data->clock_events.news, sizeof(game_data->clock_events.news));
+        if(section_id == SECTION_OUTBREAK_ID)
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + outbreak_pos[game_id], (u8*)&game_data->clock_events.outbreak, sizeof(game_data->clock_events.outbreak));
+    }
+    #endif
+}
+
+void store_time_data(struct game_data_t* game_data, u16 section_id, u8* buffer_8, u8 game_id) {
+    if(section_id == SECTION_SAVED_TIME_ID) {
+        for(size_t j = 0; j < sizeof(struct saved_time_t); j++)
+            buffer_8[SAVED_TIME_POS+j] = ((u8*)&game_data->clock_events.saved_time)[j];
+        for(size_t j = 0; j < sizeof(struct saved_time_t); j++)
+            buffer_8[SAVED_BERRY_TIME_POS+j] = ((u8*)&game_data->clock_events.saved_berry_time)[j];
+    }
+
+    if(section_id == SECTION_SYS_FLAGS_ID) {
+        set_sys_flag_save(buffer_8, game_id, enable_rtc_flag_num[game_id], game_data->clock_events.enable_rtc_reset_flag);
+        #if ACTUALLY_RUN_EVENTS
+        if(has_rtc_events(&game_data->game_identifier)) {
+            set_sys_flag_save(buffer_8, game_id, shoal_items_flag_num[game_id], game_data->clock_events.shoal_cave_items_reset_flag);
+            for(size_t j = 0; j < (DAILY_FLAGS_TOTAL>>3); j++)
+                set_sys_flag_byte_save(buffer_8, game_id, daily_flags_start_num[game_id] + (j<<3), game_data->clock_events.daily_flags[j]);
+        }
+        #endif
+    }
+
+    if(section_id == SECTION_VARS_ID) {
+        set_var_save(buffer_8, game_id, enable_rtc_var_num[game_id], game_data->clock_events.enable_rtc_reset_var);
+        if(has_rtc_events(&game_data->game_identifier)) {
+            set_var_save(buffer_8, game_id, days_var_num[game_id], game_data->clock_events.days_var);
+            #if ACTUALLY_RUN_EVENTS
+            set_var_save(buffer_8, game_id, lottery_low_var_num[game_id], game_data->clock_events.lottery_low_var);
+            set_var_save(buffer_8, game_id, lottery_low_var_num[game_id]+1, game_data->clock_events.lottery_high_var);
+            set_var_save(buffer_8, game_id, mirage_high_var_num[game_id], game_data->clock_events.mirage_high_var);
+            set_var_save(buffer_8, game_id, mirage_high_var_num[game_id]+1, game_data->clock_events.mirage_low_var);
+            set_var_save(buffer_8, game_id, birch_state_var_num[game_id], game_data->clock_events.birch_state_var);
+            set_var_save(buffer_8, game_id, lottery_consumed_var_num[game_id], game_data->clock_events.lottery_consumed_var);
+            if(game_id == E_MAIN_GAME_CODE) {
+                set_var_save(buffer_8, game_id, frontier_maniac_var_num[game_id], game_data->clock_events.frontier_maniac_var);
+                set_var_save(buffer_8, game_id, frontier_gambler_var_num[game_id], game_data->clock_events.frontier_gambler_var);
+                for(int j = 0; j < TOTAL_DAILY_SHOW_VARS; j++)
+                    set_var_save(buffer_8, game_id, daily_vars_num[j], game_data->clock_events.daily_show_vars[j]);
+            }
+            #endif
+        }
+    }
+
+    #if ACTUALLY_RUN_EVENTS
+    if(section_id == SECTION_WEATHER_ID)
+        buffer_8[WEATHER_POS] = game_data->clock_events.weather_stage;
+
+    if(has_rtc_events(&game_data->game_identifier)) {
+        if(section_id == section_dewford_chunk_1[game_id])
+            for(size_t j = 0; j < DEWFORD_CHUNK_1_SIZE; j++)
+                buffer_8[dewford_chunk_1_pos[game_id]+j] = ((u8*)game_data->clock_events.dewford_trends)[j];
+        if(section_id == section_dewford_chunk_2[game_id])
+            for(size_t j = 0; j < (sizeof(game_data->clock_events.dewford_trends)-DEWFORD_CHUNK_1_SIZE); j++)
+                buffer_8[dewford_chunk_2_pos[game_id]+j] = ((u8*)game_data->clock_events.dewford_trends)[DEWFORD_CHUNK_1_SIZE+j];
+        if(section_id == SECTION_TV_ID)
+            for(size_t j = 0; j < sizeof(game_data->clock_events.tv_shows); j++)
+                buffer_8[tv_shows_pos[game_id]+j] = ((u8*)game_data->clock_events.tv_shows)[j];
+        if(section_id == SECTION_NEWS_ID)
+            for(size_t j = 0; j < sizeof(game_data->clock_events.news); j++)
+                buffer_8[news_pos[game_id]+j] = ((u8*)game_data->clock_events.news)[j];
+        if(section_id == SECTION_OUTBREAK_ID)
+            for(size_t j = 0; j < sizeof(game_data->clock_events.outbreak); j++)
+                buffer_8[outbreak_pos[game_id]+j] = ((u8*)&game_data->clock_events.outbreak)[j];
+    }
+    #endif
+}
+
+#if ACTUALLY_RUN_EVENTS
+u32 get_next_seed_time(u32 seed) {
+    return (seed * TIME_RNG_MULT) + TIME_RNG_ADD;
 }
 
 void reset_daily_flags(struct clock_events_t* clock_events) {
@@ -531,17 +723,4 @@ void reset_lottery(struct clock_events_t* clock_events) {
     clock_events->lottery_high_var = val >> 16;
     clock_events->lottery_consumed_var = 0;
 }
-
-void enable_rtc_reset(struct clock_events_t* clock_events) {
-    clock_events->enable_rtc_reset_flag = 1;
-    clock_events->enable_rtc_reset_var = RTC_ENABLE_VAR_VALUE;
-}
-
-void disable_rtc_reset(struct clock_events_t* clock_events) {
-    clock_events->enable_rtc_reset_flag = 0;
-    clock_events->enable_rtc_reset_var = 0;
-}
-
-u8 is_rtc_reset_enabled(struct clock_events_t* clock_events) {
-    return (clock_events->enable_rtc_reset_flag == 1) && (clock_events->enable_rtc_reset_var == RTC_ENABLE_VAR_VALUE);
-}
+#endif

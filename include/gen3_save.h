@@ -9,6 +9,10 @@
 
 #define SAVE_SLOT_SIZE 0xE000
 #define SECTION_SIZE SECTOR_SIZE
+#define MAX_SECTION_SIZE 0xF80
+#define SECTION_SYS_FLAGS_ID 2
+#define SECTION_VARS_ID 2
+#define SECTION_GAME_STATS_ID 2
 
 struct game_data_t {
     u32 seen_unown_pid;
@@ -56,5 +60,13 @@ u8 is_invalid_offer(struct game_data_t*, u8, u8, u8, u16);
 u8 pre_write_gen_3_data(struct game_data_t*, u8);
 u8 pre_write_updated_moves_gen_3_data(struct game_data_t*);
 u8 complete_write_gen_3_data(struct game_data_t*);
+u8 get_sys_flag_save(u8, int, u8, u16);
+void set_sys_flag_save(u8*, u8, u16, u8);
+u16 get_var_save(u8, int, u8, u16);
+void set_var_save(u8*, u8, u16, u16);
+u32 get_stat_save(u8, int, u8, u16);
+void set_stat_save(u8*, u8, u16, u32);
+u8 get_sys_flag_byte_save(u8, int, u8, u16);
+void set_sys_flag_byte_save(u8*, u8, u16, u8);
 
 #endif

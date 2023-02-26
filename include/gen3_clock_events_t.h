@@ -4,6 +4,8 @@
 #include "party_handler.h"
 #include "useful_qualifiers.h"
 
+#define ACTUALLY_RUN_EVENTS 0
+
 #define DAILY_FLAGS_TOTAL 0x40
 #define TOTAL_DEWFORD_TRENDS 5
 #define TOTAL_TV_SHOWS 25
@@ -84,9 +86,11 @@ struct outbreak_t {
 struct clock_events_t {
     struct saved_time_t saved_time;
     struct saved_time_t saved_berry_time;
-    u8 shoal_cave_items_reset_flag : 1;
     u8 enable_rtc_reset_flag : 1;
     u16 enable_rtc_reset_var;
+    u16 days_var;
+    #if ACTUALLY_RUN_EVENTS
+    u8 shoal_cave_items_reset_flag : 1;
     u16 lottery_low_var;
     u16 lottery_high_var;
     u16 mirage_low_var;
@@ -97,13 +101,13 @@ struct clock_events_t {
     u16 lottery_consumed_var;
     u8 daily_flags[DAILY_FLAGS_TOTAL>>3];
     u16 daily_show_vars[TOTAL_DAILY_SHOW_VARS];
-    u16 days_var;
     u32 steps_stat;
     u8 weather_stage;
     struct dewford_trend_t dewford_trends[TOTAL_DEWFORD_TRENDS];
     struct tv_show_t tv_shows[TOTAL_TV_SHOWS];
     struct news_t news[TOTAL_NEWS];
     struct outbreak_t outbreak;
+    #endif
 };
 
 #endif
