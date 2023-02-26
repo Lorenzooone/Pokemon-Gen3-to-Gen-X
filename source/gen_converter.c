@@ -187,17 +187,23 @@ u8 convert_moves_of_gen3(struct gen3_mon_attacks* attacks, u8 pp_bonuses, u8* mo
     }
     for(size_t i = 0; i < MOVES_SIZE; i++) {
         u16 move = attacks->moves[i];
-        if((move > 0) && (move <= last_valid_move)) {
-            u8 base_pp = pokemon_moves_pp_bin[move];
-            u8 bonus_pp = (pp_bonuses >> (2*i)) & 3;
-            u8 base_increase_pp = Div(base_pp, 5);
-            base_pp += (base_increase_pp * bonus_pp);
-            // Limit the PP to its maximum of 61
-            if(base_pp > 61)
-                base_pp = 61;
-            base_pp |= (bonus_pp << 6);
-            pps[used_slots] = base_pp;
-            moves[used_slots++] = move;
+        if(is_move_valid(move, last_valid_move)) {
+            u8 found = 0;
+            for(size_t j = 0; j < used_slots; j++)
+                if(move == moves[j]) {
+                    found = 1;
+                    break;
+                }
+            if(!found) {
+                u8 bonus_pp = (pp_bonuses>>(2*i))&3;
+                u8 base_pp = get_pp_of_move(move, bonus_pp, last_valid_move);
+                // Limit the PP to its maximum of 61
+                if(base_pp > 61)
+                    base_pp = 61;
+                base_pp |= (bonus_pp << 6);
+                pps[used_slots] = base_pp;
+                moves[used_slots++] = move;
+            }
         }
     }
     
@@ -214,15 +220,20 @@ u8 convert_moves_to_gen3(struct gen3_mon_attacks* attacks, struct gen3_mon_growt
 
     for(size_t i = 0; i < MOVES_SIZE; i++) {
         u16 move = moves[i];
-        if((move > 0) && (move <= last_valid_move)) {
-            u8 base_pp = pokemon_moves_pp_bin[move];
-            u8 bonus_pp = (pps[i] >> 6) & 3;
-            u8 base_increase_pp = Div(base_pp, 5);
-            base_pp += (base_increase_pp * bonus_pp);
-            
-            growth->pp_bonuses |= (bonus_pp)<<(2*i);
-            attacks->pp[used_slots] = base_pp;
-            attacks->moves[used_slots++] = move;
+        if(is_move_valid(move, last_valid_move)) {
+            u8 found = 0;
+            for(size_t j = 0; j < used_slots; j++)
+                if(move == attacks->moves[j]) {
+                    found = 1;
+                    break;
+                }
+            if(!found) {
+                u8 bonus_pp = (pps[i] >> 6) & 3;
+                u8 base_pp = get_pp_of_move(move, bonus_pp, last_valid_move);
+                growth->pp_bonuses |= (bonus_pp)<<(2*i);
+                attacks->pp[used_slots] = base_pp;
+                attacks->moves[used_slots++] = move;
+            }
         }
     }
 

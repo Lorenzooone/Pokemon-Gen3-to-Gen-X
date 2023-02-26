@@ -21,20 +21,11 @@ u8 has_legal_moves_gen12(u8* moves, u8 is_gen2) {
     u8 last_valid_move = LAST_VALID_GEN_1_MOVE;
     if(is_gen2)
         last_valid_move = LAST_VALID_GEN_2_MOVE;
-    
-    u8 previous_moves[MOVES_SIZE];
-    u8 curr_slot = 0;
-    for(size_t i = 0; i < MOVES_SIZE; i++) {
-        if((moves[i] != 0) && (moves[i] <= last_valid_move)) {
-            for(int j = 0; j < curr_slot; j++)
-                if(moves[i] == previous_moves[j])
-                    return 0;
-            previous_moves[curr_slot++] = moves[i];
-        }
-    }
-    
-    if(curr_slot)
-        return 1;
+
+    for(size_t i = 0; i < MOVES_SIZE; i++)
+        if(is_move_valid(moves[i], last_valid_move))
+            return 1;
+
     return 0;
 }
 
