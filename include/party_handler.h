@@ -372,6 +372,7 @@ u16 calc_stats_gen3(u16, u32, u8, u8, u8, u8, u8);
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc*, struct gen3_mon*);
 
 u8 get_valid_language(u8);
+const u8* get_pokemon_name_pure(int, u8, u8);
 const u8* get_pokemon_name_language(u16, u8);
 const u16* get_learnset_for_species(const u16*, u16);
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);

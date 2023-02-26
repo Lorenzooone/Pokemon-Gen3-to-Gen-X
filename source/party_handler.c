@@ -53,7 +53,6 @@
 
 #define PID_POSITIONS 24
 
-const u8* get_pokemon_name_pure(int, u32, u8, u8);
 const u8* get_item_name(int, u8);
 u8 get_ability_pokemon(int, u32, u8, u8, u8);
 u8 is_ability_valid(u16, u32, u8, u8, u8, u8);
@@ -151,8 +150,8 @@ const u8* get_pokemon_name(int index, u32 pid, u8 is_egg, u8 deoxys_form, u8 lan
     return get_pokemon_name_language(get_mon_index(index, pid, is_egg, deoxys_form), language);
 }
 
-const u8* get_pokemon_name_pure(int index, u32 pid, u8 is_egg, u8 language){
-    u16 mon_index = get_mon_index(index, pid, is_egg, 0);
+const u8* get_pokemon_name_pure(int index, u8 is_egg, u8 language){
+    u16 mon_index = get_mon_index(index, 0, is_egg, 0);
     if ((index == UNOWN_SPECIES) && !is_egg)
         mon_index = UNOWN_REAL_NAME_POS;
     if ((index == DEOXYS_SPECIES) && !is_egg)
@@ -881,10 +880,10 @@ void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species) {
             }
         }
         if(found_illegal_char)
-            text_gen3_copy(get_pokemon_name(species, 0, 0, 0, language), nickname, name_limit, name_limit);
+            text_gen3_copy(get_pokemon_name_pure(species, 0, language), nickname, name_limit, name_limit);
     }
     else
-        text_gen3_copy(get_pokemon_name(species, 0, 1, 0, JAPANESE_LANGUAGE), nickname, NICKNAME_JP_GEN3_SIZE, name_limit);
+        text_gen3_copy(get_pokemon_name_pure(species, 1, JAPANESE_LANGUAGE), nickname, NICKNAME_JP_GEN3_SIZE, name_limit);
 }
 
 void sanitize_ot_name(u8* ot_name, u8 language) {
@@ -1017,8 +1016,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     // Fix Nincada evolving to Shedinja in a Japanese game
     if((!dst->is_egg) && (growth->species == SHEDINJA_SPECIES))
-        if((src->language != JAPANESE_LANGUAGE) && text_gen3_is_same(src->nickname, get_pokemon_name(SHEDINJA_SPECIES, 0, 0, 0, JAPANESE_LANGUAGE), NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE))
-            text_gen3_copy(get_pokemon_name(SHEDINJA_SPECIES, 0, 0, 0, src->language), src->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
+        if((src->language != JAPANESE_LANGUAGE) && text_gen3_is_same(src->nickname, get_pokemon_name_pure(SHEDINJA_SPECIES, 0, JAPANESE_LANGUAGE), NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE))
+            text_gen3_copy(get_pokemon_name_pure(SHEDINJA_SPECIES, 0, src->language), src->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
 
     // Sanitize text to avoid crashes in-game
     sanitize_nickname(src->nickname, src->language, dst->is_egg, growth->species);
@@ -1082,7 +1081,7 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
                     mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
                     // Determine if we're going to change the name
                     u8 replace_name = 0;
-                    if(text_gen3_is_same(get_pokemon_name(growth->species, mon->pid, mon_data->is_egg, mon_data->deoxys_form, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))
+                    if(text_gen3_is_same(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))
                         replace_name = 1;
                     // Evolve
                     growth->species = trade_evolutions_evo_ids[i];
@@ -1091,7 +1090,7 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
                         growth->item = NO_ITEM_ID;
                     // Update the name, if needed
                     if(replace_name)
-                        text_gen3_copy(get_pokemon_name(growth->species, mon->pid, mon_data->is_egg, mon_data->deoxys_form, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language));
+                        text_gen3_copy(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language));
                     break;
                 }
     

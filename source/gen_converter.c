@@ -809,7 +809,7 @@ void fix_name_change_from_gen3(struct gen3_mon* src, u16 species, u8* nickname, 
         name_cap = STRING_GEN2_JP_CAP;
     
     // If it's the same, update the nickname with the new one
-    if(text_gen3_is_same(src->nickname, get_pokemon_name(species, src->pid, is_egg, 0, language), NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE)) {
+    if(text_gen3_is_same(src->nickname, get_pokemon_name_pure(species, is_egg, language), NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE)) {
         text_gen2_copy(get_pokemon_name_gen2(species, is_egg, language, tmp_text_buffer), nickname, name_cap, name_cap);
         // Gen 1 used the wrong dot symbol
         if(!is_gen2)
@@ -831,7 +831,7 @@ void fix_name_change_to_gen3(struct gen3_mon* dst, u8 species) {
     
     // If it's the same, update the nickname with the new one
     if(text_gen3_is_same(dst->nickname, tmp_text_buffer2, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE))
-        text_gen3_copy(get_pokemon_name(species, 0, 0, 0, language), dst->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
+        text_gen3_copy(get_pokemon_name_pure(species, 0, language), dst->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
 }
 
 void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8* ot_name_jp, u8* nickname, u8* nickname_jp, u8 is_egg, u8 is_gen2) {
@@ -906,7 +906,7 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     // Put the "EGG" name
     if(is_egg) {
         dst->language = JAPANESE_LANGUAGE;
-        text_gen3_copy(get_pokemon_name(species, 0, 1, 0, JAPANESE_LANGUAGE), dst->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
+        text_gen3_copy(get_pokemon_name_pure(species, 1, JAPANESE_LANGUAGE), dst->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
     }
     else {
         // Handle bad naming conversions (? >= half the name) and empty names
@@ -1116,7 +1116,9 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     dst->has_species = 1;
     dst->mail_id = GEN3_NO_MAIL;
     data_dst->is_egg = is_egg;
-    
+
+    // TODO: Maybe detect the language, if not set in the settings...?
+
     if(is_jp)
         dst->language = JAPANESE_LANGUAGE;
     else
@@ -1212,7 +1214,9 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     dst->has_species = 1;
     dst->mail_id = GEN3_NO_MAIL;
     data_dst->is_egg = 0;
-    
+
+    // TODO: Maybe detect the language, if not set in the settings...?
+
     if(is_jp)
         dst->language = JAPANESE_LANGUAGE;
     else
