@@ -6,7 +6,6 @@
 #include "rng.h"
 #include "optimized_swi.h"
 #include "text_handler.h"
-#include "print_system.h"
 #include <stddef.h>
 
 #define MAX_DAYS 0xFFFF
@@ -225,7 +224,6 @@ void normalize_time(struct saved_time_t* saved_time) {
 }
 
 void reset_daily_flags(struct clock_events_t* clock_events) {
-    default_reset_screen();
     for(size_t i = 0; i < (DAILY_FLAGS_TOTAL>>3); i++)
         clock_events->daily_flags[i] = 0;
 }

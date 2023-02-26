@@ -5,7 +5,6 @@
 #include "text_handler.h"
 #include "fast_pokemon_methods.h"
 #include "optimized_swi.h"
-#include "print_system.h"
 #include "useful_qualifiers.h"
 #include <stddef.h>
 
@@ -17,6 +16,10 @@
 //#include "rgba3_bad_diffs_bin.h"
     
 #define TEST_WORST_CASE 0
+
+#if TEST_WORST_CASE
+#include "print_system.h"
+#endif
 
 #define GBA3_MULT 0x41C64E6D
 #define GBA3_ADD 0x00006073
