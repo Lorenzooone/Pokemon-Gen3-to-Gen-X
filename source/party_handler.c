@@ -698,12 +698,16 @@ s32 get_level_exp_mon_index(u16 mon_index, u8 level) {
     return exp_table[level].exp_kind[pokemon_exp_groups_bin[mon_index]];
 }
 
-s32 get_proper_exp(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 deoxys_form) {
+s32 get_proper_exp(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_egg, u8 deoxys_form) {
     u8 level = to_valid_level_gen3(src);
-    
-    u16 mon_index = get_mon_index(growth->species, src->pid, 0, deoxys_form);
-    
     s32 exp = growth->exp;
+    u16 mon_index = get_mon_index(growth->species, src->pid, 0, deoxys_form);
+
+    if(is_egg) {
+        level = EGG_LEVEL_GEN3;
+        exp = get_level_exp_mon_index(mon_index, level);
+    }
+
     s32 min_exp = get_level_exp_mon_index(mon_index, level);
     s32 max_exp = min_exp;
     if(level == MAX_LEVEL)
@@ -716,7 +720,7 @@ s32 get_proper_exp(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 deox
         exp = max_exp;
     if(exp < 0)
         exp = 0;
-    
+
     return exp;
 }
 
@@ -724,7 +728,7 @@ s32 get_proper_exp_raw(struct gen3_mon_data_unenc* data_src) {
     if(!data_src->is_valid_gen3)
         return 0;
 
-    return get_proper_exp(data_src->src, &data_src->growth, data_src->deoxys_form);
+    return get_proper_exp(data_src->src, &data_src->growth, data_src->is_egg, data_src->deoxys_form);
 }
 
 void make_evs_legal_gen3(struct gen3_mon_evs* evs) {
@@ -998,13 +1002,11 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     dst->is_egg = is_egg_gen3(src, misc);
     if(dst->is_egg) {
         src->use_egg_name = 1;
-        src->language = JAPANESE_LANGUAGE;
-    }
-    
-    // Eggs should not have items or mails
-    if(dst->is_egg) {
+        src->language = JAPANESE_LANGUAGE;    
+        // Eggs should not have items or mails
         growth->item = NO_ITEM_ID;
         src->mail_id = GEN3_NO_MAIL;
+        src->level = EGG_LEVEL_GEN3;
     }
     
     if((growth->item > LAST_VALID_GEN_3_ITEM) || (growth->item == ENIGMA_BERRY_ID))

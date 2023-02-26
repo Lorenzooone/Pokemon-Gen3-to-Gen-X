@@ -1207,6 +1207,5 @@ void worst_case_conversion_tester(vu32* counter) {
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time conv s: 0x\x04\n", max_counter);
-    
-    #endif
+#endif
 }

@@ -51,8 +51,8 @@ u8 convert_moves_of_gen3(struct gen3_mon_attacks*, u8, u8*, u8*, u8);
 u8 convert_moves_to_gen3(struct gen3_mon_attacks*, struct gen3_mon_growth*, u8*, u8*, u8);
 u8 convert_item_of_gen3(u16);
 u16 convert_item_to_gen3(u16);
-void convert_exp_nature_of_gen3(struct gen3_mon*, struct gen3_mon_growth*, u8*, u8*, u8);
-u8 get_exp_nature(struct gen3_mon*, struct gen3_mon_growth*, u8, u8*);
+void convert_exp_nature_of_gen3(struct gen3_mon*, struct gen3_mon_growth*, u8*, u8*, u8, u8);
+u8 get_exp_nature(struct gen3_mon*, struct gen3_mon_growth*, u8, u8, u8*);
 void convert_evs_of_gen3(struct gen3_mon_evs*, u16*);
 void convert_evs_to_gen3(struct gen3_mon_evs*, u16*);
 u8 get_encounter_type_gen3(u16);
@@ -245,42 +245,45 @@ u16 convert_item_to_gen3(u16 item) {
     return item;
 }
 
-void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8* level_ptr, u8* exp_ptr, u8 is_gen2) {
+void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* growth, u8* level_ptr, u8* exp_ptr, u8 is_egg, u8 is_gen2) {
     if(((is_gen2) && (growth->species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (growth->species > LAST_VALID_GEN_1_MON)))
         return;
     
     // Level handling
     u8 level = to_valid_level_gen3(src);
+    if(is_egg)
+        level = EGG_LEVEL_GEN2;
     
     u16 mon_index = get_mon_index(growth->species, src->pid, 0, 0);
     
     // Experience handling
-    s32 exp = get_proper_exp(src, growth, 0);
+    s32 exp = get_proper_exp(src, growth, is_egg, 0);
     
     s32 max_exp = get_level_exp_mon_index(mon_index, level);
     if(level < MAX_LEVEL)
         max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
     
-    // Save nature in experience, like the Gen I-VII conversion
-    u8 nature = get_nature(src->pid);
+    if(!is_egg) {
+        // Save nature in experience, like the Gen I-VII conversion
+        u8 nature = get_nature(src->pid);
 
-    // Nature handling
-    u8 exp_nature = DivMod(exp, NUM_NATURES);
-    if(exp_nature > nature)
-        nature += NUM_NATURES;
-    exp += nature - exp_nature;
-    if(level == MAX_LEVEL)
-        exp = max_exp;
-    if(level < MAX_LEVEL)
-        while(exp > max_exp) {
-            level++;
-            if(level >= (MIN_LEVEL_25_EXP_DIFF+1)) {
-                exp -= NUM_NATURES;
-                level--;
+        // Nature handling
+        u8 exp_nature = DivMod(exp, NUM_NATURES);
+        if(exp_nature > nature)
+            nature += NUM_NATURES;
+        exp += nature - exp_nature;
+        if(level == MAX_LEVEL)
+            exp = max_exp;
+        if(level < MAX_LEVEL)
+            while(exp > max_exp) {
+                level++;
+                if(level >= (MIN_LEVEL_25_EXP_DIFF+1)) {
+                    exp -= NUM_NATURES;
+                    level--;
+                }
+                max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
             }
-            max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
-        }
-    
+    }
     /*
     if ((level == MAX_LEVEL) && (exp != get_level_exp_mon_index(mon_index, MAX_LEVEL))){
         level--;
@@ -294,14 +297,16 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         exp_ptr[2-i] = (exp >> (8*i))&0xFF;
 }
 
-u8 get_exp_nature(struct gen3_mon* dst, struct gen3_mon_growth* growth, u8 level, u8* given_exp) {    
+u8 get_exp_nature(struct gen3_mon* dst, struct gen3_mon_growth* growth, u8 level, u8 is_egg, u8* given_exp) {    
     // Level handling
     level = to_valid_level(level);
+    if(is_egg)
+        level = EGG_LEVEL_GEN2;
     
     u16 mon_index = get_mon_index_gen2(growth->species, 0);
     
     // Experience handling
-    s32 exp = get_proper_exp_gen2(mon_index, level, given_exp);
+    s32 exp = get_proper_exp_gen2(mon_index, level, is_egg, given_exp);
     
     // Save nature in experience, like the Gen I-VII conversion
     u8 nature = SWI_DivMod(exp, NUM_NATURES);
@@ -924,6 +929,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     if(!data_src->is_valid_gen3)
         return 0;
     
+    u8 is_egg = data_src->is_egg;
     struct gen3_mon_growth* growth = &data_src->growth;
     struct gen3_mon_attacks* attacks = &data_src->attacks;
     struct gen3_mon_evs* evs = &data_src->evs;
@@ -935,7 +941,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     u8 gender_kind = get_pokemon_gender_kind_gen3(growth->species, src->pid, 0, data_src->deoxys_form);
     
     // Check that the mon can be traded
-    if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, data_src->is_egg, 1))
+    if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg, 1))
         return 0;
     
     // Reset data structure
@@ -956,7 +962,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     dst->ot_id = swap_endian_short(src->ot_id & 0xFFFF);
     
     // Assign level and experience
-    convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 1);
+    convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, is_egg, 1);
     
     // Convert EVs
     u16 evs_container[EVS_TOTAL_GEN12];
@@ -998,7 +1004,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     }
     
     // Extra byte for egg data
-    dst_data->is_egg = data_src->is_egg;
+    dst_data->is_egg = is_egg;
     
     // Stats calculations
     // Curr HP should be 0 for eggs, otherwise they count as party members
@@ -1027,6 +1033,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     if(!data_src->is_valid_gen3)
         return 0;
     
+    u8 is_egg = data_src->is_egg;
     struct gen3_mon_growth* growth = &data_src->growth;
     struct gen3_mon_attacks* attacks = &data_src->attacks;
     struct gen3_mon_evs* evs = &data_src->evs;
@@ -1038,7 +1045,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     u8 gender_kind = get_pokemon_gender_kind_gen3(growth->species, src->pid, 0, data_src->deoxys_form);
     
     // Check that the mon can be traded
-    if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, data_src->is_egg, 0))
+    if(!validate_converting_mon_of_gen3(src, growth, is_shiny, gender, gender_kind, is_egg, 0))
         return 0;
     
     // Reset data structure
@@ -1063,7 +1070,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     dst->ot_id = swap_endian_short(src->ot_id & 0xFFFF);
     
     // Assign level and experience
-    convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, 0);
+    convert_exp_nature_of_gen3(src, growth, &dst->level, dst->exp, is_egg, 0);
     
     // Convert EVs
     u16 evs_container[EVS_TOTAL_GEN12];
@@ -1149,7 +1156,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     // Set species, exp, level and item
     data_dst->growth.species = src->species;
-    u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, src->exp);
+    u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, is_egg, src->exp);
     data_dst->growth.item = convert_item_to_gen3(src->item);
     
     // Convert EVs
@@ -1247,7 +1254,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     // Set species, exp, level and item
     data_dst->growth.species = get_mon_index_gen1_to_3(src->species);
-    u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, src->exp);
+    u8 wanted_nature = get_exp_nature(dst, &data_dst->growth, src->level, 0, src->exp);
     data_dst->growth.item = convert_item_to_gen3(src->item);
     
     // Convert EVs

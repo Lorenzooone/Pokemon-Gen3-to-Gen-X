@@ -61,8 +61,14 @@ u8 get_unown_letter_gen2(u16 ivs){
     return get_unown_letter_gen2_fast(ivs);
 }
 
-s32 get_proper_exp_gen2(u16 mon_index, u8 level, u8* given_exp) {
+s32 get_proper_exp_gen2(u16 mon_index, u8 level, u8 is_egg, u8* given_exp) {
     s32 exp = (given_exp[0]<<0x10) + (given_exp[1]<<0x8) + (given_exp[2]<<0);
+
+    if(is_egg) {
+        level = EGG_LEVEL_GEN2;
+        exp = get_level_exp_mon_index(mon_index, level);
+    }
+
     s32 min_exp = get_level_exp_mon_index(mon_index, level);
     s32 max_exp = min_exp;
     if(level == MAX_LEVEL)
