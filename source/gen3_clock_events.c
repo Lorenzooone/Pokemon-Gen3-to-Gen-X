@@ -48,18 +48,21 @@
 #define TIME_RNG_MULT 1103515245
 #define TIME_RNG_ADD 12345
 
+#define DEWFORD_BASE_DAILY_CHANGE 5
+#define DEWFORD_MIN_MAX_TRENDINESS 30
+
 #define STEPS_STAT_NUM 5
 #endif
 
 void increase_clock(struct saved_time_t*, u16, u8, u8, u8, u8);
 void swap_time(struct saved_time_t*);
 void subtract_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
+void wipe_time(struct saved_time_t*);
 #if ACTUALLY_RUN_EVENTS
 u32 get_next_seed_time(u32);
 void reset_daily_flags(struct clock_events_t*);
 void reset_shoal_cave_items(struct clock_events_t*);
 void reset_lottery(struct clock_events_t*);
-void copy_dewford_trend(struct dewford_trend_t*, struct dewford_trend_t*);
 void clear_single_news(struct news_t*);
 void clear_single_tv_show(struct tv_show_t*);
 void copy_tv_show(struct tv_show_t*, struct tv_show_t*);
@@ -192,6 +195,13 @@ void swap_time(struct saved_time_t* saved_time) {
     subtract_time(&base_rtc_time, saved_time, saved_time);
 }
 
+void wipe_time(struct saved_time_t* saved_time) {
+    saved_time->d = 0;
+    saved_time->h = 0;
+    saved_time->m = 0;
+    saved_time->s = 0;
+}
+
 void increase_clock(struct saved_time_t* saved_time, u16 d, u8 h, u8 m, u8 s, u8 is_offset) {
     // This value is subtracted, so we need to get it to the positives...
     if(is_offset)
@@ -248,20 +258,22 @@ void run_daily_update(struct game_data_t* game_data, u16 days_increase) {
     // To be 100% faithful, events should be stopped inside of a Pokémon Center...
     // But doing that would defeat the purpose of this
     if(has_rtc_events(&game_data->game_identifier)) {
-        reset_daily_flags(&game_data->clock_events);
-        update_dewford_trends(game_data->clock_events.dewford_trends, days_increase);
-        update_tv_shows(game_data, days_increase);
-        update_weather(&game_data->clock_events, days_increase);
-        update_pokerus_daily(game_data, days_increase);
-        update_mirage_island(&game_data->clock_events, days_increase);
-        update_birch_state(&game_data->clock_events, days_increase);
-        if(game_data->game_identifier.game_main_version == E_MAIN_GAME_CODE) {
-            update_frontier_maniac(&game_data->clock_events, days_increase);
-            update_frontier_gambler(&game_data->clock_events, days_increase);
+        if(days_increase) {
+            reset_daily_flags(&game_data->clock_events);
+            update_dewford_trends(game_data->clock_events.dewford_trends, days_increase);
+            update_tv_shows(game_data, days_increase);
+            update_weather(&game_data->clock_events, days_increase);
+            update_pokerus_daily(game_data, days_increase);
+            update_mirage_island(&game_data->clock_events, days_increase);
+            update_birch_state(&game_data->clock_events, days_increase);
+            if(game_data->game_identifier.game_main_version == E_MAIN_GAME_CODE) {
+                update_frontier_maniac(&game_data->clock_events, days_increase);
+                update_frontier_gambler(&game_data->clock_events, days_increase);
+            }
+            reset_shoal_cave_items(&game_data->clock_events);
+            reset_lottery(&game_data->clock_events);
+            game_data->clock_events.days_var += days_increase;
         }
-        reset_shoal_cave_items(&game_data->clock_events);
-        reset_lottery(&game_data->clock_events);
-        game_data->clock_events.days_var += days_increase;
     }
     #endif
 }
@@ -282,6 +294,12 @@ u8 is_rtc_reset_enabled(struct clock_events_t* clock_events) {
 
 u8 can_clock_run(struct clock_events_t* clock_events) {
     return clock_events->days_var < 0x7FFF;
+}
+
+void wipe_clock(struct clock_events_t* clock_events) {
+    clock_events->days_var = base_rtc_time.d;
+    wipe_time(&clock_events->saved_time);
+    wipe_time(&clock_events->saved_berry_time);
 }
 
 void load_time_data(struct game_data_t* game_data, u16 section_id, int slot, int index, u8 game_id) {
@@ -656,47 +674,48 @@ void update_frontier_gambler(struct clock_events_t* clock_events, u16 days_incre
 }
 
 void update_dewford_trends(struct dewford_trend_t* dewford_trends, u16 days_increase) {
-    u32 base_inc = 5 * days_increase;
+    u32 base_inc = DEWFORD_BASE_DAILY_CHANGE * days_increase;
     for(int i = 0; i < TOTAL_DEWFORD_TRENDS; i++) {
         u32 inc = base_inc;
         struct dewford_trend_t *trend = &dewford_trends[i];
 
         // Prevent division by 0
-        if(trend->max_trendiness) {
-            if (!trend->gaining_trendiness) {
-                // This trend is "boring"
-                // Lose trendiness until it becomes 0
-                if (trend->trendiness >= ((u16)inc)) {
-                    trend->trendiness -= inc;
-                    if (trend->trendiness == 0)
-                        trend->gaining_trendiness = 1;
-                    continue;
-                }
-                inc -= trend->trendiness;
-                trend->trendiness = 0;
-                trend->gaining_trendiness = 1;
-            }
+        if(!trend->max_trendiness)
+            trend->max_trendiness = DEWFORD_MIN_MAX_TRENDINESS;
 
-            u32 trendiness = trend->trendiness + inc;
-            if (((u16)trendiness) > trend->max_trendiness) {
-                // Reached limit, reset trendiness
-                u32 new_trendiness = 0;
-                trendiness = SWI_DivDivMod(trendiness, trend->max_trendiness, (int*)&new_trendiness);
-
-                trend->gaining_trendiness = trendiness ^ 1;
-                if (trend->gaining_trendiness)
-                    trend->trendiness = new_trendiness;
-                else
-                    trend->trendiness = trend->max_trendiness - new_trendiness;
+        if (!trend->gaining_trendiness) {
+            // This trend is "boring"
+            // Lose trendiness until it becomes 0
+            if (trend->trendiness >= ((u16)inc)) {
+                trend->trendiness -= inc;
+                if (trend->trendiness == 0)
+                    trend->gaining_trendiness = 1;
+                continue;
             }
-            else {
-                // Increase trendiness
-                trend->trendiness = trendiness;
+            inc -= trend->trendiness;
+            trend->trendiness = 0;
+            trend->gaining_trendiness = 1;
+        }
 
-                // Trend has reached its max, becoming "boring" and start losing trendiness
-                if (trend->trendiness == trend->max_trendiness)
-                    trend->gaining_trendiness = 0;
-            }
+        u32 trendiness = trend->trendiness + inc;
+        if (((u16)trendiness) > trend->max_trendiness) {
+            // Reached limit, reset trendiness
+            u32 new_trendiness = 0;
+            trendiness = SWI_DivDivMod(trendiness, trend->max_trendiness, (int*)&new_trendiness);
+
+            trend->gaining_trendiness = trendiness ^ 1;
+            if (trend->gaining_trendiness)
+                trend->trendiness = new_trendiness;
+            else
+                trend->trendiness = trend->max_trendiness - new_trendiness;
+        }
+        else {
+            // Increase trendiness
+            trend->trendiness = trendiness;
+
+            // Trend has reached its max, becoming "boring" and start losing trendiness
+            if (trend->trendiness == trend->max_trendiness)
+                trend->gaining_trendiness = 0;
         }
     }
 

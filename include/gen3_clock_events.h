@@ -19,5 +19,6 @@ void change_tide(struct game_data_t* game_data);
 void load_time_data(struct game_data_t*, u16, int, int, u8);
 void store_time_data(struct game_data_t*, u16, u8*, u8);
 u8 can_clock_run(struct clock_events_t*);
+void wipe_clock(struct clock_events_t*);
 
 #endif
