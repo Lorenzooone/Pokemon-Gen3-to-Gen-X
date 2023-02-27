@@ -4,13 +4,69 @@
 #include "party_handler.h"
 #include "useful_qualifiers.h"
 
-#define ACTUALLY_RUN_EVENTS 0
+#define ACTUALLY_RUN_EVENTS 1
 
 #define DAILY_FLAGS_TOTAL 0x40
 #define TOTAL_DEWFORD_TRENDS 5
 #define TOTAL_TV_SHOWS 25
 #define TOTAL_NEWS 16
 #define TOTAL_DAILY_SHOW_VARS 7
+#define TOTAL_BERRY_TREES 0x80
+
+#define NUM_BERRIES 0x2B
+#define ENIGMA_BERRY_BERRY_ID 0x2A
+#define BERRY_NAME_SIZE 6
+#define BERRY_STAGE_DURATION 60
+#define BERRY_ITEM_EFFECT_SIZE 18
+#define ENIGMA_BERRY_VALID 0xFFFF
+#define NUM_WATER_STAGES 4
+#define WATERED_BIT_SIZE NUM_WATER_STAGES
+#define BERRY_STAGE_NO_BERRY    0  // there is no tree planted and the soil is completely flat.
+#define BERRY_STAGE_PLANTED     1
+#define BERRY_STAGE_SPROUTED    2
+#define BERRY_STAGE_TALLER      3
+#define BERRY_STAGE_FLOWERING   4
+#define BERRY_STAGE_BERRIES     5
+#define BERRY_STAGE_SPARKLING   255
+
+struct berry_growth_data_t {
+    u8 max_yield;
+    u8 min_yield;
+    u8 growth_time;
+} PACKED ALIGNED(1);
+
+struct enigma_berry_data_t {
+    u8 name[BERRY_NAME_SIZE+1];
+    u8 firmness;
+    u16 size;
+    u8 max_yield;
+    u8 min_yield;
+    u8* desc_1;
+    u8* desc_2;
+    u8 growth_time;
+    u8 spicy;
+    u8 dry;
+    u8 sweet;
+    u8 bitter;
+    u8 sour;
+    u8 smooth;
+    u8 padding;
+    u8 item_effect[BERRY_ITEM_EFFECT_SIZE];
+    u8 hold_effect;
+    u8 hold_effect_param;
+    u32 checksum;
+} PACKED ALIGNED(4);
+
+struct berry_tree_t {
+    u8 berry;
+    u8 stage : 7;
+    u8 no_growth : 1;
+    u16 next_update_minutes;
+    u8 berry_yield;
+    u8 num_regrowths : 4;
+    u8 watered_bitfield : WATERED_BIT_SIZE;
+    u16 padding;
+} PACKED ALIGNED(4);
 
 struct saved_time_t {
     u16 d;
@@ -107,6 +163,8 @@ struct clock_events_t {
     struct tv_show_t tv_shows[TOTAL_TV_SHOWS];
     struct news_t news[TOTAL_NEWS];
     struct outbreak_t outbreak;
+    struct enigma_berry_data_t enigma_berry_data;
+    struct berry_tree_t berry_trees[TOTAL_BERRY_TREES];
     #endif
 };
 

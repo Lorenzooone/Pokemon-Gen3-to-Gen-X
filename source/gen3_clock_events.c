@@ -6,7 +6,11 @@
 #include "rng.h"
 #include "optimized_swi.h"
 #include "text_handler.h"
+#include "useful_qualifiers.h"
 #include <stddef.h>
+#if ACTUALLY_RUN_EVENTS
+#include "berry_growth_data_bin.h"
+#endif
 
 #define MAX_DAYS 0xFFFF
 #define MAX_HOURS 24
@@ -27,6 +31,8 @@
 #define SECTION_TV_ID 3
 #define SECTION_NEWS_ID 3
 #define SECTION_OUTBREAK_ID 3
+#define SECTION_ENIGMA_BERRY_ID 4
+#define SECTION_BERRY_TREES_ID 2
 
 #define WEATHER_POS 0x2F
 #define DEWFORD_E_POS 0xF68
@@ -47,6 +53,8 @@
 
 #define TIME_RNG_MULT 1103515245
 #define TIME_RNG_ADD 12345
+#define GBA3_MULT 0x41C64E6D
+#define GBA3_ADD 0x00006073
 
 #define DEWFORD_BASE_DAILY_CHANGE 5
 #define DEWFORD_MIN_MAX_TRENDINESS 30
@@ -59,12 +67,14 @@ void swap_time(struct saved_time_t*);
 void subtract_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
 void wipe_time(struct saved_time_t*);
 #if ACTUALLY_RUN_EVENTS
-u32 get_next_seed_time(u32);
+static u32 get_next_seed(u32);
+static u32 get_next_seed_time(u32);
 void reset_daily_flags(struct clock_events_t*);
 void reset_shoal_cave_items(struct clock_events_t*);
-void reset_lottery(struct clock_events_t*);
+void reset_lottery(struct clock_events_t*, u16);
 void clear_single_news(struct news_t*);
 void clear_single_tv_show(struct tv_show_t*);
+void clear_berry_tree(struct berry_tree_t*);
 void copy_tv_show(struct tv_show_t*, struct tv_show_t*);
 void copy_news(struct news_t*, struct news_t*);
 void copy_dewford_trend(struct dewford_trend_t*, struct dewford_trend_t*);
@@ -88,6 +98,13 @@ void update_mirage_island(struct clock_events_t*, u16);
 void update_birch_state(struct clock_events_t*, u16);
 void update_frontier_maniac(struct clock_events_t*, u16);
 void update_frontier_gambler(struct clock_events_t*, u16);
+u32 calc_enigma_berry_checksum(struct enigma_berry_data_t*);
+u8 is_enigma_berry_valid(struct enigma_berry_data_t*);
+u16 get_berry_index(u8, struct enigma_berry_data_t*);
+u16 get_berry_growth_time(u8, struct enigma_berry_data_t*);
+u8 get_berry_yield(struct berry_tree_t*, struct enigma_berry_data_t*);
+u8 grow_berry_tree(struct berry_tree_t*, struct enigma_berry_data_t*);
+void update_berry_trees(struct clock_events_t*, u16, u8, u8);
 #endif
 
 struct saved_time_t base_rtc_time = {.d = 1, .h = 0, .m = 0, .s = 0};
@@ -95,6 +112,9 @@ const u16 enable_rtc_flag_num[NUM_MAIN_GAME_ID] = {0x62, 0x37, 0x62};
 const u16 enable_rtc_var_num[NUM_MAIN_GAME_ID] = {0x2C, 0x32, 0x2C};
 const u16 days_var_num[NUM_MAIN_GAME_ID] = {0x40, 0, 0x40};
 #if ACTUALLY_RUN_EVENTS
+const struct berry_growth_data_t* berry_growth_data = (const struct berry_growth_data_t*)berry_growth_data_bin;
+const u8 section_dewford_chunk_1[NUM_MAIN_GAME_ID] = {3, 4, 3};
+const u8 section_dewford_chunk_2[NUM_MAIN_GAME_ID] = {3, 4, 4};
 //const u16 shoal_tide_flag_num[NUM_MAIN_GAME_ID] = {0x3A, 0, 0x3A};
 const u16 shoal_items_flag_num[NUM_MAIN_GAME_ID] = {0x5F, 0, 0x5F};
 const u16 daily_flags_start_num[NUM_MAIN_GAME_ID] = {0xC0, 0, 0xC0};
@@ -105,15 +125,16 @@ const u16 mirage_high_var_num[NUM_MAIN_GAME_ID] = {0x24, 0, 0x24};
 const u16 frontier_maniac_var_num[NUM_MAIN_GAME_ID] = {0, 0, 0x2F};
 const u16 frontier_gambler_var_num[NUM_MAIN_GAME_ID] = {0, 0, 0x30};
 const u16 daily_vars_num[TOTAL_DAILY_SHOW_VARS] = {0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB, 0xF1};
-const u8 section_dewford_chunk_1[NUM_MAIN_GAME_ID] = {3, 4, 3};
-const u8 section_dewford_chunk_2[NUM_MAIN_GAME_ID] = {3, 4, 4};
 const u16 dewford_chunk_1_pos[NUM_MAIN_GAME_ID] = {0xED4, 0xD8, DEWFORD_E_POS};
 const u16 dewford_chunk_2_pos[NUM_MAIN_GAME_ID] = {dewford_chunk_1_pos[0]+DEWFORD_CHUNK_1_SIZE, dewford_chunk_1_pos[1]+DEWFORD_CHUNK_1_SIZE, 0};
 const u16 tv_shows_pos[NUM_MAIN_GAME_ID] = {0x838, 0, 0x8CC};
 const u16 news_pos[NUM_MAIN_GAME_ID] = {0xBBC, 0, 0xC50};
 const u16 outbreak_pos[NUM_MAIN_GAME_ID] = {0xBFC, 0, 0xC90};
+const u16 enigma_berry_pos[NUM_MAIN_GAME_ID] = {0x2E0, 0x26C, 0x378};
+const u16 berry_trees_pos[NUM_MAIN_GAME_ID] = {0x688, 0, 0x71C};
 
 const u16 daily_show_thresholds[TOTAL_DAILY_SHOW_VARS] = {100, 50, 100, 20, 20, 20, 30};
+static u32 time_events_rng_seed;
 #endif
 
 u8 has_rtc_events(struct game_identity* game_id) {
@@ -256,28 +277,35 @@ void run_daily_update(struct game_data_t* game_data, struct clock_events_t* cloc
 #else
 void run_daily_update(struct game_data_t* UNUSED(game_data), struct clock_events_t* clock_events, u16 days_increase, u8 UNUSED(is_game_cleared)) {
 #endif
-    increase_clock(&clock_events->saved_time, days_increase, 0, 0, 0, 1);
+    u16 d = days_increase;
+    u8 h = 0;
+    u8 m = 0;
+    u8 s = 0;
+    increase_clock(&clock_events->saved_time, d, h, m, s, 1);
 
     #if ACTUALLY_RUN_EVENTS
     // To be 100% faithful, events should be stopped inside of a Pokémon Center...
     // But doing that would defeat the purpose of this
     if(has_rtc_events(&game_data->game_identifier)) {
-        if(days_increase) {
+        if(d) {
+            time_events_rng_seed = get_rng();
             reset_daily_flags(clock_events);
-            update_dewford_trends(clock_events->dewford_trends, days_increase);
-            update_tv_shows(game_data, clock_events, days_increase, is_game_cleared);
-            update_weather(clock_events, days_increase);
-            update_pokerus_daily(game_data, days_increase);
-            update_mirage_island(clock_events, days_increase);
-            update_birch_state(clock_events, days_increase);
+            update_dewford_trends(clock_events->dewford_trends, d);
+            update_tv_shows(game_data, clock_events, d, is_game_cleared);
+            update_weather(clock_events, d);
+            update_pokerus_daily(game_data, d);
+            update_mirage_island(clock_events, d);
+            update_birch_state(clock_events, d);
             if(game_data->game_identifier.game_main_version == E_MAIN_GAME_CODE) {
-                update_frontier_maniac(clock_events, days_increase);
-                update_frontier_gambler(clock_events, days_increase);
+                update_frontier_maniac(clock_events, d);
+                update_frontier_gambler(clock_events, d);
             }
             reset_shoal_cave_items(clock_events);
-            reset_lottery(clock_events);
-            clock_events->days_var += days_increase;
+            reset_lottery(clock_events, d);
+            clock_events->days_var += d;
         }
+        update_berry_trees(clock_events, d, h, m);
+        increase_clock(&clock_events->saved_berry_time, d, h, m, s, 0);
     }
     #endif
 }
@@ -356,7 +384,10 @@ void load_time_data(struct clock_events_t* clock_events, u16 section_id, int slo
 
     if(section_id == SECTION_WEATHER_ID)
         clock_events->weather_stage = read_byte_save((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + WEATHER_POS);
-    
+
+    if(section_id == SECTION_ENIGMA_BERRY_ID)
+        copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + enigma_berry_pos[game_id], (u8*)&clock_events->enigma_berry_data, sizeof(clock_events->enigma_berry_data));
+
     if(can_run_rtc_events) {
         if(section_id == section_dewford_chunk_1[game_id])
             copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + dewford_chunk_1_pos[game_id], (u8*)clock_events->dewford_trends, DEWFORD_CHUNK_1_SIZE);
@@ -368,6 +399,8 @@ void load_time_data(struct clock_events_t* clock_events, u16 section_id, int slo
             copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + news_pos[game_id], (u8*)clock_events->news, sizeof(clock_events->news));
         if(section_id == SECTION_OUTBREAK_ID)
             copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + outbreak_pos[game_id], (u8*)&clock_events->outbreak, sizeof(clock_events->outbreak));
+        if(section_id == SECTION_BERRY_TREES_ID)
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (index * SECTION_SIZE) + berry_trees_pos[game_id], (u8*)clock_events->berry_trees, sizeof(clock_events->berry_trees));
     }
     #endif
 }
@@ -432,13 +465,21 @@ void store_time_data(struct clock_events_t* clock_events, u16 section_id, u8* bu
         if(section_id == SECTION_OUTBREAK_ID)
             for(size_t j = 0; j < sizeof(clock_events->outbreak); j++)
                 buffer_8[outbreak_pos[game_id]+j] = ((u8*)&clock_events->outbreak)[j];
+        if(section_id == SECTION_BERRY_TREES_ID)
+            for(size_t j = 0; j < sizeof(clock_events->berry_trees); j++)
+                buffer_8[berry_trees_pos[game_id]+j] = ((u8*)clock_events->berry_trees)[j];
     }
     #endif
 }
 
 #if ACTUALLY_RUN_EVENTS
-u32 get_next_seed_time(u32 seed) {
-    return (seed * TIME_RNG_MULT) + TIME_RNG_ADD;
+
+ALWAYS_INLINE MAX_OPTIMIZE u32 get_next_seed(u32 seed) {
+    return (seed*GBA3_MULT)+GBA3_ADD;
+}
+
+ALWAYS_INLINE MAX_OPTIMIZE u32 get_next_seed_time(u32 seed) {
+    return (seed*TIME_RNG_MULT)+TIME_RNG_ADD;
 }
 
 void reset_daily_flags(struct clock_events_t* clock_events) {
@@ -447,13 +488,18 @@ void reset_daily_flags(struct clock_events_t* clock_events) {
 }
 
 void clear_single_news(struct news_t* news) {
-    for(size_t j = 0; j < sizeof(struct news_t*); j++)
+    for(size_t j = 0; j < sizeof(struct news_t); j++)
         ((u8*)news)[j] = 0;
 }
 
 void clear_single_tv_show(struct tv_show_t* tv_show) {
-    for(size_t j = 0; j < sizeof(struct tv_show_t*); j++)
+    for(size_t j = 0; j < sizeof(struct tv_show_t); j++)
         ((u8*)tv_show)[j] = 0;
+}
+
+void clear_berry_tree(struct berry_tree_t* berry_tree) {
+    for(size_t j = 0; j < sizeof(struct berry_tree_t); j++)
+        ((u8*)berry_tree)[j] = 0;
 }
 
 void copy_tv_show(struct tv_show_t* src_show, struct tv_show_t* dst_show) {
@@ -744,10 +790,147 @@ void reset_shoal_cave_items(struct clock_events_t* clock_events) {
     clock_events->shoal_cave_items_reset_flag = 1;
 }
 
-void reset_lottery(struct clock_events_t* clock_events) {
-    u32 val = get_rng();
+void reset_lottery(struct clock_events_t* clock_events, u16 days_increase) {
+    time_events_rng_seed = get_next_seed(time_events_rng_seed);
+    u32 val = time_events_rng_seed >> 16;
+    for(int i = 0; i < days_increase; i++)
+        val = get_next_seed_time(val);
     clock_events->lottery_low_var = val & 0xFFFF;
     clock_events->lottery_high_var = val >> 16;
     clock_events->lottery_consumed_var = 0;
+}
+
+u32 calc_enigma_berry_checksum(struct enigma_berry_data_t* enigma_berry_data) {
+    u32 checksum = 0;
+    for(size_t i = 0; i < sizeof(struct enigma_berry_data_t) - sizeof(enigma_berry_data->checksum); i++)
+        checksum += ((u8*)enigma_berry_data)[i];
+
+    return checksum;
+}
+
+u8 is_enigma_berry_valid(struct enigma_berry_data_t* enigma_berry_data) {
+    if(!enigma_berry_data->growth_time)
+        return 0;
+    if(!enigma_berry_data->max_yield)
+        return 0;
+    if(calc_enigma_berry_checksum(enigma_berry_data) != enigma_berry_data->checksum)
+        return 0;
+    return 1;
+}
+
+u16 get_berry_index(u8 berry, struct enigma_berry_data_t* enigma_berry_data) {
+    if((berry == (ENIGMA_BERRY_BERRY_ID+1)) && is_enigma_berry_valid(enigma_berry_data))
+        return ENIGMA_BERRY_VALID;
+    if((!berry) || (berry > NUM_BERRIES))
+        berry = 1;
+    return berry - 1;
+}
+
+u16 get_berry_growth_time(u8 berry, struct enigma_berry_data_t* enigma_berry_data) {
+    u16 read_berry = get_berry_index(berry, enigma_berry_data);
+    u8 growth_time;
+    if(read_berry == ENIGMA_BERRY_VALID)
+        growth_time = enigma_berry_data->growth_time;
+    else
+        growth_time = berry_growth_data[read_berry].growth_time;
+    return growth_time * BERRY_STAGE_DURATION;
+}
+
+u8 get_berry_yield(struct berry_tree_t *tree, struct enigma_berry_data_t* enigma_berry_data) {
+    u16 read_berry = get_berry_index(tree->berry, enigma_berry_data);
+    u8 max;
+    u8 min;
+    if(read_berry == ENIGMA_BERRY_VALID) {
+        max = enigma_berry_data->max_yield;
+        min = enigma_berry_data->min_yield;
+    }
+    else {
+        max = berry_growth_data[read_berry].max_yield;
+        min = berry_growth_data[read_berry].min_yield;
+    }
+
+    u8 water = 0;
+    for(size_t i = 0; i < WATERED_BIT_SIZE; i++)
+        if((tree->watered_bitfield>>i)&1)
+            water++;
+
+    if(!water)
+        return min;
+
+    u32 extra_yield;
+    u32 rand_min = (max - min) * (water - 1);
+    u32 rand_max = (max - min) * (water);
+    time_events_rng_seed = get_next_seed(time_events_rng_seed);
+    u32 rand = SWI_DivMod(rand_min + (time_events_rng_seed>>16), rand_max - rand_min + 1);
+
+    // Round upwards
+    if((rand % NUM_WATER_STAGES) >= (NUM_WATER_STAGES / 2))
+        extra_yield = (rand / NUM_WATER_STAGES) + 1;
+    else
+        extra_yield = (rand / NUM_WATER_STAGES);
+    return extra_yield + min;
+}
+
+u8 grow_berry_tree(struct berry_tree_t *tree, struct enigma_berry_data_t* enigma_berry_data) {
+    if(tree->no_growth)
+        return 0;
+
+    switch(tree->stage) {
+        case BERRY_STAGE_NO_BERRY:
+            return 0;
+            break;
+        case BERRY_STAGE_FLOWERING:
+            tree->berry_yield = get_berry_yield(tree, enigma_berry_data);
+            tree->stage++;
+            break;
+        case BERRY_STAGE_PLANTED:
+        case BERRY_STAGE_SPROUTED:
+        case BERRY_STAGE_TALLER:
+            tree->stage++;
+            break;
+        case BERRY_STAGE_BERRIES:
+            tree->watered_bitfield = 0;
+            tree->berry_yield = 0;
+            tree->stage = BERRY_STAGE_SPROUTED;
+            tree->num_regrowths++;
+            if(tree->num_regrowths == 10)
+                clear_berry_tree(tree);
+            break;
+        default:
+            return 0;
+            break;
+    }
+    return 1;
+}
+
+void update_berry_trees(struct clock_events_t* clock_events, u16 d, u8 h, u8 m) {
+    u32 minutes = (d * MAX_HOURS * MAX_MINUTES) + (h * MAX_MINUTES) + m;
+
+    if(minutes) {
+        for(int i = 0; i < TOTAL_BERRY_TREES; i++) {
+            struct berry_tree_t* tree = &clock_events->berry_trees[i];
+            u16 real_growth_time = get_berry_growth_time(tree->berry, &clock_events->enigma_berry_data);
+
+            if(tree->berry && tree->stage && !tree->no_growth) {
+                if(minutes >= real_growth_time * 71)
+                    clear_berry_tree(tree);
+                else {
+                    s32 time = minutes;
+                    while (time != 0) {
+                        if (tree->next_update_minutes > time) {
+                            tree->next_update_minutes -= time;
+                            break;
+                        }
+                        time -= tree->next_update_minutes;
+                        tree->next_update_minutes = real_growth_time;
+                        if (!grow_berry_tree(tree, &clock_events->enigma_berry_data))
+                            break;
+                        if (tree->stage == BERRY_STAGE_BERRIES)
+                            tree->next_update_minutes *= 4;
+                    }
+                }
+            }
+        }
+    }
 }
 #endif
