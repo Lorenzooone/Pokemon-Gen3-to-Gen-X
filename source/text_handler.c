@@ -4,7 +4,6 @@
 #include "useful_qualifiers.h"
 #include <stddef.h>
 
-#include "trainer_names_bin.h"
 #include "text_gen3_to_gen12_int_bin.h"
 #include "text_gen3_to_gen12_jp_bin.h"
 #include "text_gen3_to_gen12_int_jp_bin.h"
@@ -241,13 +240,15 @@ void text_gen3_to_gen12(const u8* src, u8* dst, size_t src_size, size_t dst_size
         text_general_conversion(src, dst, src_size, dst_size, GEN3_EOL, GEN2_EOL, text_gen3_to_gen12_int_bin);
 }
 
-void text_gen12_to_gen3(const u8* src, u8* dst, size_t src_size, size_t dst_size, u8 jp_src, u8 UNUSED(jp_dst)) {
+u8 is_gen12_trainer(const u8* src) {
     if(src[0] == GEN12_TRAINER)
-        text_gen3_copy(get_table_pointer(trainer_names_bin, jp_src), dst, src_size, dst_size);
-    else {
-        if(jp_src)
-            text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_jp_bin);
-        else
-            text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_int_bin);
-    }
+        return 1;
+    return 0;
+}
+
+void text_gen12_to_gen3(const u8* src, u8* dst, size_t src_size, size_t dst_size, u8 jp_src, u8 UNUSED(jp_dst)) {
+    if(jp_src)
+        text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_jp_bin);
+    else
+        text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_int_bin);
 }

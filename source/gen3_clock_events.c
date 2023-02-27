@@ -916,16 +916,16 @@ void update_berry_trees(struct clock_events_t* clock_events, u16 d, u8 h, u8 m) 
                     clear_berry_tree(tree);
                 else {
                     s32 time = minutes;
-                    while (time != 0) {
-                        if (tree->next_update_minutes > time) {
+                    while(time != 0) {
+                        if(tree->next_update_minutes > time) {
                             tree->next_update_minutes -= time;
                             break;
                         }
                         time -= tree->next_update_minutes;
                         tree->next_update_minutes = real_growth_time;
-                        if (!grow_berry_tree(tree, &clock_events->enigma_berry_data))
+                        if(!grow_berry_tree(tree, &clock_events->enigma_berry_data))
                             break;
-                        if (tree->stage == BERRY_STAGE_BERRIES)
+                        if(tree->stage == BERRY_STAGE_BERRIES)
                             tree->next_update_minutes *= 4;
                     }
                 }

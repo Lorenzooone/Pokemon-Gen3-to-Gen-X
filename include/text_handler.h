@@ -59,6 +59,7 @@ size_t text_gen2_size(const u8*, size_t);
 void text_generic_to_gen3(const u8*, u8*, size_t, size_t, u8, u8);
 void text_gen3_to_generic(const u8*, u8*, size_t, size_t, u8, u8);
 void text_gen3_to_gen12(const u8*, u8*, size_t, size_t, u8, u8);
+u8 is_gen12_trainer(const u8*);
 void text_gen12_to_gen3(const u8*, u8*, size_t, size_t, u8, u8);
 
 #endif

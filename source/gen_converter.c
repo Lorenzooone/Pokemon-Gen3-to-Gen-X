@@ -911,11 +911,13 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
         name_cap = STRING_GEN2_JP_CAP;
         is_jp = 1;
     }
+
+    if(is_gen12_trainer(ot_name))
+        text_gen3_copy(get_trainer_name_gen12_enc3(dst->language), dst->ot_name, name_cap, OT_NAME_GEN3_SIZE);
     
     // Fix text up
     // "MR.MIME" gen 2 == "MR. MIME" gen 3
-    // Idk if something similar happens in Jap...
-    // Maybe there are some French things with accents...
+    // In French, "M.MIME" == "M. MIME"
     if((species == MR_MIME_SPECIES) && !is_egg && !is_jp)
         fix_name_change_to_gen3(dst, species);
     

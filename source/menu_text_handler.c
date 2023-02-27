@@ -327,7 +327,8 @@ void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 ot
 
 void print_base_settings_menu(struct game_data_priv_t* game_data_priv, u8 is_loaded) {
     default_reset_screen();
-    PRINT_FUNCTION("AAAA\n\n");
+    PRINT_FUNCTION("\n  Color Settings\n\n");
+    PRINT_FUNCTION("  Color Settings\n\n");
     if(is_loaded) {
         //change_time_of_day(game_data);
         //enable_rtc_reset(&game_data->clock_events);

@@ -2,6 +2,7 @@
 #include "gen12_methods.h"
 #include "party_handler.h"
 #include "text_handler.h"
+#include "bin_table_handler.h"
 #include "fast_pokemon_methods.h"
 
 #include "gen3_to_1_conv_table_bin.h"
@@ -9,6 +10,7 @@
 #include "pokemon_gender_bin.h"
 #include "pokemon_stats_gen1_bin.h"
 #include "pokemon_stats_bin.h"
+#include "trainer_names_bin.h"
 
 u8 stat_index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
 u8 gender_thresholds_gen12[TOTAL_GENDER_KINDS] = {8, 0, 2, 4, 12, 14, 16, 17, 0, 16};
@@ -46,6 +48,10 @@ u8 get_ivs_gen2(u16 ivs, u8 stat_index) {
         default:
             return spa_ivs;
     }
+}
+
+const u8* get_trainer_name_gen12_enc3(u8 language) {
+    return get_table_pointer(trainer_names_bin, get_valid_language(language));
 }
 
 u8 get_unown_letter_gen2(u16 ivs){

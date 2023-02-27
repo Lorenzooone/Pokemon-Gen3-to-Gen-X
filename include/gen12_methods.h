@@ -21,5 +21,6 @@ u8 get_gender_useless_atk_ivs_gen12(u8);
 u8 get_pokemon_gender_gen2(u8, u8, u8, u8);
 u8 get_pokemon_gender_kind_gen2(u8, u8, u8);
 const u8* get_pokemon_name_gen2(int, u8, u8, u8*);
+const u8* get_trainer_name_gen12_enc3(u8);
 
 #endif
