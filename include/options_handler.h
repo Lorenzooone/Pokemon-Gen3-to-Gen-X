@@ -14,11 +14,11 @@
 u8 get_number_of_higher_ordered_options(u8*, u8, u8);
 u8 get_number_of_lower_ordered_options(u8*, u8, u8);
 
-u8 is_valid_for_gen(struct game_data_t*, u8);
+u8 is_valid_for_gen(struct game_data_t*, struct game_data_priv_t*, u8);
 
 u8* get_options_main(void);
 u8 get_valid_options_main(void);
-void prepare_main_options(struct game_data_t*);
+void prepare_main_options(struct game_data_t*, struct game_data_priv_t*);
 
 u8* get_options_trade(int);
 u8 get_options_num_trade(int);

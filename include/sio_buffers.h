@@ -146,7 +146,7 @@ struct gen3_trade_data {
     u32 final_checksum;
 } PACKED ALIGNED(4);
 
-void load_comm_buffer(struct game_data_t*, int, u8);
+void load_comm_buffer(struct game_data_t*, struct gen2_party*, struct gen1_party*, int, u8);
 void read_comm_buffer(struct game_data_t*, int, u8);
 
 u8 are_checksum_same_gen3(struct gen3_trade_data*);

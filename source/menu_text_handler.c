@@ -325,21 +325,21 @@ void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 ot
     PRINT_FUNCTION("Summary: Receiving");
 }
 
-void print_base_settings_menu(struct game_data_t* game_data, u8 is_loaded) {
+void print_base_settings_menu(struct game_data_priv_t* game_data_priv, u8 is_loaded) {
     default_reset_screen();
     PRINT_FUNCTION("AAAA\n\n");
     if(is_loaded) {
         //change_time_of_day(game_data);
         //enable_rtc_reset(&game_data->clock_events);
-        if(is_daytime(game_data))
+        if(is_daytime(&game_data_priv->clock_events))
             PRINT_FUNCTION("Time: Day\n\n");
         else
             PRINT_FUNCTION("Time: Night\n\n");
-        if(is_high_tide(game_data))
+        if(is_high_tide(&game_data_priv->clock_events))
             PRINT_FUNCTION("Tide: High\n\n");
         else
             PRINT_FUNCTION("Tide: Low\n\n");
-        PRINT_FUNCTION("\x03 \x03", game_data->clock_events.enable_rtc_reset_flag, game_data->clock_events.enable_rtc_reset_var);
+        PRINT_FUNCTION("\x03 \x03", game_data_priv->clock_events.enable_rtc_reset_flag, game_data_priv->clock_events.enable_rtc_reset_var);
     }
     
     set_text_y(Y_LIMIT-1);

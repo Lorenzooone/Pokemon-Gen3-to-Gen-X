@@ -16,11 +16,11 @@ void prepare_random_data_gen12(struct random_data_t*);
 void prepare_patch_set(u8*, u8*, size_t, size_t, size_t, size_t);
 void apply_patch_set(u8*, u8*, size_t, size_t, size_t, size_t);
 void prepare_mail_gen2(u8*, size_t, u8*, size_t, size_t);
-void load_names_gen12(struct game_data_t*, u8*, u8*, u8*, u8, u8);
-void load_party_info_gen2(struct game_data_t*, struct gen2_party_info*);
-void load_party_info_gen1(struct game_data_t*, struct gen1_party_info*);
-void prepare_gen2_trade_data(struct game_data_t*, u32*, u8, size_t*);
-void prepare_gen1_trade_data(struct game_data_t*, u32*, u8, size_t*);
+void load_names_gen12(struct game_data_t*, struct gen2_party*, struct gen1_party*, u8*, u8*, u8*, u8);
+void load_party_info_gen2(struct gen2_party*, struct gen2_party_info*);
+void load_party_info_gen1(struct gen1_party*, struct gen1_party_info*);
+void prepare_gen2_trade_data(struct game_data_t*, struct gen2_party*, u32*, u8, size_t*);
+void prepare_gen1_trade_data(struct game_data_t*, struct gen1_party*, u32*, u8, size_t*);
 void prepare_gen3_trade_data(struct game_data_t*, u32*, size_t*);
 void read_gen12_trade_data(struct game_data_t*, u32*, u8, u8);
 void read_gen3_trade_data(struct game_data_t* game_data, u32*);
@@ -124,10 +124,16 @@ void prepare_mail_gen2(u8* buffer, size_t size, u8* patch_set_buffer, size_t pat
     prepare_patch_set(buffer, patch_set_buffer, size, start_pos, patch_set_buffer_size, 0);
 }
 
-void load_names_gen12(struct game_data_t* game_data, u8* trainer_name, u8* ot_names, u8* nicknames, u8 is_jp, u8 curr_gen){
+void load_names_gen12(struct game_data_t* game_data, struct gen2_party* party_2, struct gen1_party* party_1, u8* trainer_name, u8* ot_names, u8* nicknames, u8 is_jp){
     size_t size = STRING_GEN2_INT_SIZE;
     if(is_jp)
         size = STRING_GEN2_JP_SIZE;
+    
+    u8 curr_gen = 0;
+    if(party_2 != NULL)
+        curr_gen = 2;
+    if(party_1 != NULL)
+        curr_gen = 1;
         
     text_gen3_to_gen12(game_data->trainer_name, trainer_name, OT_NAME_GEN3_SIZE+1, size, game_data->game_identifier.game_is_jp, is_jp);
     for(size_t i = 0; i < size; i++)
@@ -135,24 +141,27 @@ void load_names_gen12(struct game_data_t* game_data, u8* trainer_name, u8* ot_na
             trainer_name[i] = NO_ACTION_BYTE-2;
     trainer_name[size-1] = GEN2_EOL;
     
+    if(!curr_gen)
+        return;
+    
     for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++) {
         u8* src_ot_name;
         u8* src_nickname;
         if(is_jp && curr_gen == 2) {
-            src_ot_name = (u8*)&game_data->party_2.mons[i].ot_name_jp;
-            src_nickname = (u8*)&game_data->party_2.mons[i].nickname_jp;
+            src_ot_name = party_2->mons[i].ot_name_jp;
+            src_nickname = party_2->mons[i].nickname_jp;
         }
         else if(curr_gen == 2) {
-            src_ot_name = (u8*)&game_data->party_2.mons[i].ot_name;
-            src_nickname = (u8*)&game_data->party_2.mons[i].nickname;
+            src_ot_name = party_2->mons[i].ot_name;
+            src_nickname = party_2->mons[i].nickname;
         }
         else if(is_jp) {
-            src_ot_name = (u8*)&game_data->party_1.mons[i].ot_name_jp;
-            src_nickname = (u8*)&game_data->party_1.mons[i].nickname_jp;
+            src_ot_name = party_1->mons[i].ot_name_jp;
+            src_nickname = party_1->mons[i].nickname_jp;
         }
         else {
-            src_ot_name = (u8*)&game_data->party_1.mons[i].ot_name;
-            src_nickname = (u8*)&game_data->party_1.mons[i].nickname;
+            src_ot_name = party_1->mons[i].ot_name;
+            src_nickname = party_1->mons[i].nickname;
         }
         copy_bytes(src_ot_name, ot_names, size, 0, i*size);
         ot_names[(i*size)+size-1] = GEN2_EOL;
@@ -161,41 +170,39 @@ void load_names_gen12(struct game_data_t* game_data, u8* trainer_name, u8* ot_na
     }
 }
 
-void load_party_info_gen2(struct game_data_t* game_data, struct gen2_party_info* party_info){
-    u8 num_options = game_data->party_2.total;
+void load_party_info_gen2(struct gen2_party* party_2, struct gen2_party_info* party_info){
+    u8 num_options = party_2->total;
     if(num_options > PARTY_SIZE)
         num_options = PARTY_SIZE;
     party_info->num_mons = num_options;
     
     for(int i = 0; i < num_options; i++) {
-        copy_bytes(&game_data->party_2.mons[i].data, &(party_info->mons_data[i]), sizeof(struct gen2_mon_data), 0, 0);
-        party_info->mons_index[i] = game_data->party_2.mons[i].data.species;
-        if(game_data->party_2.mons[i].is_egg)
+        copy_bytes(&party_2->mons[i].data, &(party_info->mons_data[i]), sizeof(struct gen2_mon_data), 0, 0);
+        party_info->mons_index[i] = party_2->mons[i].data.species;
+        if(party_2->mons[i].is_egg)
             party_info->mons_index[i] = GEN2_EGG;
     }
     
     for(int i = num_options; i < MON_INDEX_SIZE; i++)
         party_info->mons_index[i] = GEN2_NO_MON;
-    
-    party_info->trainer_id = (game_data->trainer_id&0xFFFF);
 }
 
-void load_party_info_gen1(struct game_data_t* game_data, struct gen1_party_info* party_info){
-    u8 num_options = game_data->party_1.total;
+void load_party_info_gen1(struct gen1_party* party_1, struct gen1_party_info* party_info){
+    u8 num_options = party_1->total;
     if(num_options > PARTY_SIZE)
         num_options = PARTY_SIZE;
     party_info->num_mons = num_options;
     
     for(int i = 0; i < num_options; i++) {
-        copy_bytes(&game_data->party_1.mons[i].data, &(party_info->mons_data[i]), sizeof(struct gen1_mon_data), 0, 0);
-        party_info->mons_index[i] = game_data->party_1.mons[i].data.species;
+        copy_bytes(&party_1->mons[i].data, &(party_info->mons_data[i]), sizeof(struct gen1_mon_data), 0, 0);
+        party_info->mons_index[i] = party_1->mons[i].data.species;
     }
     
     for(int i = num_options; i < MON_INDEX_SIZE; i++)
         party_info->mons_index[i] = GEN2_NO_MON;
 }
 
-void prepare_gen2_trade_data(struct game_data_t* game_data, u32* buffer, u8 is_jp, size_t* sizes) {
+void prepare_gen2_trade_data(struct game_data_t* game_data, struct gen2_party* party_2, u32* buffer, u8 is_jp, size_t* sizes) {
     struct gen2_trade_data_int* td_int = (struct gen2_trade_data_int*)buffer;
     struct gen2_trade_data_jp* td_jp = (struct gen2_trade_data_jp*)buffer;
     
@@ -213,13 +220,15 @@ void prepare_gen2_trade_data(struct game_data_t* game_data, u32* buffer, u8 is_j
     if(is_jp)
         nicknames = (u8*)td_jp->trainer_info.nicknames;
     
-    load_names_gen12(game_data, trainer_name, ot_names, nicknames, is_jp, 2);
+    load_names_gen12(game_data, party_2, NULL, trainer_name, ot_names, nicknames, is_jp);
     
     struct gen2_party_info* party_info = (struct gen2_party_info*)&td_int->trainer_info.party_info;
     if(is_jp)
         party_info = (struct gen2_party_info*)&td_jp->trainer_info.party_info;
     
-    load_party_info_gen2(game_data, party_info);
+    load_party_info_gen2(party_2, party_info);
+
+    party_info->trainer_id = (game_data->trainer_id&0xFFFF);
     
     u8* safety_bytes = (u8*)td_int->trainer_info.safety_bytes;
     if(is_jp)
@@ -255,7 +264,7 @@ void prepare_gen2_trade_data(struct game_data_t* game_data, u32* buffer, u8 is_j
         sizes[2] += USELESS_SYNC_BYTES + sizeof(struct party_mail_data_gen2_jp);
 }
 
-void prepare_gen1_trade_data(struct game_data_t* game_data, u32* buffer, u8 is_jp, size_t* sizes) {
+void prepare_gen1_trade_data(struct game_data_t* game_data, struct gen1_party* party_1, u32* buffer, u8 is_jp, size_t* sizes) {
     struct gen1_trade_data_int* td_int = (struct gen1_trade_data_int*)buffer;
     struct gen1_trade_data_jp* td_jp = (struct gen1_trade_data_jp*)buffer;
     
@@ -273,13 +282,13 @@ void prepare_gen1_trade_data(struct game_data_t* game_data, u32* buffer, u8 is_j
     if(is_jp)
         nicknames = (u8*)td_jp->trainer_info.nicknames;
     
-    load_names_gen12(game_data, trainer_name, ot_names, nicknames, is_jp, 1);
+    load_names_gen12(game_data, NULL, party_1, trainer_name, ot_names, nicknames, is_jp);
     
     struct gen1_party_info* party_info = (struct gen1_party_info*)&td_int->trainer_info.party_info;
     if(is_jp)
         party_info = (struct gen1_party_info*)&td_jp->trainer_info.party_info;
     
-    load_party_info_gen1(game_data, party_info);
+    load_party_info_gen1(party_1, party_info);
     
     u8* safety_bytes = (u8*)td_int->trainer_info.safety_bytes;
     if(is_jp)
@@ -505,17 +514,17 @@ void read_gen3_trade_data(struct game_data_t* game_data, u32* buffer) {
         game_data->party_3.total = 0;
 }
 
-void load_comm_buffer(struct game_data_t* game_data, int curr_gen, u8 is_jp) {
+void load_comm_buffer(struct game_data_t* game_data, struct gen2_party* party_2, struct gen1_party* party_1, int curr_gen, u8 is_jp) {
     
     for(int i = 0; i < NUM_SIZES; i++)
         buffer_sizes[i] = SIZE_STOP;
 
     switch(curr_gen) {
         case 1:
-            prepare_gen1_trade_data(game_data, communication_buffers[OWN_BUFFER], is_jp, buffer_sizes);
+            prepare_gen1_trade_data(game_data, party_1, communication_buffers[OWN_BUFFER], is_jp, buffer_sizes);
             break;
         case 2:
-            prepare_gen2_trade_data(game_data, communication_buffers[OWN_BUFFER], is_jp, buffer_sizes);
+            prepare_gen2_trade_data(game_data, party_2, communication_buffers[OWN_BUFFER], is_jp, buffer_sizes);
             break;
         default:
             prepare_gen3_trade_data(game_data, communication_buffers[OWN_BUFFER], buffer_sizes);
