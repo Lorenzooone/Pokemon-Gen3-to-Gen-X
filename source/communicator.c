@@ -100,6 +100,7 @@ u8 last_filtered = 0;
 u8 received_once = 0;
 u8 since_last_recv_gen3 = 0;
 u8 schedule_update = 0;
+u8 anti_cloning_nybble = 0;
 int own_end_gen3;
 u16 species_out_gen3;
 u16 species_in_gen3;
@@ -110,9 +111,14 @@ u16 other_end_gen3;
 u8 is_done_gen3;
 u8 received_gen3[(sizeof(struct gen3_trade_data)>>4)+1];
 
-void prepare_gen3_success(struct gen3_mon_data_unenc* mon_out, struct gen3_mon_data_unenc* mon_in) {
+void prepare_gen23_success(struct gen3_mon_data_unenc* mon_out, struct gen3_mon_data_unenc* mon_in) {
     pid_out_gen3 = mon_out->comm_pid;
     pid_in_gen3 = mon_in->comm_pid;
+    anti_cloning_nybble = 0;
+    if((mon_in->growth.species == MEW_SPECIES) || (mon_out->growth.species == MEW_SPECIES))
+        anti_cloning_nybble = 1;
+    else if((mon_in->growth.species == CELEBI_SPECIES) || (mon_out->growth.species == CELEBI_SPECIES))
+        anti_cloning_nybble = 2;
 }
 
 void prepare_gen3_offer(struct gen3_mon_data_unenc* mon) {
@@ -568,7 +574,7 @@ int process_data_arrived_gen2(u8 data, u8 is_master) {
             case HAVE_ACCEPT:
                 return get_accept(data, GEN2_TRADE_OFFER_START);
             case HAVE_SUCCESS:
-                return get_success(data, GEN2_TRADE_SUCCESS_BASE);
+                return get_success(data, GEN2_TRADE_SUCCESS_BASE|anti_cloning_nybble);
             default:
                 return SEND_NO_INFO;
         }

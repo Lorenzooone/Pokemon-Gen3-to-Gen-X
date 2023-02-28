@@ -682,7 +682,7 @@ int main(void)
                             keys = 0;
                             if(has_accepted_offer()) {
                                 trading_animation_init(game_data, curr_mon, other_mon);
-                                prepare_gen3_success(&game_data[0].party_3_undec[curr_mon], &game_data[1].party_3_undec[other_mon]);
+                                prepare_gen23_success(&game_data[0].party_3_undec[curr_mon], &game_data[1].party_3_undec[other_mon]);
                                 evolved = trade_mons(game_data, &game_data_priv, curr_mon, other_mon, curr_gen);
                                 if(evolved)
                                     evolution_animation_init(game_data, curr_mon);
