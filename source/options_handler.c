@@ -13,17 +13,14 @@ u8 options_trade[2][PARTY_SIZE];
 u8 num_options_trade[2];
 
 u8 is_valid_for_gen(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 gen) {
+    u8 found_size = get_party_usable_num(game_data);
+    if(!found_size)
+        return 0;
     if(gen == 1)
         return (game_data_priv->party_1.total > 0);
     if(gen == 2)
         return (game_data_priv->party_2.total > 0);
-    u8 found = 0;
-    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
-        if(game_data->party_3_undec[i].is_valid_gen3) {
-            found = 1;
-            break;
-        }
-    return found;
+    return 1;
 }
 
 void set_valid_options_main(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {

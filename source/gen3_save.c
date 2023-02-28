@@ -254,25 +254,39 @@ u8 trade_mons(struct game_data_t* game_data, struct game_data_priv_t* game_data_
     return ret_val;
 }
 
+u8 get_party_usable_num(struct game_data_t* game_data) {
+    u8 found_size = 0;
+    gen3_party_total_t party_size = game_data->party_3.total;
+    if(party_size > PARTY_SIZE)
+        party_size = PARTY_SIZE;
+    for(gen3_party_total_t i = 0; i < party_size; i++)
+        if((game_data[0].party_3_undec[i].is_valid_gen3) && (!game_data[0].party_3_undec[i].is_egg))
+            found_size += 1;
+    return found_size;
+}
+
 u8 is_invalid_offer(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8 curr_gen, u16 received_species) {
     // Check for validity
     if(!game_data[1].party_3_undec[other_mon].is_valid_gen3)
         return 1 + 0;
+
     // For gen 3, check the correct species from the other actor
     if((curr_gen == 3) && (game_data[1].party_3_undec[other_mon].growth.species != received_species))
         return 1 + 0;
+
+    u8 found_size = get_party_usable_num(&game_data[0]);
+
     // Check that the receiving party has at least one active mon
-    if(game_data[1].party_3_undec[other_mon].is_egg) {
-        u8 found_normal = 0;
-        for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++) {
-            if((i != own_mon) && (game_data[0].party_3_undec[i].is_valid_gen3) && (!game_data[0].party_3_undec[i].is_egg)) {
-                found_normal = 1;
-                break;
-            }
-        }
-        if(!found_normal)
-            return 1 + 1;
-    }
+    if(!found_size)
+        return 1 + 1;
+
+    // Check that the receiving party would have at least one active mon
+    // after the trade
+    u8 target_value = game_data[1].party_3_undec[other_mon].is_egg ? 1 : 0;
+    u8 subtract = game_data[0].party_3_undec[own_mon].is_egg ? 0 : 1;
+    if((found_size-subtract) < target_value)
+        return 1 + 1;
+
     return 0;
 }
 
