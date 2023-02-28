@@ -70,9 +70,10 @@ u8 are_trainers_same(struct gen3_mon*, u8);
 void fix_name_change_from_gen3(const u8*, u16, u8*, u8);
 void fix_name_change_to_gen3(u8*, u8, u8);
 void convert_strings_of_gen3(struct gen3_mon*, u16, u8*, u8*, u8*, u8*, u8, u8);
-void convert_strings_of_gen12(struct gen3_mon*, u8, u8*, u8*, u8);
+void convert_strings_of_gen12(struct gen3_mon*, u8, u8*, u8*, u8, u8);
 void special_convert_strings_distribution(struct gen3_mon*, u16);
 u8 text_handling_gen12_to_gen3(struct gen3_mon*, u16, u16, u8, u8*, u8*, u8, u8);
+void set_language_gen12_to_gen3(struct gen3_mon*, u16, u8, u8);
 
 u8 target_int_language = ENGLISH_LANGUAGE;
 
@@ -957,14 +958,15 @@ void special_convert_strings_distribution(struct gen3_mon* dst, u16 species) {
         text_gen3_copy(trainer_name, dst->ot_name, gen3_ot_name_cap, gen3_ot_name_cap);
 }
 
-void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8* nickname, u8 is_egg) {
-    u8 is_jp = (dst->language == JAPANESE_LANGUAGE);
+void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8* nickname, u8 is_egg, u8 is_jp_gen2) {
+    u8 is_jp_gen3 = (dst->language == JAPANESE_LANGUAGE);
 
     u8 gen2_name_cap = STRING_GEN2_INT_CAP;
     u8 gen3_nickname_cap = NICKNAME_GEN3_SIZE;
     u8 gen3_ot_name_cap = OT_NAME_GEN3_SIZE;
-    if(is_jp) {
+    if(is_jp_gen2)
         gen2_name_cap = STRING_GEN2_JP_CAP;
+    if(is_jp_gen3) {
         gen3_nickname_cap = NICKNAME_JP_GEN3_SIZE;
         gen3_ot_name_cap = OT_NAME_JP_GEN3_SIZE;
     }
@@ -973,20 +975,8 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     text_gen3_terminator_fill(dst->nickname, NICKNAME_GEN3_MAX_SIZE);
     text_gen3_terminator_fill(dst->ot_name, OT_NAME_GEN3_MAX_SIZE);
 
-    text_gen12_to_gen3(nickname, dst->nickname, gen2_name_cap, gen3_nickname_cap, is_jp, is_jp);
-    text_gen12_to_gen3(ot_name, dst->ot_name, gen2_name_cap, gen3_ot_name_cap, is_jp, is_jp);
-
-    // Handle Mew's special Japanese-only nature
-    // TODO: Allow undistributed events...?
-    if(1 && (species == MEW_SPECIES)) {
-        dst->language = JAPANESE_LANGUAGE;
-        gen2_name_cap = STRING_GEN2_JP_CAP;
-        gen3_nickname_cap = NICKNAME_JP_GEN3_SIZE;
-        gen3_ot_name_cap = OT_NAME_JP_GEN3_SIZE;
-        text_gen12_to_gen3(nickname, dst->nickname, gen2_name_cap, gen3_nickname_cap, is_jp, 1);
-        text_gen12_to_gen3(ot_name, dst->ot_name, gen2_name_cap, gen3_ot_name_cap, is_jp, 1);
-        is_jp = 1;
-    }
+    text_gen12_to_gen3(nickname, dst->nickname, gen2_name_cap, gen3_nickname_cap, is_jp_gen2, is_jp_gen3);
+    text_gen12_to_gen3(ot_name, dst->ot_name, gen2_name_cap, gen3_ot_name_cap, is_jp_gen2, is_jp_gen3);
 
     // Fix text up
     // "MR.MIME" gen 2 == "MR. MIME" gen 3
@@ -995,15 +985,8 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
         fix_name_change_to_gen3(dst->nickname, species, dst->language);
 
     // Put the "EGG" name
-    if(is_egg) {
-        dst->language = JAPANESE_LANGUAGE;
-        gen2_name_cap = STRING_GEN2_JP_CAP;
-        gen3_nickname_cap = NICKNAME_JP_GEN3_SIZE;
-        gen3_ot_name_cap = OT_NAME_JP_GEN3_SIZE;
+    if(is_egg)
         text_gen3_copy(get_pokemon_name_pure(species, 1, JAPANESE_LANGUAGE), dst->nickname, gen3_nickname_cap, gen3_nickname_cap);
-        text_gen12_to_gen3(ot_name, dst->ot_name, gen2_name_cap, gen3_ot_name_cap, is_jp, 1);
-        is_jp = 1;
-    }
 
     sanitize_name_gen12_to_gen3(nickname, dst->nickname, get_pokemon_name_pure(species, is_egg, dst->language), gen2_name_cap, gen3_nickname_cap);
 
@@ -1185,19 +1168,7 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     return 1;
 }
 
-u8 text_handling_gen12_to_gen3(struct gen3_mon* dst, u16 species, u16 swapped_ot_id, u8 is_egg, u8* ot_name, u8* nickname, u8 is_jp, u8 no_restrictions) {
-    // Specially handle Celebi's event
-    if(species == CELEBI_SPECIES) {
-        // TODO: Allow undistributed events...?
-        if(1 || is_jp)
-            dst->language = JAPANESE_LANGUAGE;
-        else
-            dst->language = target_int_language;
-        dst->ot_id = CELEBI_AGATE_OT_ID;
-        special_convert_strings_distribution(dst, species);
-        return no_restrictions;
-    }
-
+void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8 is_jp) {
     // TODO: Maybe detect the language, if not set in the settings...?
 
     if(is_jp)
@@ -1205,8 +1176,31 @@ u8 text_handling_gen12_to_gen3(struct gen3_mon* dst, u16 species, u16 swapped_ot
     else
         dst->language = target_int_language;
 
+    if((species == MEW_SPECIES) || (species == CELEBI_SPECIES)) {
+        // TODO: Allow undistributed events...?
+        if(1 || is_jp)
+            dst->language = JAPANESE_LANGUAGE;
+        else
+            dst->language = target_int_language;
+    }
+
+    if(is_egg)
+        dst->language = JAPANESE_LANGUAGE;
+}
+
+u8 text_handling_gen12_to_gen3(struct gen3_mon* dst, u16 species, u16 swapped_ot_id, u8 is_egg, u8* ot_name, u8* nickname, u8 is_jp, u8 no_restrictions) {
+    // Handle language
+    set_language_gen12_to_gen3(dst, species, is_egg, is_jp);
+
+    // Specially handle Celebi's event
+    if((species == CELEBI_SPECIES) && (!is_egg)) {
+        dst->ot_id = CELEBI_AGATE_OT_ID;
+        special_convert_strings_distribution(dst, species);
+        return no_restrictions;
+    }
+
     // Handle Nickname + OT conversion
-    convert_strings_of_gen12(dst, species, ot_name, nickname, is_egg);
+    convert_strings_of_gen12(dst, species, ot_name, nickname, is_egg, is_jp);
 
     // Handle OT ID, if same as the game owner, set it to the game owner's
     dst->ot_id = swap_endian_short(swapped_ot_id);
