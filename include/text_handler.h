@@ -62,4 +62,9 @@ void text_gen3_to_gen12(const u8*, u8*, size_t, size_t, u8, u8);
 u8 is_gen12_trainer(const u8*);
 void text_gen12_to_gen3(const u8*, u8*, size_t, size_t, u8, u8);
 
+void sanitize_name_gen12_to_gen3(const u8*, u8*, const u8*, size_t, size_t);
+void sanitize_name_gen3_to_gen12(const u8*, u8*, const u8*, size_t, size_t);
+void sanitize_name_gen3(u8*, const u8*, const u8*, size_t, size_t);
+void limit_name_gen3(u8*, size_t, size_t);
+
 #endif

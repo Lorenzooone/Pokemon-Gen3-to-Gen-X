@@ -134,8 +134,15 @@ void load_names_gen12(struct game_data_t* game_data, struct gen2_party* party_2,
         curr_gen = 2;
     if(party_1 != NULL)
         curr_gen = 1;
-        
-    text_gen3_to_gen12(game_data->trainer_name, trainer_name, OT_NAME_GEN3_SIZE+1, size, game_data->game_identifier.game_is_jp, is_jp);
+    
+    // TODO: Change this to using the specified language
+    u8 language = SYS_LANGUAGE;
+    if(is_jp)
+        language = JAPANESE_LANGUAGE;
+    
+    text_gen3_to_gen12(game_data->trainer_name, trainer_name, OT_NAME_GEN3_MAX_SIZE+1, size, GET_LANGUAGE_IS_JAPANESE(game_data->game_identifier.language), is_jp);
+    sanitize_ot_name_gen3_to_gen12(game_data->trainer_name, trainer_name, game_data->game_identifier.language, language);
+    
     for(size_t i = 0; i < size; i++)
         if((trainer_name[i] == NO_ACTION_BYTE) || (trainer_name[i] == (NO_ACTION_BYTE-1)))
             trainer_name[i] = NO_ACTION_BYTE-2;
@@ -368,17 +375,14 @@ void prepare_gen3_trade_data(struct game_data_t* game_data, u32* buffer, size_t*
     td->checksum_party = checksum;
     checksum = 0;
     
-    td->game_main_code = game_data->game_identifier.game_main_version;
-    td->game_sub_code = game_data->game_identifier.game_sub_version;
-    td->game_is_jp = game_data->game_identifier.game_is_jp;
+    copy_bytes(&game_data->game_identifier, &td->game_identifier, sizeof(struct game_identity), 0, 0);
     
     copy_bytes(game_data->giftRibbons, td->giftRibbons, GIFT_RIBBONS, 0, 0);
-    copy_bytes(game_data->trainer_name, td->trainer_name, OT_NAME_GEN3_SIZE+1, 0, 0);
+    copy_bytes(game_data->trainer_name, td->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, 0, 0);
     td->trainer_gender = game_data->trainer_gender;
     
-    for(int i = 0; i < NUM_EXTRA_PADDING_BYTES_GEN3; i++) {
+    for(int i = 0; i < NUM_EXTRA_PADDING_BYTES_GEN3; i++)
         td->extra_tmp_padding[i] = 0;
-    }
     
     td->trainer_id = game_data->trainer_id;
     
@@ -440,14 +444,18 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     }
 
     init_game_data(game_data);
-    game_data->game_identifier.game_is_jp = is_jp;
+    // TODO: Change this to using the specified language
+    game_data->game_identifier.language = SYS_LANGUAGE;
+    if(is_jp)
+        game_data->game_identifier.language = JAPANESE_LANGUAGE;
     
     copy_bytes(default_gift_ribbons_bin, game_data->giftRibbons, GIFT_RIBBONS, 0, 0);
     game_data->trainer_gender = 0;
     
     apply_patch_set(patch_target, patch_set, target_size-(names_size + MON_INDEX_SIZE), names_size + MON_INDEX_SIZE, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
     
-    text_gen12_to_gen3(trainer_name, game_data->trainer_name, names_size, OT_NAME_GEN3_SIZE+1, is_jp, is_jp);
+    text_gen12_to_gen3(trainer_name, game_data->trainer_name, names_size, OT_NAME_GEN3_MAX_SIZE+1, is_jp, is_jp);
+    sanitize_ot_name_gen12_to_gen3(trainer_name, game_data->trainer_name, game_data->game_identifier.language);
     
     if(curr_gen == 2)
         game_data->trainer_id = ((party_info2->trainer_id & 0xFF) << 8) | (party_info2->trainer_id >> 8);
@@ -489,13 +497,10 @@ void read_gen3_trade_data(struct game_data_t* game_data, u32* buffer) {
         copy_bytes(&td->mails_3[i], &game_data->mails_3[i], sizeof(struct mail_gen3), 0, 0);
     
     copy_bytes(&td->party_3, &game_data->party_3, sizeof(struct gen3_party), 0, 0);
-    
-    game_data->game_identifier.game_main_version = td->game_main_code;
-    game_data->game_identifier.game_sub_version = td->game_sub_code;
-    game_data->game_identifier.game_is_jp = td->game_is_jp;
+    copy_bytes(&td->game_identifier, &game_data->game_identifier, sizeof(struct game_identity), 0, 0);
     
     copy_bytes(td->giftRibbons, game_data->giftRibbons, GIFT_RIBBONS, 0, 0);
-    copy_bytes(td->trainer_name, game_data->trainer_name, OT_NAME_GEN3_SIZE+1, 0, 0);
+    copy_bytes(td->trainer_name, game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, 0, 0);
     game_data->trainer_gender = td->trainer_gender;
     
     game_data->trainer_id = td->trainer_id;
@@ -515,7 +520,7 @@ void read_gen3_trade_data(struct game_data_t* game_data, u32* buffer) {
 }
 
 void load_comm_buffer(struct game_data_t* game_data, struct gen2_party* party_2, struct gen1_party* party_1, int curr_gen, u8 is_jp) {
-    
+
     for(int i = 0; i < NUM_SIZES; i++)
         buffer_sizes[i] = SIZE_STOP;
 
@@ -534,7 +539,7 @@ void load_comm_buffer(struct game_data_t* game_data, struct gen2_party* party_2,
 }
 
 void read_comm_buffer(struct game_data_t* game_data, int curr_gen, u8 is_jp) {
-    
+
     switch(curr_gen) {
         case 1:
             read_gen12_trade_data(game_data, communication_buffers[OTHER_BUFFER], 1, is_jp);
@@ -546,4 +551,5 @@ void read_comm_buffer(struct game_data_t* game_data, int curr_gen, u8 is_jp) {
             read_gen3_trade_data(game_data, communication_buffers[OTHER_BUFFER]);
             break;
     }
+    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language);
 }

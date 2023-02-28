@@ -108,7 +108,7 @@ void init_game_data(struct game_data_t* game_data) {
 
     game_data->party_3.total = 0;
 
-    for(size_t i = 0; i < (OT_NAME_GEN3_SIZE+1); i++)
+    for(size_t i = 0; i < (OT_NAME_GEN3_MAX_SIZE+1); i++)
         game_data->trainer_name[i] = GEN3_EOL;
 
     for(gen3_party_total_t i = 0; i < PARTY_SIZE; i++) {
@@ -167,7 +167,7 @@ void read_game_data_trainer_info(int slot, struct game_data_t* game_data, struct
 
     for(int i = 0; i < SECTION_TOTAL; i++)
         if(read_section_id(slot, i) == SECTION_TRAINER_INFO_ID) {
-            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + TRAINER_NAME_POS, game_data->trainer_name, OT_NAME_GEN3_SIZE+1);
+            copy_save_to_ram((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + TRAINER_NAME_POS, game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1);
             game_data->trainer_gender = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + TRAINER_GENDER_POS);
             game_data->trainer_id = read_int_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + TRAINER_ID_POS);
             determine_game_with_save(&game_data->game_identifier, slot, i, summable_bytes[SECTION_TRAINER_INFO_ID]);
@@ -354,9 +354,16 @@ void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t
         slot = 1;
     
     read_game_data_trainer_info(slot, game_data, game_data_priv);
-    if(game_data->game_identifier.game_is_jp == UNDETERMINED)
-        game_data->game_identifier.game_is_jp = is_trainer_name_japanese(game_data->trainer_name);
-    
+    if(game_data->game_identifier.language == UNDETERMINED) {
+        if(is_trainer_name_japanese(game_data->trainer_name))
+            game_data->game_identifier.language = JAPANESE_LANGUAGE;
+        else {
+            game_data->game_identifier.language = SYS_LANGUAGE;
+            game_data->game_identifier.language_is_sys = 1;
+        }
+    }
+    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language);
+
     u8 game_id = game_data->game_identifier.game_main_version;
 
     for(int i = 0; i < SECTION_TOTAL; i++) {

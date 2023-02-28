@@ -9,8 +9,14 @@
 
 #define GAME_STRING_POS (ROM+0xA0)
 #define GAME_STRING_SIZE 0xC
-#define JAPANESE_ID_POS (ROM+0xAF)
+#define LANGUAGE_ID_POS (ROM+0xAF)
 #define JAPANESE_ID 0x4A
+#define ENGLISH_ID_0 0x45
+#define ENGLISH_ID_1 0x50
+#define GERMAN_ID 0x44
+#define FRENCH_ID 0x46
+#define ITALIAN_ID 0x49
+#define SPANISH_ID 0x53
 
 #define SECTION_GAME_CODE 0xAC
 #define FRLG_GAME_CODE 0x1
@@ -24,11 +30,14 @@ const u8 sub_identifiers[NUMBER_OF_GAMES] = {R_SUB_GAME_CODE,S_SUB_GAME_CODE,FR_
 void init_game_identifier(struct game_identity* identifier) {
     identifier->game_main_version = UNDETERMINED;
     identifier->game_sub_version = UNDETERMINED;
-    identifier->game_is_jp = UNDETERMINED;
+    identifier->language = UNDETERMINED;
+    identifier->language_is_sys = 0;
+    identifier->game_sub_version_undetermined = 0;
+    identifier->padding = 0;
 }
 
 u8 is_trainer_name_japanese(u8* buffer) {
-    for(size_t i = OT_NAME_JP_GEN3_SIZE+2; i < OT_NAME_GEN3_SIZE+1; i++)
+    for(size_t i = OT_NAME_JP_GEN3_SIZE+2; i < OT_NAME_GEN3_MAX_SIZE+1; i++)
         if(buffer[i])
             return 0;
     return 1;
@@ -41,15 +50,36 @@ void get_game_id(struct game_identity* identifier){
         if(text_generic_is_same((const u8*)game_identifier_strings[i], (u8*)GAME_STRING_POS, GAME_STRING_SIZE, GAME_STRING_SIZE)) {
             identifier->game_main_version = main_identifiers[i];
             identifier->game_sub_version = sub_identifiers[i];
-            if((*(u8*)JAPANESE_ID_POS) == JAPANESE_ID)
-                identifier->game_is_jp = 1;
-            else
-                identifier->game_is_jp = 0;
+            u8 language_char = *((u8*)LANGUAGE_ID_POS);
+            switch(language_char) {
+                case JAPANESE_ID:
+                    identifier->language = JAPANESE_LANGUAGE;
+                    break;
+                case ENGLISH_ID_0:
+                case ENGLISH_ID_1:
+                    identifier->language = ENGLISH_LANGUAGE;
+                    break;
+                case FRENCH_ID:
+                    identifier->language = FRENCH_LANGUAGE;
+                    break;
+                case ITALIAN_ID:
+                    identifier->language = ITALIAN_LANGUAGE;
+                    break;
+                case GERMAN_ID:
+                    identifier->language = GERMAN_LANGUAGE;
+                    break;
+                case SPANISH_ID:
+                    identifier->language = SPANISH_LANGUAGE;
+                    break;
+                default:
+                    identifier->language = SYS_LANGUAGE;
+                    identifier->language_is_sys = 1;
+                    break;
+            }
         }
 }
 
 u8 id_to_version(struct game_identity* identifier){
-    
     u8 base_game = S_VERSION_ID;
     if(identifier->game_main_version == FRLG_GAME_CODE)
         base_game = FR_VERSION_ID;
@@ -116,5 +146,6 @@ void determine_game_with_save(struct game_identity* identifier, u8 slot, u8 sect
                 identifier->game_main_version = E_MAIN_GAME_CODE;
                 break;
         }
+        identifier->game_sub_version_undetermined = 1;
     }
 }

@@ -28,6 +28,9 @@ void text_general_copy(const u8*, u8*, size_t, size_t, u8);
 void text_general_concat(const u8*, const u8*, u8*, size_t, size_t, size_t, u8);
 void text_general_replace(u8*, size_t, u8, u8, u8);
 void text_general_terminator_fill(u8*, size_t, u8);
+void limit_name_general(u8*, size_t, size_t, u8);
+void sanitize_name_general(u8*, const u8*, const u8*, size_t, size_t, u8);
+void sanitize_name_general_to_general(const u8*, u8*, const u8*, size_t, size_t, u8, u8, u8, u8);
 
 size_t text_general_count_question(const u8* src, size_t src_size, u8 terminator, u8 question) {
     size_t counter = 0;
@@ -129,6 +132,43 @@ void text_general_replace(u8* src, size_t src_size, u8 base_char, u8 new_char, u
 void text_general_terminator_fill(u8* src, size_t src_size, u8 terminator) {
     for(size_t i = 0; i < src_size; i++)
         src[i] = terminator;    
+}
+
+void limit_name_general(u8* src, size_t src_size, size_t name_limit, u8 terminator) {
+    for(size_t i = name_limit; i < src_size; i++)
+        if(i == name_limit)
+            src[i] = terminator;
+        else
+            src[i] = 0;
+}
+
+void sanitize_name_general(u8* src, const u8* default_name, const u8* validity_keyboard, size_t src_size, size_t name_limit, u8 terminator) {
+    limit_name_general(src, src_size, name_limit, terminator);
+    
+    u8 found_illegal_char = 0;
+    size_t name_size = 0;
+    for(name_size = 0; name_size < name_limit; name_size++) {
+        u8 selected_char = src[name_size];
+        if(selected_char == terminator)
+            break;
+        if(!(validity_keyboard[selected_char>>3] & (1<<(selected_char&7)))) {
+            found_illegal_char = 1;
+            break;
+        }
+    }
+    if((found_illegal_char) || (!name_size))
+        text_general_copy(default_name, src, name_limit, name_limit, terminator);
+}
+
+void sanitize_name_general_to_general(const u8* src, u8* dst, const u8* default_name, size_t src_size, size_t dst_size, u8 src_terminator, u8 dst_terminator, u8 src_question_mark, u8 dst_question_mark) {
+    // Handle bad naming conversions (? >= half the name) and empty name
+    size_t question_marks_count_dst = text_general_count_question(dst, dst_size, dst_terminator, dst_question_mark);
+    size_t question_marks_count_src = text_general_count_question(src, src_size, src_terminator, src_question_mark);
+    size_t question_marks_count = question_marks_count_dst - question_marks_count_src;
+    if(question_marks_count_src > question_marks_count_dst)
+        question_marks_count = 0;
+    if((question_marks_count >= (text_general_size(dst, dst_size, dst_terminator) >> 1)) || (!text_general_size(dst, dst_size, dst_terminator)))
+        text_general_copy(default_name, dst, dst_size, dst_size, dst_terminator);
 }
 
 void text_generic_concat(const u8* src, const u8* src2, u8* dst, size_t src_size, size_t src2_size, size_t dst_size) {
@@ -251,4 +291,20 @@ void text_gen12_to_gen3(const u8* src, u8* dst, size_t src_size, size_t dst_size
         text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_jp_bin);
     else
         text_general_conversion(src, dst, src_size, dst_size, GEN2_EOL, GEN3_EOL, text_gen12_to_gen3_int_bin);
+}
+
+void sanitize_name_gen12_to_gen3(const u8* src, u8* dst, const u8* default_name_gen3, size_t src_size, size_t dst_size) {
+    sanitize_name_general_to_general(src, dst, default_name_gen3, src_size, dst_size, GEN2_EOL, GEN3_EOL, GEN2_QUESTION, GEN3_QUESTION);
+}
+
+void sanitize_name_gen3_to_gen12(const u8* src, u8* dst, const u8* default_name_gen12, size_t src_size, size_t dst_size) {
+    sanitize_name_general_to_general(src, dst, default_name_gen12, src_size, dst_size, GEN3_EOL, GEN2_EOL, GEN3_QUESTION, GEN2_QUESTION);
+}
+
+void sanitize_name_gen3(u8* src, const u8* default_name, const u8* validity_keyboard, size_t src_size, size_t name_limit) {
+    sanitize_name_general(src, default_name, validity_keyboard, src_size, name_limit, GEN3_EOL);
+}
+
+void limit_name_gen3(u8* src, size_t src_size, size_t name_limit) {
+    limit_name_general(src, src_size, name_limit, GEN3_EOL);
 }

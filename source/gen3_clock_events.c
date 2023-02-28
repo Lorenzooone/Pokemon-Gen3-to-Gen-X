@@ -576,54 +576,48 @@ u8 exists_record_mix_tv_slot(struct tv_show_t* tv_shows, u8 kind, u8 clear, u16 
     return 0;
 }
 
-void try_airing_world_of_masters_show(struct tv_show_t* tv_shows, u32 steps, u16 tid, u8* name, u8 is_jp) {
+void try_airing_world_of_masters_show(struct tv_show_t* tv_shows, u32 steps, u16 tid, u8* name, u8 language) {
     int curr_slot = find_first_empty_record_mix_tv_slot(tv_shows);
     if((curr_slot != -1) && (!exists_record_mix_tv_slot(tv_shows, TV_SHOW_WOM_ID, 0, tid))) {
         copy_tv_show(&tv_shows[TV_SHOW_WOM_POS], &tv_shows[curr_slot]);
         struct tv_show_wom_t* wom_show = (struct tv_show_wom_t*)&tv_shows[curr_slot];
         wom_show->is_active = 0; // Show is not active until passed via Record Mix
         wom_show->steps = steps - wom_show->steps;
-        text_gen3_copy(name, wom_show->name, OT_NAME_GEN3_SIZE, OT_NAME_GEN3_SIZE+1);
+        text_gen3_copy(name, wom_show->name, OT_NAME_GEN3_MAX_SIZE, OT_NAME_GEN3_MAX_SIZE+1);
         store_tid_tv_show((struct tv_show_t*)wom_show, tid);
-        if(is_jp)
-            wom_show->language = JAPANESE_LANGUAGE;
-        else
-            wom_show->language = ENGLISH_LANGUAGE;
+        wom_show->language = language;
     }
 }
 
-void try_airing_number_one_show(struct tv_show_t* tv_shows, u8 index, u16 value, u16 tid, u8* name, u8 is_jp) {
+void try_airing_number_one_show(struct tv_show_t* tv_shows, u8 index, u16 value, u16 tid, u8* name, u8 language) {
     exists_record_mix_tv_slot(tv_shows, TV_SHOW_NUMO_ID, 1, tid);
     int curr_slot = find_first_empty_record_mix_tv_slot(tv_shows);
     if(curr_slot != -1) {
         struct tv_show_numo_t* numo_show = (struct tv_show_numo_t*)&tv_shows[curr_slot];
         numo_show->kind = TV_SHOW_NUMO_ID;
         numo_show->is_active = 0; // Show is not active until passed via Record Mix
-        text_gen3_copy(name, numo_show->name, OT_NAME_GEN3_SIZE, OT_NAME_GEN3_SIZE+1);
+        text_gen3_copy(name, numo_show->name, OT_NAME_GEN3_MAX_SIZE, OT_NAME_GEN3_MAX_SIZE+1);
         numo_show->index = index;
         numo_show->value = value;
         store_tid_tv_show((struct tv_show_t*)numo_show, tid);
-        if(is_jp)
-            numo_show->language = JAPANESE_LANGUAGE;
-        else
-            numo_show->language = ENGLISH_LANGUAGE;
+        numo_show->language = language;
     }
 }
 
-void schedule_world_of_masters_show(struct tv_show_t* tv_shows, u32 steps, u16 tid, u8* name, u8 is_jp) {
+void schedule_world_of_masters_show(struct tv_show_t* tv_shows, u32 steps, u16 tid, u8* name, u8 language) {
     if(tv_shows[TV_SHOW_WOM_POS].kind == TV_SHOW_WOM_ID) {
         struct tv_show_wom_t* wom_show = (struct tv_show_wom_t*)&tv_shows[TV_SHOW_WOM_POS];
         if(wom_show->num_caught >= MIN_CAUGHT_WOM)
-            try_airing_world_of_masters_show(tv_shows, steps, tid, name, is_jp);
+            try_airing_world_of_masters_show(tv_shows, steps, tid, name, language);
 
         clear_single_tv_show(&tv_shows[TV_SHOW_WOM_POS]);
     }
 }
 
-void schedule_number_one_show(struct tv_show_t* tv_shows, u16* daily_show_vars, u16 tid, u8* name, u8 is_jp) {
+void schedule_number_one_show(struct tv_show_t* tv_shows, u16* daily_show_vars, u16 tid, u8* name, u8 language) {
     for(int i = 0; i < TOTAL_DAILY_SHOW_VARS; i++) {
         if(daily_show_vars[i] >= daily_show_thresholds[i]) {
-            try_airing_number_one_show(tv_shows, i, daily_show_thresholds[i], tid, name, is_jp);
+            try_airing_number_one_show(tv_shows, i, daily_show_thresholds[i], tid, name, language);
             break;
         }
     }
@@ -676,9 +670,9 @@ void update_tv_shows(struct game_data_t* game_data, struct clock_events_t* clock
     update_outbreak_tv(clock_events->tv_shows, &clock_events->outbreak, days_increase);
     update_outbreak(&clock_events->outbreak, days_increase);
     update_news(clock_events->news, is_game_cleared, days_increase);
-    schedule_world_of_masters_show(clock_events->tv_shows, clock_events->steps_stat, game_data->trainer_id & 0xFFFF, game_data->trainer_name, game_data->game_identifier.game_is_jp);
+    schedule_world_of_masters_show(clock_events->tv_shows, clock_events->steps_stat, game_data->trainer_id & 0xFFFF, game_data->trainer_name, game_data->game_identifier.language);
     if(game_data->game_identifier.game_main_version == E_MAIN_GAME_CODE)
-        schedule_number_one_show(clock_events->tv_shows, clock_events->daily_show_vars, game_data->trainer_id & 0xFFFF, game_data->trainer_name, game_data->game_identifier.game_is_jp);
+        schedule_number_one_show(clock_events->tv_shows, clock_events->daily_show_vars, game_data->trainer_id & 0xFFFF, game_data->trainer_name, game_data->game_identifier.language);
 }
 
 void update_weather(struct clock_events_t* clock_events, u16 days_increase) {

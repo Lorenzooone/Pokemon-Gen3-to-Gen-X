@@ -307,7 +307,7 @@ MAX_OPTIMIZE u32 generate_ot(u16 tid, u8* name) {
     u16 sid = 0;
     seed = get_next_seed(seed);
     
-    for(size_t i = 0; i < OT_NAME_GEN3_SIZE; i++) {
+    for(size_t i = 0; i < OT_NAME_GEN3_MAX_SIZE; i++) {
         if(name[i] == GEN3_EOL)
             break;
         seed += name[i];

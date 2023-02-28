@@ -17,7 +17,7 @@
 #define NUM_SIZES 4
 #define SIZE_STOP 0xFFFF
 
-#define NUM_EXTRA_PADDING_BYTES_GEN3 0x1F
+#define NUM_EXTRA_PADDING_BYTES_GEN3 0x1C
 
 #define OWN_BUFFER 0
 #define OTHER_BUFFER 1
@@ -135,11 +135,9 @@ struct gen3_trade_data {
     u32 checksum_mail;
     struct gen3_party party_3;
     u32 checksum_party;
-    u8 game_main_code : 4;
-    u8 game_sub_code : 2;
-    u8 game_is_jp : 2;
+    struct game_identity game_identifier;
     u8 giftRibbons[GIFT_RIBBONS];
-    u8 trainer_name[OT_NAME_GEN3_SIZE+1];
+    u8 trainer_name[OT_NAME_GEN3_MAX_SIZE+1];
     u8 trainer_gender;
     u8 extra_tmp_padding[NUM_EXTRA_PADDING_BYTES_GEN3];
     u32 trainer_id;

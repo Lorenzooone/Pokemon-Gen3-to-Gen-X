@@ -44,6 +44,7 @@
 #include "learnset_evos_gen3_bin.h"
 #include "dex_conversion_bin.h"
 #include "pokemon_moves_pp_bin.h"
+#include "trainer_names_bin.h"
 
 #define UNOWN_B_START 415
 #define INITIAL_MAIL_GEN3 121
@@ -74,7 +75,6 @@ void make_evs_legal_gen3(struct gen3_mon_evs*);
 u8 to_valid_level_gen3(struct gen3_mon*);
 const u8* get_validity_keyboard(u8);
 void sanitize_nickname(u8*, u8, u8, u16);
-void sanitize_ot_name(u8*, u8);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
@@ -865,6 +865,10 @@ void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mo
     encrypt_data(dst);
 }
 
+const u8* get_default_trainer_name(u8 language) {
+    return get_table_pointer(trainer_names_bin, get_valid_language(language));
+}
+
 const u8* get_validity_keyboard(u8 language) {
     language = get_valid_language(language);
     u8 kind = language_keyboard_kind[language];
@@ -885,50 +889,23 @@ void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species) {
     if(GET_LANGUAGE_IS_JAPANESE(language))
         name_limit = NICKNAME_JP_GEN3_SIZE;
 
-    for(size_t i = name_limit; i < NICKNAME_GEN3_SIZE; i++)
-        if(i == name_limit)
-            nickname[i] = GEN3_EOL;
-        else
-            nickname[i] = 0;
-    
-    if(!is_egg) {
-        u8 found_illegal_char = 0;
-        for(size_t i = 0; i < name_limit; i++) {
-            u8 selected_char = nickname[i];
-            if(selected_char == GEN3_EOL)
-                break;
-            if(!(validity_keyboard[selected_char>>3] & (1<<(selected_char&7)))) {
-                found_illegal_char = 1;
-                break;
-            }
-        }
-        if(found_illegal_char)
-            text_gen3_copy(get_pokemon_name_pure(species, 0, language), nickname, name_limit, name_limit);
-    }
-    else
+    sanitize_name_gen3(nickname, get_pokemon_name_pure(species, 0, language), validity_keyboard, NICKNAME_GEN3_MAX_SIZE, name_limit);
+
+    if(is_egg)
         text_gen3_copy(get_pokemon_name_pure(species, 1, JAPANESE_LANGUAGE), nickname, NICKNAME_JP_GEN3_SIZE, name_limit);
+
+    limit_name_gen3(nickname, NICKNAME_GEN3_MAX_SIZE, name_limit);
 }
 
-void sanitize_ot_name(u8* ot_name, u8 language) {
+void sanitize_ot_name(u8* ot_name, u8 max_size, u8 language) {
     language = get_valid_language(language);
     const u8* validity_keyboard = get_validity_keyboard(language);
     size_t name_limit = OT_NAME_GEN3_SIZE;
     if(GET_LANGUAGE_IS_JAPANESE(language))
         name_limit = OT_NAME_JP_GEN3_SIZE;
 
-    for(size_t i = name_limit; i < OT_NAME_GEN3_SIZE; i++)
-        if(i == name_limit)
-            ot_name[i] = GEN3_EOL;
-        else
-            ot_name[i] = 0;
-
-    for(size_t i = 0; i < name_limit; i++) {
-        u8 selected_char = ot_name[i];
-        if(selected_char == GEN3_EOL)
-            break;
-        if(!(validity_keyboard[selected_char>>3] & (1<<(selected_char&7))))
-            ot_name[i] = GEN3_QUESTION;
-    }
+    sanitize_name_gen3(ot_name, get_default_trainer_name(language), validity_keyboard, max_size, name_limit);
+    limit_name_gen3(ot_name, max_size, name_limit);
 }
 
 void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
@@ -1037,12 +1014,12 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     // Fix Nincada evolving to Shedinja in a Japanese game
     if((!dst->is_egg) && (growth->species == SHEDINJA_SPECIES))
-        if((src->language != JAPANESE_LANGUAGE) && text_gen3_is_same(src->nickname, get_pokemon_name_pure(SHEDINJA_SPECIES, 0, JAPANESE_LANGUAGE), NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE))
+        if((src->language != JAPANESE_LANGUAGE) && text_gen3_is_same(src->nickname, get_pokemon_name_pure(SHEDINJA_SPECIES, 0, JAPANESE_LANGUAGE), NICKNAME_GEN3_MAX_SIZE, NICKNAME_GEN3_MAX_SIZE))
             text_gen3_copy(get_pokemon_name_pure(SHEDINJA_SPECIES, 0, src->language), src->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
 
     // Sanitize text to avoid crashes in-game
     sanitize_nickname(src->nickname, src->language, dst->is_egg, growth->species);
-    sanitize_ot_name(src->ot_name, src->language);
+    sanitize_ot_name(src->ot_name, OT_NAME_GEN3_MAX_SIZE, src->language);
 
     // Set the new "cleaned" data
     place_and_encrypt_gen3_data(dst, src);
@@ -1059,7 +1036,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
 void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){
     for(size_t i = 0; i < MAIL_WORDS_SIZE; i++)
         mail->words[i] = 0;
-    for(size_t i = 0; i < OT_NAME_GEN3_SIZE+1; i++)
+    for(size_t i = 0; i < (OT_NAME_GEN3_MAX_SIZE+1); i++)
         mail->ot_name[i] = GEN3_EOL;
     mail->ot_id = 0;
     mail->species = BULBASAUR_SPECIES;

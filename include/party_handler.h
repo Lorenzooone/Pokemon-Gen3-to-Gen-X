@@ -135,6 +135,10 @@
 #define STRING_GEN2_INT_CAP (STRING_GEN2_INT_SIZE-1)
 #define STRING_GEN2_JP_CAP (STRING_GEN2_JP_SIZE-1)
 
+#define NICKNAME_GEN3_MAX_SIZE ((NICKNAME_GEN3_SIZE > NICKNAME_JP_GEN3_SIZE) ? NICKNAME_GEN3_SIZE : NICKNAME_JP_GEN3_SIZE)
+#define OT_NAME_GEN3_MAX_SIZE ((OT_NAME_GEN3_SIZE > OT_NAME_JP_GEN3_SIZE) ? OT_NAME_GEN3_SIZE : OT_NAME_JP_GEN3_SIZE)
+#define STRING_GEN2_MAX_SIZE ((STRING_GEN2_INT_SIZE > STRING_GEN2_JP_SIZE) ? STRING_GEN2_INT_SIZE : STRING_GEN2_JP_SIZE)
+
 #define GEN2_EGG 253
 #define GEN2_NO_MON 255
 
@@ -163,7 +167,6 @@
 #define GET_LANGUAGE_IS_JAPANESE(x) ((x) == JAPANESE_LANGUAGE)
 #define GET_LANGUAGE_NICKNAME_LIMIT(x) (GET_LANGUAGE_IS_JAPANESE(x) ? NICKNAME_JP_GEN3_SIZE : NICKNAME_GEN3_SIZE)
 #define GET_LANGUAGE_OT_NAME_LIMIT(x) (GET_LANGUAGE_IS_JAPANESE(x) ? OT_NAME_JP_GEN3_SIZE : OT_NAME_GEN3_SIZE)
-#define GET_LANGUAGE_OT_NAME_LIMIT_DIRECT(x) ((x) ? OT_NAME_JP_GEN3_SIZE : OT_NAME_GEN3_SIZE)
 
 #define SYS_LANGUAGE ENGLISH_LANGUAGE
 #define IS_SYS_LANGUAGE_JAPANESE GET_LANGUAGE_IS_JAPANESE(SYS_LANGUAGE)
@@ -187,7 +190,7 @@ struct alternative_data_gen3 {
 
 struct mail_gen3 {
     u16 words[MAIL_WORDS_SIZE];
-    u8 ot_name[OT_NAME_GEN3_SIZE+1];
+    u8 ot_name[OT_NAME_GEN3_MAX_SIZE+1];
     u32 ot_id;
     u16 species;
     u16 item;
@@ -270,13 +273,13 @@ struct gen3_mon_data_unenc {
 struct gen3_mon {
     u32 pid;
     u32 ot_id;
-    u8 nickname[NICKNAME_GEN3_SIZE];
+    u8 nickname[NICKNAME_GEN3_MAX_SIZE];
     u8 language;
     u8 is_bad_egg : 1;
     u8 has_species : 1;
     u8 use_egg_name : 1;
     u8 unused : 5;
-    u8 ot_name[OT_NAME_GEN3_SIZE];
+    u8 ot_name[OT_NAME_GEN3_MAX_SIZE];
     u8 marks;
     u16 checksum;
     u16 unk;
@@ -410,6 +413,7 @@ u8 get_hidden_power_power_gen3(struct gen3_mon_misc*);
 const u8* get_hidden_power_type_name_gen3_pure(u32);
 const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc*);
 const u8* get_nature_name(u32);
+const u8* get_default_trainer_name(u8);
 char get_nature_symbol(u32, u8);
 const u8* get_move_name_raw(u16);
 const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
@@ -428,5 +432,6 @@ u8 forget_and_learn_move(struct gen3_mon_data_unenc*, u32, u32);
 void update_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
 void give_pokerus_gen3(struct gen3_mon_data_unenc*);
 u8 would_update_end_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
+void sanitize_ot_name(u8*, u8, u8);
 
 #endif

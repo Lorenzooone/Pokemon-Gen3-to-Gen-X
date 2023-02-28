@@ -1,6 +1,8 @@
 #ifndef VERSION_IDENTIFIER__
 #define VERSION_IDENTIFIER__
 
+#include "useful_qualifiers.h"
+
 #define UNDETERMINED 0xFF
 #define NUMBER_OF_GAMES 5
 #define RS_MAIN_GAME_CODE 0x0
@@ -21,10 +23,13 @@
 #define LG_VERSION_ID (FR_VERSION_ID+1)
 
 struct game_identity {
-    u8 game_is_jp;
+    u8 language;
     u8 game_main_version;
     u8 game_sub_version;
-};
+    u8 language_is_sys : 1;
+    u8 game_sub_version_undetermined : 1;
+    u8 padding : 6;
+} PACKED ALIGNED(4);
 
 void init_game_identifier(struct game_identity*);
 u8 is_trainer_name_japanese(u8*);

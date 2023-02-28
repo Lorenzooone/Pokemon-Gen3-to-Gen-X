@@ -2,7 +2,6 @@
 #include "gen12_methods.h"
 #include "party_handler.h"
 #include "text_handler.h"
-#include "bin_table_handler.h"
 #include "fast_pokemon_methods.h"
 
 #include "gen3_to_1_conv_table_bin.h"
@@ -10,7 +9,8 @@
 #include "pokemon_gender_bin.h"
 #include "pokemon_stats_gen1_bin.h"
 #include "pokemon_stats_bin.h"
-#include "trainer_names_bin.h"
+
+const u8* set_buffer_with_gen2(const u8*, u8, u8*);
 
 u8 stat_index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
 u8 gender_thresholds_gen12[TOTAL_GENDER_KINDS] = {8, 0, 2, 4, 12, 14, 16, 17, 0, 16};
@@ -48,10 +48,6 @@ u8 get_ivs_gen2(u16 ivs, u8 stat_index) {
         default:
             return spa_ivs;
     }
-}
-
-const u8* get_trainer_name_gen12_enc3(u8 language) {
-    return get_table_pointer(trainer_names_bin, get_valid_language(language));
 }
 
 u8 get_unown_letter_gen2(u16 ivs){
@@ -173,7 +169,17 @@ u8 get_pokemon_gender_kind_gen2(u8 index, u8 is_egg, u8 curr_gen) {
     return pokemon_gender_bin[get_mon_index_gen2(index, is_egg)];
 }
 
-const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 language, u8* buffer) {
+const u8* get_pokemon_name_gen2_gen3_enc(int index, u8 is_egg, u8 language) {
+    u16 mon_index = get_mon_index_gen2(index, is_egg);
+    if (mon_index == MR_MIME_SPECIES)
+        mon_index = MR_MIME_OLD_NAME_POS;
+    if (mon_index == UNOWN_SPECIES)
+        mon_index = UNOWN_REAL_NAME_POS;
+
+    return get_pokemon_name_language(mon_index, language);
+}
+
+const u8* set_buffer_with_gen2(const u8* src_gen3_enc, u8 language, u8* buffer) {
     u8 string_cap = STRING_GEN2_INT_CAP;
     u8 is_jp = 0;
     if(language == JAPANESE_LANGUAGE) {
@@ -181,14 +187,16 @@ const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 language, u8* buffer) {
         is_jp = 1;
     }
 
-    u16 mon_index = get_mon_index_gen2(index, is_egg);
-    if (mon_index == MR_MIME_SPECIES)
-        mon_index = MR_MIME_OLD_NAME_POS;
-    if (mon_index == UNOWN_SPECIES)
-        mon_index = UNOWN_REAL_NAME_POS;
-
-    text_gen3_to_gen12(get_pokemon_name_language(mon_index, language), buffer, string_cap, string_cap, is_jp, is_jp);
+    text_gen3_to_gen12(src_gen3_enc, buffer, string_cap, string_cap, is_jp, is_jp);
     return buffer;
+}
+
+const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 language, u8* buffer) {
+    return set_buffer_with_gen2(get_pokemon_name_gen2_gen3_enc(index, is_egg, language), language, buffer);
+}
+
+const u8* get_default_trainer_name_gen2(u8 language, u8* buffer) {
+    return set_buffer_with_gen2(get_default_trainer_name(language), language, buffer);
 }
 
 u8 get_pokemon_gender_gen2(u8 index, u8 atk_ivs, u8 is_egg, u8 curr_gen) {

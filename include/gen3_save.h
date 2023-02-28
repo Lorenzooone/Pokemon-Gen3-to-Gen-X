@@ -38,7 +38,7 @@ struct game_data_priv_t {
 struct game_data_t {
     struct game_identity game_identifier;
     u8 giftRibbons[GIFT_RIBBONS];
-    u8 trainer_name[OT_NAME_GEN3_SIZE+1];
+    u8 trainer_name[OT_NAME_GEN3_MAX_SIZE+1];
     u8 trainer_gender;
     u32 trainer_id;
     struct mail_gen3 mails_3[PARTY_SIZE];
