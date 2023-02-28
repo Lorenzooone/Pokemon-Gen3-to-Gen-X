@@ -354,6 +354,7 @@ void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t
         slot = 1;
     
     read_game_data_trainer_info(slot, game_data, game_data_priv);
+    text_gen3_copy(game_data->trainer_name, game_data_priv->trainer_name_raw, OT_NAME_GEN3_MAX_SIZE+1, OT_NAME_GEN3_MAX_SIZE+1);
     if(game_data->game_identifier.language == UNDETERMINED) {
         if(is_trainer_name_japanese(game_data->trainer_name))
             game_data->game_identifier.language = JAPANESE_LANGUAGE;

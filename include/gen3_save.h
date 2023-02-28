@@ -33,6 +33,7 @@ struct game_data_priv_t {
     struct gen2_party party_2;
     struct gen1_party party_1;
     struct clock_events_t clock_events;
+    u8 trainer_name_raw[OT_NAME_GEN3_MAX_SIZE+1];
 };
 
 struct game_data_t {
