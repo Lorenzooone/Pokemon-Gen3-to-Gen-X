@@ -377,7 +377,7 @@ void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t
             game_data->game_identifier.language_is_sys = 1;
         }
     }
-    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language);
+    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language, 0);
 
     u8 game_id = game_data->game_identifier.game_main_version;
 

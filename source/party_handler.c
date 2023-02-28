@@ -17,6 +17,7 @@
 #include "pokemon_names_bin.h"
 #include "egg_names_bin.h"
 #include "language_names_index_bin.h"
+#include "gen3_spanish_special_valid_chars_bin.h"
 #include "gen3_german_valid_chars_bin.h"
 #include "gen3_int_valid_chars_bin.h"
 #include "gen3_jap_valid_chars_bin.h"
@@ -45,6 +46,7 @@
 #include "dex_conversion_bin.h"
 #include "pokemon_moves_pp_bin.h"
 #include "trainer_names_bin.h"
+#include "trainer_names_celebi_bin.h"
 
 #define UNOWN_B_START 415
 #define INITIAL_MAIL_GEN3 121
@@ -73,8 +75,9 @@ u8 get_hidden_power_type_gen3_pure(u32);
 u8 get_hidden_power_type_gen3(struct gen3_mon_misc*);
 void make_evs_legal_gen3(struct gen3_mon_evs*);
 u8 to_valid_level_gen3(struct gen3_mon*);
-const u8* get_validity_keyboard(u8);
-void sanitize_nickname(u8*, u8, u8, u16);
+const u8* get_validity_keyboard(u8, u8);
+u8 use_special_keyboard(struct gen3_mon_misc*, u8);
+void sanitize_nickname(u8*, u8, u8, u16, u8);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
@@ -869,7 +872,11 @@ const u8* get_default_trainer_name(u8 language) {
     return get_table_pointer(trainer_names_bin, get_valid_language(language));
 }
 
-const u8* get_validity_keyboard(u8 language) {
+const u8* get_celebi_trainer_name(u8 language) {
+    return get_table_pointer(trainer_names_celebi_bin, get_valid_language(language));
+}
+
+const u8* get_validity_keyboard(u8 language, u8 load_special_keyboard) {
     language = get_valid_language(language);
     u8 kind = language_keyboard_kind[language];
     const u8* validity_keyboard = gen3_int_valid_chars_bin;
@@ -879,12 +886,26 @@ const u8* get_validity_keyboard(u8 language) {
         validity_keyboard = gen3_int_valid_chars_bin;
     else if(kind == 2)
         validity_keyboard = gen3_german_valid_chars_bin;
+    if(load_special_keyboard)
+        validity_keyboard = gen3_spanish_special_valid_chars_bin;
     return validity_keyboard;
 }
 
-void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species) {
+u8 use_special_keyboard(struct gen3_mon_misc* misc, u8 language) {
+    if(language != SPANISH_LANGUAGE)
+        return 0;
+    // I could make stricter checks,
+    // but these should be fine for now...
+    if((misc->met_location == TRADE_MET) || (misc->met_location == EVENT_MET))
+        return 1;
+    if((misc->met_location == DUKING_TRADE_LOCATION) && (((misc->origins_info>>7)&0xF) == COLOSSEUM_CODE))
+        return 1;
+    return 0;
+}
+
+void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species, u8 load_special_keyboard) {
     language = get_valid_language(language);
-    const u8* validity_keyboard = get_validity_keyboard(language);
+    const u8* validity_keyboard = get_validity_keyboard(language, load_special_keyboard);
     size_t name_limit = NICKNAME_GEN3_SIZE;
     if(GET_LANGUAGE_IS_JAPANESE(language))
         name_limit = NICKNAME_JP_GEN3_SIZE;
@@ -897,9 +918,9 @@ void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species) {
     limit_name_gen3(nickname, NICKNAME_GEN3_MAX_SIZE, name_limit);
 }
 
-void sanitize_ot_name(u8* ot_name, u8 max_size, u8 language) {
+void sanitize_ot_name(u8* ot_name, u8 max_size, u8 language, u8 load_special_keyboard) {
     language = get_valid_language(language);
-    const u8* validity_keyboard = get_validity_keyboard(language);
+    const u8* validity_keyboard = get_validity_keyboard(language, load_special_keyboard);
     size_t name_limit = OT_NAME_GEN3_SIZE;
     if(GET_LANGUAGE_IS_JAPANESE(language))
         name_limit = OT_NAME_JP_GEN3_SIZE;
@@ -1017,9 +1038,10 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         if((src->language != JAPANESE_LANGUAGE) && text_gen3_is_same(src->nickname, get_pokemon_name_pure(SHEDINJA_SPECIES, 0, JAPANESE_LANGUAGE), NICKNAME_GEN3_MAX_SIZE, NICKNAME_GEN3_MAX_SIZE))
             text_gen3_copy(get_pokemon_name_pure(SHEDINJA_SPECIES, 0, src->language), src->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
 
+    u8 special_keyboard = use_special_keyboard(misc, src->language);
     // Sanitize text to avoid crashes in-game
-    sanitize_nickname(src->nickname, src->language, dst->is_egg, growth->species);
-    sanitize_ot_name(src->ot_name, OT_NAME_GEN3_MAX_SIZE, src->language);
+    sanitize_nickname(src->nickname, src->language, dst->is_egg, growth->species, special_keyboard);
+    sanitize_ot_name(src->ot_name, OT_NAME_GEN3_MAX_SIZE, src->language, special_keyboard);
 
     // Set the new "cleaned" data
     place_and_encrypt_gen3_data(dst, src);

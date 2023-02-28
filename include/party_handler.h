@@ -56,6 +56,7 @@
 #define BATTLE_FACILITY 0x3A
 #define HIDEOUT 0x42
 #define SOUTHERN_ISLAND 0x49
+#define DUKING_TRADE_LOCATION 0x74
 #define DEEP_COLOSSEUM 0x7D
 #define DEPT_STORE 0xC4
 #define EMPTY_LOCATION 0xD5
@@ -64,6 +65,7 @@
 #define DEPT_STORE_ALT 0x102
 #define COLOSSEUM_ALT 0x103
 #define TRADE_MET 0xFE
+#define EVENT_MET 0xFF
 
 #define BULBASAUR_SPECIES 1
 #define NIDORAN_F_SPECIES 29
@@ -79,6 +81,7 @@
 #define SUICUNE_SPECIES 245
 #define LUGIA_SPECIES 249
 #define HO_OH_SPECIES 250
+#define CELEBI_SPECIES 251
 #define SHEDINJA_SPECIES 303
 #define SPINDA_SPECIES 308
 #define LATIAS_SPECIES 407
@@ -141,6 +144,8 @@
 
 #define GEN2_EGG 253
 #define GEN2_NO_MON 255
+
+#define CELEBI_AGATE_OT_ID 31121
 
 #define POKEBALL_ID 4
 #define HIDDEN_POWER_ID 237
@@ -414,6 +419,7 @@ const u8* get_hidden_power_type_name_gen3_pure(u32);
 const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc*);
 const u8* get_nature_name(u32);
 const u8* get_default_trainer_name(u8);
+const u8* get_celebi_trainer_name(u8);
 char get_nature_symbol(u32, u8);
 const u8* get_move_name_raw(u16);
 const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
@@ -432,6 +438,6 @@ u8 forget_and_learn_move(struct gen3_mon_data_unenc*, u32, u32);
 void update_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
 void give_pokerus_gen3(struct gen3_mon_data_unenc*);
 u8 would_update_end_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
-void sanitize_ot_name(u8*, u8, u8);
+void sanitize_ot_name(u8*, u8, u8, u8);
 
 #endif

@@ -71,6 +71,8 @@ void fix_name_change_from_gen3(const u8*, u16, u8*, u8);
 void fix_name_change_to_gen3(u8*, u8, u8);
 void convert_strings_of_gen3(struct gen3_mon*, u16, u8*, u8*, u8*, u8*, u8, u8);
 void convert_strings_of_gen12(struct gen3_mon*, u8, u8*, u8*, u8);
+void special_convert_strings_distribution(struct gen3_mon*, u16);
+u8 text_handling_gen12_to_gen3(struct gen3_mon*, u16, u16, u8, u8*, u8*, u8, u8);
 
 u8 target_int_language = ENGLISH_LANGUAGE;
 
@@ -462,7 +464,7 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
         spe_ivs = 10;
     }
 
-    if(!is_shiny && is_shiny_gen2(atk_ivs, def_ivs, spa_ivs, spe_ivs))
+    if(!is_shiny && is_shiny_gen2(atk_ivs, def_ivs, spa_ivs, spe_ivs) && (species != CELEBI_SPECIES))
         spe_ivs = 11;
     
     return (atk_ivs << 4) | def_ivs | (spa_ivs << 8) | (spe_ivs << 12);
@@ -623,7 +625,11 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
         case ROAMER_ENCOUNTER:
-            if(origin_game == COLOSSEUM_CODE) {
+            if(species == CELEBI_SPECIES) {
+                generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
+                is_ability_set = 1;
+            }
+            else if(origin_game == COLOSSEUM_CODE) {
                 if(!is_shiny) {
                     if(is_static_in_xd(species))
                         generate_generic_genderless_shadow_info_xd(wanted_nature, has_prev_check_tsv_in_xd(species), wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
@@ -702,7 +708,13 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
     // Get PID and IVs
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
-            if(!is_shiny) {
+            if(species == CELEBI_SPECIES) {
+                chosen_version = R_VERSION_ID;
+                generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
+                is_ability_set = 1;
+                ot_gender = 1;
+            }
+            else if(!is_shiny) {
                 // Prefer Colosseum/XD encounter, if possible
                 if(is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
                     chosen_version = COLOSSEUM_CODE;
@@ -920,6 +932,31 @@ void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8*
     }*/
 }
 
+void special_convert_strings_distribution(struct gen3_mon* dst, u16 species) {
+    u8 gen3_nickname_cap = NICKNAME_GEN3_SIZE;
+    u8 gen3_ot_name_cap = OT_NAME_GEN3_SIZE;
+    if(GET_LANGUAGE_IS_JAPANESE(dst->language)) {
+        gen3_nickname_cap = NICKNAME_JP_GEN3_SIZE;
+        gen3_ot_name_cap = OT_NAME_JP_GEN3_SIZE;
+    }
+
+    const u8* mon_name = get_pokemon_name_pure(species, 0, dst->language);
+    const u8* trainer_name = NULL;
+
+    switch(species) {
+        case CELEBI_SPECIES:
+            trainer_name = get_celebi_trainer_name(dst->language);
+            break;
+        default:
+            break;
+    }
+
+    if(mon_name)
+        text_gen3_copy(mon_name, dst->nickname, gen3_nickname_cap, gen3_nickname_cap);
+    if(trainer_name)
+        text_gen3_copy(trainer_name, dst->ot_name, gen3_ot_name_cap, gen3_ot_name_cap);
+}
+
 void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8* nickname, u8 is_egg) {
     u8 is_jp = (dst->language == JAPANESE_LANGUAGE);
 
@@ -940,7 +977,8 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     text_gen12_to_gen3(ot_name, dst->ot_name, gen2_name_cap, gen3_ot_name_cap, is_jp, is_jp);
 
     // Handle Mew's special Japanese-only nature
-    if(species == MEW_SPECIES) {
+    // TODO: Allow undistributed events...?
+    if(1 && (species == MEW_SPECIES)) {
         dst->language = JAPANESE_LANGUAGE;
         gen2_name_cap = STRING_GEN2_JP_CAP;
         gen3_nickname_cap = NICKNAME_JP_GEN3_SIZE;
@@ -1147,6 +1185,42 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     return 1;
 }
 
+u8 text_handling_gen12_to_gen3(struct gen3_mon* dst, u16 species, u16 swapped_ot_id, u8 is_egg, u8* ot_name, u8* nickname, u8 is_jp, u8 no_restrictions) {
+    // Specially handle Celebi's event
+    if(species == CELEBI_SPECIES) {
+        // TODO: Allow undistributed events...?
+        if(1 || is_jp)
+            dst->language = JAPANESE_LANGUAGE;
+        else
+            dst->language = target_int_language;
+        dst->ot_id = CELEBI_AGATE_OT_ID;
+        special_convert_strings_distribution(dst, species);
+        return no_restrictions;
+    }
+
+    // TODO: Maybe detect the language, if not set in the settings...?
+
+    if(is_jp)
+        dst->language = JAPANESE_LANGUAGE;
+    else
+        dst->language = target_int_language;
+
+    // Handle Nickname + OT conversion
+    convert_strings_of_gen12(dst, species, ot_name, nickname, is_egg);
+
+    // Handle OT ID, if same as the game owner, set it to the game owner's
+    dst->ot_id = swap_endian_short(swapped_ot_id);
+
+    if(are_trainers_same(dst, is_jp)) {
+        dst->ot_id = get_own_game_data()->trainer_id;
+        no_restrictions = 0;
+    }
+    else
+        dst->ot_id = generate_ot(dst->ot_id, dst->ot_name);
+
+    return no_restrictions;
+}
+
 u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst, u8 index, u8* ot_name, u8* nickname, u8 is_jp) {
     struct gen3_mon* dst = data_dst->src;
     u8 no_restrictions = 1;
@@ -1175,25 +1249,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     dst->mail_id = GEN3_NO_MAIL;
     data_dst->is_egg = is_egg;
 
-    // TODO: Maybe detect the language, if not set in the settings...?
-
-    if(is_jp)
-        dst->language = JAPANESE_LANGUAGE;
-    else
-        dst->language = target_int_language;
-    
-    // Handle Nickname + OT conversion
-    convert_strings_of_gen12(dst, src->species, ot_name, nickname, is_egg);
-    
-    // Handle OT ID, if same as the game owner, set it to the game owner's
-    dst->ot_id = swap_endian_short(src->ot_id);
-    
-    if(are_trainers_same(dst, is_jp)) {
-        no_restrictions = 0;
-        dst->ot_id = get_own_game_data()->trainer_id;
-    }
-    else
-        dst->ot_id = generate_ot(dst->ot_id, dst->ot_name);
+    no_restrictions = text_handling_gen12_to_gen3(dst, src->species, src->ot_id, is_egg, ot_name, nickname, is_jp, no_restrictions);
     
     // Reset everything
     for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
@@ -1218,7 +1274,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     // Handle cases in which the nature would be forced
     if((dst->level == MAX_LEVEL) || (is_egg))
-        wanted_nature = SWI_DivMod(get_rng(), NUM_NATURES);
+        wanted_nature = get_nature(get_rng());
     
     // Store egg cycles
     if(is_egg) {
@@ -1273,25 +1329,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     dst->mail_id = GEN3_NO_MAIL;
     data_dst->is_egg = 0;
 
-    // TODO: Maybe detect the language, if not set in the settings...?
-
-    if(is_jp)
-        dst->language = JAPANESE_LANGUAGE;
-    else
-        dst->language = target_int_language;
-    
-    // Handle Nickname + OT conversion
-    convert_strings_of_gen12(dst, get_mon_index_gen1_to_3(src->species), ot_name, nickname, 0);
-    
-    // Handle OT ID, if same as the game owner, set it to the game owner's
-    dst->ot_id = swap_endian_short(src->ot_id);
-    
-    if(are_trainers_same(dst, is_jp)) {
-        no_restrictions = 0;
-        dst->ot_id = get_own_game_data()->trainer_id;
-    }
-    else
-        dst->ot_id = generate_ot(dst->ot_id, dst->ot_name);
+    no_restrictions = text_handling_gen12_to_gen3(dst, get_mon_index_gen1_to_3(src->species), src->ot_id, 0, ot_name, nickname, is_jp, no_restrictions);
     
     // Reset everything
     for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
@@ -1316,7 +1354,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     
     // Handle cases in which the nature would be forced
     if(dst->level == MAX_LEVEL)
-        wanted_nature = SWI_DivMod(get_rng(), NUM_NATURES);
+        wanted_nature = get_nature(get_rng());
     
     // Set base friendship
     data_dst->growth.friendship = BASE_FRIENDSHIP;
