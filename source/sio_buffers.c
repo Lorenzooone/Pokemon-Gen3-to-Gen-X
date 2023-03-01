@@ -5,6 +5,7 @@
 #include "party_handler.h"
 #include "gen_converter.h"
 #include "gen3_save.h"
+#include "config_settings.h"
 #include <stddef.h>
 
 #include "default_gift_ribbons_bin.h"
@@ -135,12 +136,11 @@ void load_names_gen12(struct game_data_t* game_data, struct gen2_party* party_2,
     if(party_1 != NULL)
         curr_gen = 1;
     
-    // TODO: Change this to using the specified language
-    u8 language = SYS_LANGUAGE;
+    u8 language = get_filtered_target_int_language();
     if(is_jp)
         language = JAPANESE_LANGUAGE;
     
-    text_gen3_to_gen12(game_data->trainer_name, trainer_name, OT_NAME_GEN3_MAX_SIZE+1, size, GET_LANGUAGE_IS_JAPANESE(game_data->game_identifier.language), is_jp);
+    text_gen3_to_gen12(game_data->trainer_name, trainer_name, OT_NAME_GEN3_MAX_SIZE+1, size, GET_LANGUAGE_IS_JAPANESE(game_data->game_identifier.language), GET_LANGUAGE_IS_JAPANESE(language));
     sanitize_ot_name_gen3_to_gen12(game_data->trainer_name, trainer_name, game_data->game_identifier.language, language);
     
     for(size_t i = 0; i < size; i++)
@@ -444,8 +444,8 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     }
 
     init_game_data(game_data);
-    // TODO: Change this to using the specified language
-    game_data->game_identifier.language = SYS_LANGUAGE;
+    
+    game_data->game_identifier.language = get_filtered_target_int_language();
     if(is_jp)
         game_data->game_identifier.language = JAPANESE_LANGUAGE;
     
@@ -454,7 +454,7 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     
     apply_patch_set(patch_target, patch_set, target_size-(names_size + MON_INDEX_SIZE), names_size + MON_INDEX_SIZE, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
     
-    text_gen12_to_gen3(trainer_name, game_data->trainer_name, names_size, OT_NAME_GEN3_MAX_SIZE+1, is_jp, is_jp);
+    text_gen12_to_gen3(trainer_name, game_data->trainer_name, names_size, OT_NAME_GEN3_MAX_SIZE+1, is_jp, GET_LANGUAGE_IS_JAPANESE(game_data->game_identifier.language));
     sanitize_ot_name_gen12_to_gen3(trainer_name, game_data->trainer_name, game_data->game_identifier.language);
     
     if(curr_gen == 2)

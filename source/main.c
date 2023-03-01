@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include "optimized_swi.h"
 #include "timing_basic.h"
+#include "config_settings.h"
 //#include "save.h"
 
 #include "ewram_speed_check_bin.h"
@@ -54,6 +55,7 @@ void cursor_update_trading_menu(u8, u8);
 void cursor_update_main_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
+void cursor_update_base_settings_menu(u8);
 void handle_learnable_moves_message(struct game_data_t*, u8, u8*, u32*, enum MOVES_PRINTING_TYPE);
 void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8, u8*);
@@ -76,6 +78,7 @@ void main_menu_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u
 void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
+void base_settings_menu_init(struct game_data_t*, u8*);
 void learnable_moves_message_init(struct game_data_t*, u8);
 void learnable_move_menu_init(struct game_data_t*, u8, u8, u8*);
 void conclude_trade(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
@@ -207,6 +210,10 @@ void cursor_update_trade_options(u8 cursor_x_pos) {
 void cursor_update_offer_options(u8 cursor_y_pos, u8 cursor_x_pos) {
     update_cursor_base_x(BASE_X_CURSOR_OFFER_OPTIONS + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_OFFER_OPTIONS));
     update_cursor_y(BASE_Y_CURSOR_OFFER_OPTIONS + (BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS * cursor_y_pos));
+}
+
+void cursor_update_base_settings_menu(u8 cursor_y_pos) {
+    update_cursor_y(BASE_Y_CURSOR_BASE_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_BASE_SETTINGS_MENU * cursor_y_pos));
 }
 
 void wait_frames(int num_frames) {
@@ -503,6 +510,19 @@ void learnable_moves_message_init(struct game_data_t* game_data, u8 curr_mon) {
     prepare_flush();
 }
 
+void base_settings_menu_init(struct game_data_t* game_data, u8* cursor_y_pos) {
+    curr_state = BASE_SETTINGS_MENU;
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    print_base_settings_menu(&game_data->game_identifier, get_is_cartridge_loaded(), 1);
+    enable_screen(BASE_SCREEN);
+    *cursor_y_pos = 0;
+    update_cursor_base_x(BASE_X_CURSOR_BASE_SETTINGS_MENU);
+    cursor_update_base_settings_menu(*cursor_y_pos);
+    prepare_flush();
+}
+
 void conclude_trade(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
     stop_transfer(master);
     main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
@@ -575,6 +595,7 @@ int main(void)
     input_counter = 0;
     find_optimal_ewram_settings();
     init_text_system();
+    set_default_settings();
     init_enc_positions();
     init_rng(0,0);
     init_save_data();
@@ -791,11 +812,8 @@ int main(void)
                     init_save_data();
                     print_swap_cartridge_menu();
                 }
-                else if(returned_val == START_SETTINGS_MENU) {
-                    curr_state = BASE_SETTINGS_MENU;
-                    disable_cursor();
-                    print_base_settings_menu(&game_data_priv, get_is_cartridge_loaded());
-                }
+                else if(returned_val == START_SETTINGS_MENU)
+                    base_settings_menu_init(&game_data[0], &cursor_y_pos);
                 else if(returned_val > VIEW_OWN_PARTY && returned_val <= VIEW_OWN_PARTY + TOTAL_GENS) {
                     curr_gen = returned_val - VIEW_OWN_PARTY;
                     own_menu = 1;
@@ -927,13 +945,14 @@ int main(void)
                 break;
             case BASE_SETTINGS_MENU:
                 // TODO: Handle the Settings menu
-                returned_val = handle_input_base_settings_menu(keys, &cursor_y_pos, &game_data_priv, get_is_cartridge_loaded());
+                returned_val = handle_input_base_settings_menu(keys, &cursor_y_pos, &update, &game_data[0].game_identifier, get_is_cartridge_loaded());
                 if(returned_val) {
                     if(returned_val == EXIT_BASE_SETTINGS)
                         main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                 }
                 else {
-                
+                    print_base_settings_menu(&game_data->game_identifier, get_is_cartridge_loaded(), update);
+                    cursor_update_base_settings_menu(cursor_y_pos);
                 }
                 break;
             case SWAP_CARTRIDGE_MENU:

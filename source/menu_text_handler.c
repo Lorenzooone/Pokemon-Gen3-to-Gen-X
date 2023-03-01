@@ -10,6 +10,7 @@
 #include "sio_buffers.h"
 #include "communicator.h"
 #include "window_handler.h"
+#include "config_settings.h"
 #include <stddef.h>
 
 #define NUM_LINES 10
@@ -28,6 +29,7 @@ void print_pokemon_page3(struct gen3_mon_data_unenc*);
 void print_pokemon_page4(struct gen3_mon_data_unenc*);
 void print_pokemon_page5(struct gen3_mon_data_unenc*);
 void print_evolution_animation_internal(struct gen3_mon_data_unenc*, u8);
+const u8* get_language_string(u8);
 
 const char* person_strings[] = {"You", "Other"};
 const char* game_strings[] = {"RS", "FRLG", "E"};
@@ -39,9 +41,9 @@ const char* region_strings[] = {"Int", "Jap"};
 const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
 const char* stat_strings[] = {"Hp", "Atk", "Def", "SpA", "SpD", "Spe"};
 const char* contest_strings[] = {"Coolness", "Beauty", "Cuteness", "Smartness", "Toughness", "Feel"};
-const char* language_strings[NUM_LANGUAGES] = {"???", "Japanese", "English", "French", "Italian", "German", "Korean", "Spanish"};
+const char* language_strings[NUM_LANGUAGES+1] = {"???", "Japanese", "English", "French", "Italian", "German", "Korean", "Spanish", "Unknown"};
 const char* trade_start_state_strings[] = {"Unknown", "Entering Room", "Starting Trade", "Ending Trade", "Waiting Trade", "Trading Party Data", "Synchronizing", "Completed"};
-const char* offer_strings[] = {" Sending ", "Receiving"};
+const char* offer_strings[] = {"Sending ", "Receiving"};
 const char* invalid_strings[][PRINTABLE_INVALID_STRINGS] = {{"      TRADE REJECTED!", "The Pok\xE9mon offered by the", "other player has issues!"}, {"      TRADE REJECTED!", "The trade would leave you", "with no usable Pok\xE9mon!"}};
 
 const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
@@ -180,7 +182,7 @@ void print_learnable_move(struct gen3_mon_data_unenc* mon, u16 index, enum MOVES
 
     u16 move = mon->learnable_moves[1+index];
     
-    set_text_y(LEARN_MOVE_MESSAGE_WINDOW_Y);
+    set_text_y(LEARN_MOVE_MESSAGE_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
 
     switch(moves_printing_type) {
@@ -228,25 +230,21 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
         u8 curr_text_y = 0;
         
         set_text_y(curr_text_y++);
-        set_text_x(3+(OFFER_WINDOW_X*i));
+        set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
         PRINT_FUNCTION("\x01", offer_strings[i]);
         load_pokemon_sprite_raw(mon, 1, BASE_Y_SPRITE_OFFER_MENU, (OFFER_WINDOW_X*8*i) + BASE_X_SPRITE_OFFER_MENU);
-        
+        curr_text_y++;
+        set_text_y(curr_text_y++);
+        set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
+
         if(!is_egg) {
-            set_text_y(curr_text_y++);
-            set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
             PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
-        
+
             set_text_y(curr_text_y++);
-            set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
-            PRINT_FUNCTION("Lv. \x03 \x02", to_valid_level_gen3(mon->src), get_pokemon_gender_char_raw(mon));
-            if(is_shiny) {
-                set_text_y(curr_text_y++);
-                set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
-                PRINT_FUNCTION("Shiny");
-            }
-            else
-                curr_text_y++;
+            set_text_x((OFFER_WINDOW_X*i));
+            PRINT_FUNCTION("Lv.\x03 \x02", to_valid_level_gen3(mon->src), get_pokemon_gender_char_raw(mon));
+            if(is_shiny)
+                PRINT_FUNCTION(" Shiny");
             set_text_y(curr_text_y++);
             set_text_x(OFFER_WINDOW_X*i);
             PRINT_FUNCTION("\x01 Nature", get_nature_name(mon->src->pid));
@@ -274,12 +272,8 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
                 PRINT_FUNCTION("\x01", get_move_name_gen3(&mon->attacks, j));
             }
         }
-        else {
-            curr_text_y++;
-            set_text_y(curr_text_y++);
-            set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
+        else
             PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
-        }
     }
 }
 
@@ -310,11 +304,17 @@ void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 ot
     reset_screen(BLANK_FILL);
     init_offer_options_window();
     clear_offer_options_window();
-    set_text_y(OFFER_OPTIONS_WINDOW_Y);
+    set_text_y(OFFER_OPTIONS_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(OFFER_OPTIONS_WINDOW_X);
-    PRINT_FUNCTION("Trade \x05\n", get_pokemon_name_raw(&game_data[0].party_3_undec[own_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
-    set_text_x(OFFER_OPTIONS_WINDOW_X);
-    PRINT_FUNCTION("for \x05?\n\n", get_pokemon_name_raw(&game_data[1].party_3_undec[other_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+    if(!IS_SYS_LANGUAGE_JAPANESE) {
+        PRINT_FUNCTION("Trade \x05\n", get_pokemon_name_raw(&game_data[0].party_3_undec[own_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        set_text_x(OFFER_OPTIONS_WINDOW_X);
+        PRINT_FUNCTION("for \x05?\n\n", get_pokemon_name_raw(&game_data[1].party_3_undec[other_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+    }
+    else {
+        PRINT_FUNCTION("Trade \x05 ", get_pokemon_name_raw(&game_data[0].party_3_undec[own_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("for \x05?\n\n", get_pokemon_name_raw(&game_data[1].party_3_undec[other_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+    }
     set_text_x(OFFER_OPTIONS_WINDOW_X+2);
     PRINT_FUNCTION("Yes");
     set_text_x(OFFER_OPTIONS_WINDOW_X + (OFFER_OPTIONS_WINDOW_X_SIZE - SUMMARY_LINE_MAX_SIZE));
@@ -325,11 +325,27 @@ void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 ot
     PRINT_FUNCTION("Summary: Receiving");
 }
 
-void print_base_settings_menu(struct game_data_priv_t* game_data_priv, u8 is_loaded) {
+const u8* get_language_string(u8 language) {
+    if(language > NUM_LANGUAGES)
+        language = NUM_LANGUAGES;
+    return (const u8*)language_strings[language];
+}
+
+void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loaded, u8 update) {
+    if(!update)
+        return;
+
     default_reset_screen();
-    PRINT_FUNCTION("\n  Color Settings\n\n");
-    PRINT_FUNCTION("  Color Settings\n\n");
+    PRINT_FUNCTION("\n  System Language: <\x01>\n\n", get_language_string(get_sys_language()));
+    PRINT_FUNCTION("  Gen 1/2 Language: <\x01>\n\n", get_language_string(get_target_int_language()));
+    u8 curr_y = get_text_y();
     if(is_loaded) {
+        if(has_rtc_events(game_identifier))
+            PRINT_FUNCTION("  Clock Settings");
+        
+        set_text_y(Y_LIMIT-3);
+        PRINT_FUNCTION("  Cheats");
+        /*
         //change_time_of_day(game_data);
         //enable_rtc_reset(&game_data->clock_events);
         if(is_daytime(&game_data_priv->clock_events))
@@ -341,10 +357,13 @@ void print_base_settings_menu(struct game_data_priv_t* game_data_priv, u8 is_loa
         else
             PRINT_FUNCTION("Tide: Low\n\n");
         PRINT_FUNCTION("\x03 \x03", game_data_priv->clock_events.enable_rtc_reset_flag, game_data_priv->clock_events.enable_rtc_reset_var);
+        */
     }
-    
-    set_text_y(Y_LIMIT-1);
-    PRINT_FUNCTION("B: Go Back");
+
+    set_text_y(curr_y+2);
+    PRINT_FUNCTION("  Color Settings");
+
+    print_bottom_info();
 }
 
 void print_trade_options(u8 cursor_x_pos, u8 own_menu){
@@ -376,7 +395,7 @@ void print_evolution_animation_internal(struct gen3_mon_data_unenc* mon, u8 is_s
     reset_screen(BLANK_FILL);
     init_evolution_animation_window();
     clear_evolution_animation_window();
-    set_text_y(EVOLUTION_ANIMATION_WINDOW_Y);
+    set_text_y(EVOLUTION_ANIMATION_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
     if(!is_second_run) {
         PRINT_FUNCTION("Huh?! \x01\n\n", mon->pre_evo_string);
@@ -403,7 +422,7 @@ void print_trade_animation_send(struct gen3_mon_data_unenc* mon){
     reset_screen(BLANK_FILL);
     init_trade_animation_send_window();
     clear_trade_animation_send_window();
-    set_text_y(TRADE_ANIMATION_SEND_WINDOW_Y);
+    set_text_y(TRADE_ANIMATION_SEND_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(TRADE_ANIMATION_SEND_WINDOW_X);
     if(!is_egg) {
         PRINT_FUNCTION("Sending \x05 away...\n\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
@@ -424,7 +443,7 @@ void print_trade_animation_recv(struct gen3_mon_data_unenc* mon){
     reset_screen(BLANK_FILL);
     init_trade_animation_recv_window();
     clear_trade_animation_recv_window();
-    set_text_y(TRADE_ANIMATION_RECV_WINDOW_Y);
+    set_text_y(TRADE_ANIMATION_RECV_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(TRADE_ANIMATION_RECV_WINDOW_X);
     if(!is_egg) {
         PRINT_FUNCTION("Received \x05.\n\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
@@ -468,18 +487,14 @@ void print_start_trade(){
     
     default_reset_screen();
     PRINT_FUNCTION("\nState: \x01\n", trade_start_state_strings[raw_state]);
-    if(raw_state != START_TRADE_PAR) {
-        set_text_y(Y_LIMIT-1);
-        PRINT_FUNCTION("B: Go Back");
-    }
+    if(raw_state != START_TRADE_PAR)
+        print_bottom_info();
     else {
         for(int i = 0; i < get_number_of_buffers(); i++) {
             PRINT_FUNCTION("\nSection \x03: \x09/\x03\n", i+1, get_transferred(i), 3, get_buffer_size(i));
         }
-        if(get_transferred(0) == 0) {
-            set_text_y(Y_LIMIT-1);
-            PRINT_FUNCTION("B: Go Back");
-        }
+        if(!get_transferred(0))
+            print_bottom_info();
     }
 }
 

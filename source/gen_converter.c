@@ -75,8 +75,6 @@ void special_convert_strings_distribution(struct gen3_mon*, u16);
 u8 text_handling_gen12_to_gen3(struct gen3_mon*, u16, u16, u8, u8*, u8*, u8, u8);
 void set_language_gen12_to_gen3(struct gen3_mon*, u16, u8, u8);
 
-u8 target_int_language = ENGLISH_LANGUAGE;
-
 u16 swap_endian_short(u16 shrt) {
     return ((shrt & 0xFF00) >> 8) | ((shrt & 0xFF) << 8);
 }
@@ -907,20 +905,20 @@ void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8*
     // "MR.MIME" gen 2 == "MR. MIME" gen 3
     // In French, "M.MIME" == "M. MIME"
     if((species == MR_MIME_SPECIES) && (!is_egg)) {
-        fix_name_change_from_gen3(src->nickname, species, nickname, target_int_language);
+        fix_name_change_from_gen3(src->nickname, species, nickname, get_filtered_target_int_language());
         fix_name_change_from_gen3(src->nickname, species, nickname_jp, JAPANESE_LANGUAGE);
     }
 
     // Put the "EGG" name
     if(is_gen2 && is_egg) {
-        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, target_int_language, gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
+        text_gen2_copy(get_pokemon_name_gen2(species, is_egg, get_filtered_target_int_language(), gen2_buffer), nickname, STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP);
         text_gen2_copy(get_pokemon_name_gen2(species, is_egg, JAPANESE_LANGUAGE, gen2_buffer), nickname_jp, STRING_GEN2_JP_CAP, STRING_GEN2_JP_CAP);
     }
 
-    sanitize_name_gen3_to_gen12(src->nickname, nickname, get_pokemon_name_gen2(species, is_egg, target_int_language, gen2_buffer), gen3_nickname_cap, STRING_GEN2_INT_CAP);
+    sanitize_name_gen3_to_gen12(src->nickname, nickname, get_pokemon_name_gen2(species, is_egg, get_filtered_target_int_language(), gen2_buffer), gen3_nickname_cap, STRING_GEN2_INT_CAP);
     sanitize_name_gen3_to_gen12(src->nickname, nickname_jp, get_pokemon_name_gen2(species, is_egg, JAPANESE_LANGUAGE, gen2_buffer), gen3_nickname_cap, STRING_GEN2_JP_CAP);
 
-    sanitize_ot_name_gen3_to_gen12(src->ot_name, ot_name, src->language, target_int_language);
+    sanitize_ot_name_gen3_to_gen12(src->ot_name, ot_name, src->language, get_filtered_target_int_language());
     sanitize_ot_name_gen3_to_gen12(src->ot_name, ot_name_jp, src->language, JAPANESE_LANGUAGE);
 
     // Gen 1 used the wrong dot symbol
@@ -1174,14 +1172,14 @@ void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8
     if(is_jp)
         dst->language = JAPANESE_LANGUAGE;
     else
-        dst->language = target_int_language;
+        dst->language = get_filtered_target_int_language();
 
     if((species == MEW_SPECIES) || (species == CELEBI_SPECIES)) {
         // TODO: Allow undistributed events...?
         if(1 || is_jp)
             dst->language = JAPANESE_LANGUAGE;
         else
-            dst->language = target_int_language;
+            dst->language = get_filtered_target_int_language();
     }
 
     if(is_egg)

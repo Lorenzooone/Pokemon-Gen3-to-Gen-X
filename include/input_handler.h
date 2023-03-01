@@ -37,7 +37,7 @@ u8 handle_input_main_menu(u8*, u16, u8*, u8*, u8*, u8*);
 u8 handle_input_trade_options(u16, u8*);
 u8 handle_input_nature_menu(u16);
 u8 handle_input_iv_fix_menu(u16);
-u8 handle_input_base_settings_menu(u16, u8*, struct game_data_priv_t*, u8);
+u8 handle_input_base_settings_menu(u16, u8*, u8*, struct game_identity*, u8);
 u8 handle_input_offer_options(u16, u8*, u8*);
 u8 handle_input_swap_cartridge_menu(u16);
 u8 handle_input_trade_setup(u16, u8);

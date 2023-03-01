@@ -2,7 +2,9 @@
 #include "input_handler.h"
 #include "options_handler.h"
 #include "communicator.h"
+#include "gen3_clock_events.h"
 #include "useful_qualifiers.h"
+#include "config_settings.h"
 
 u8 handle_input_multiboot_menu(u16 keys) {
     if(keys & KEY_A)
@@ -432,10 +434,110 @@ u8 handle_input_learnable_moves_menu(u16 keys, u8* cursor_y_pos) {
     return 0;
 }
 
-u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, struct game_data_priv_t* game_data_priv, u8 is_loaded) {
+u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struct game_identity* game_identifier, u8 is_loaded) {
+    u8 language;
 
     if(keys & KEY_B)
         return EXIT_BASE_SETTINGS;
+    
+    switch(*cursor_y_pos) {
+        case 0:
+            if(keys & KEY_UP) {
+                if(is_loaded)
+                    *cursor_y_pos = 8;
+                else
+                    *cursor_y_pos = 3;
+            }
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                language = get_sys_language() + 1;
+                if(language >= NUM_LANGUAGES)
+                    language = FIRST_VALID_LANGUAGE;
+                set_sys_language(language);
+                //TODO: handle game_data_priv->trainer_name_raw... Maybe when we exit the menu?
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                language = get_sys_language();
+                if(!language)
+                    language = FIRST_VALID_LANGUAGE;
+                language -= 1;
+                if(!language)
+                    language = NUM_LANGUAGES - 1;
+                set_sys_language(language);
+                //TODO: handle game_data_priv->trainer_name_raw... Maybe when we exit the menu?
+                *update = 1;
+            }
+            break;
+        case 1:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN) {
+                if(is_loaded && has_rtc_events(game_identifier))
+                    *cursor_y_pos += 1;
+                else
+                    *cursor_y_pos += 2;
+            }
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                language = get_target_int_language() + 1;
+                if(language >= NUM_LANGUAGES)
+                    language = UNKNOWN_LANGUAGE;
+                if(!language)
+                    language = FIRST_INTERNATIONAL_VALID_LANGUAGE;
+                set_target_int_language(language);
+                //TODO: handle gen1/2 party... Maybe when we exit the menu?
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                language = get_target_int_language();
+                if(language >= NUM_LANGUAGES)
+                    language = NUM_LANGUAGES;
+                if(language < FIRST_INTERNATIONAL_VALID_LANGUAGE)
+                    language = FIRST_INTERNATIONAL_VALID_LANGUAGE + 1;
+                language -= 1;
+                if(language < FIRST_INTERNATIONAL_VALID_LANGUAGE)
+                    language = UNKNOWN_LANGUAGE;
+                set_target_int_language(language);
+                //TODO: handle gen1/2 party... Maybe when we exit the menu?
+                *update = 1;
+            }
+            break;
+        case 2:
+            if(keys & KEY_A)
+                ;
+            else if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            break;
+        case 3:
+            if(keys & KEY_A)
+                ;
+            else if(keys & KEY_UP) {
+                if(is_loaded && has_rtc_events(game_identifier))
+                    *cursor_y_pos -= 1;
+                else
+                    *cursor_y_pos -= 2;
+            }
+            else if(keys & KEY_DOWN) {
+                if(is_loaded)
+                    *cursor_y_pos = 8;
+                else
+                    *cursor_y_pos = 0;
+            }
+            break;
+        case 8:
+            if(keys & KEY_A)
+                ;
+            else if(keys & KEY_UP)
+                *cursor_y_pos = 3;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos = 0;
+            break;
+        default:
+            *cursor_y_pos = 0;
+    }
 
     return 0;
 }

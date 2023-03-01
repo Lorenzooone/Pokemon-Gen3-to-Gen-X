@@ -194,12 +194,12 @@ u16 get_mail_icon_tile(){
 }
 
 void set_item_icon(u16 y, u16 x){
-    set_attributes(y + ITEM_ICON_INC_Y, x + ITEM_ICON_INC_X, get_item_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
+    set_attributes((y + ITEM_ICON_INC_Y) & 0xFF, (x + ITEM_ICON_INC_X) & 0xFF, get_item_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
     inc_inner_sprite_counter();
 }
 
 void set_mail_icon(u16 y, u16 x){
-    set_attributes(y + ITEM_ICON_INC_Y, x + ITEM_ICON_INC_X, get_mail_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
+    set_attributes((y + ITEM_ICON_INC_Y) & 0xFF, (x + ITEM_ICON_INC_X) & 0xFF, get_mail_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
     inc_inner_sprite_counter();
 }
 
