@@ -26,7 +26,7 @@
 const char* game_identifier_strings[NUMBER_OF_GAMES] = {"POKEMON RUBY", "POKEMON SAPP", "POKEMON FIRE", "POKEMON LEAF", "POKEMON EMER"};
 const u8 main_identifiers[NUMBER_OF_GAMES] = {RS_MAIN_GAME_CODE,RS_MAIN_GAME_CODE,FRLG_MAIN_GAME_CODE,FRLG_MAIN_GAME_CODE,E_MAIN_GAME_CODE};
 const u8 sub_identifiers[NUMBER_OF_GAMES] = {R_SUB_GAME_CODE,S_SUB_GAME_CODE,FR_SUB_GAME_CODE,LG_SUB_GAME_CODE,E_SUB_GAME_CODE};
-const u8 different_version_sub_identifiers[NUMBER_OF_GAMES] = {S_SUB_GAME_CODE,R_SUB_GAME_CODE,E_SUB_GAME_CODE,LG_SUB_GAME_CODE,FR_SUB_GAME_CODE};
+const u8 different_version_sub_identifiers[NUMBER_OF_GAMES] = {R_SUB_GAME_CODE,S_SUB_GAME_CODE,E_SUB_GAME_CODE,LG_SUB_GAME_CODE,FR_SUB_GAME_CODE};
 
 void init_game_identifier(struct game_identity* identifier) {
     identifier->game_main_version = UNDETERMINED;
