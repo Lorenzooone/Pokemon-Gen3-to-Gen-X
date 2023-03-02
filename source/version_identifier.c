@@ -26,6 +26,7 @@
 const char* game_identifier_strings[NUMBER_OF_GAMES] = {"POKEMON RUBY", "POKEMON SAPP", "POKEMON FIRE", "POKEMON LEAF", "POKEMON EMER"};
 const u8 main_identifiers[NUMBER_OF_GAMES] = {RS_MAIN_GAME_CODE,RS_MAIN_GAME_CODE,FRLG_MAIN_GAME_CODE,FRLG_MAIN_GAME_CODE,E_MAIN_GAME_CODE};
 const u8 sub_identifiers[NUMBER_OF_GAMES] = {R_SUB_GAME_CODE,S_SUB_GAME_CODE,FR_SUB_GAME_CODE,LG_SUB_GAME_CODE,E_SUB_GAME_CODE};
+const u8 different_version_sub_identifiers[NUMBER_OF_GAMES] = {S_SUB_GAME_CODE,R_SUB_GAME_CODE,E_SUB_GAME_CODE,LG_SUB_GAME_CODE,FR_SUB_GAME_CODE};
 
 void init_game_identifier(struct game_identity* identifier) {
     identifier->game_main_version = UNDETERMINED;
@@ -43,7 +44,7 @@ u8 is_trainer_name_japanese(u8* buffer) {
     return 1;
 }
 
-void get_game_id(struct game_identity* identifier){
+void get_game_id(struct game_identity* identifier) {
     u8 tmp_buffer[GAME_STRING_SIZE+1];
     text_generic_copy((u8*)GAME_STRING_POS, tmp_buffer, GAME_STRING_SIZE, GAME_STRING_SIZE+1);
     for(int i = 0; i < NUMBER_OF_GAMES; i++)
@@ -79,7 +80,7 @@ void get_game_id(struct game_identity* identifier){
         }
 }
 
-u8 id_to_version(struct game_identity* identifier){
+u8 id_to_version(struct game_identity* identifier) {
     u8 base_game = S_VERSION_ID;
     if(identifier->game_main_version == FRLG_GAME_CODE)
         base_game = FR_VERSION_ID;
@@ -92,6 +93,17 @@ u8 id_to_version(struct game_identity* identifier){
         base_game = LG_VERSION_ID;
     
     return base_game;
+}
+
+void change_sub_version(struct game_identity* identifier) {
+    if(!identifier->game_sub_version_undetermined)
+        return;
+
+    u8 game_id = id_to_version(identifier);
+    if((game_id > NUMBER_OF_GAMES) || (!game_id))
+        return;
+
+    identifier->game_sub_version = different_version_sub_identifiers[game_id-1];
 }
 
 u8 determine_possible_main_game_for_slot(u8 slot, u8 section_pos, u16 total_bytes) {
@@ -138,14 +150,17 @@ void determine_game_with_save(struct game_identity* identifier, u8 slot, u8 sect
         switch(game_code) {
             case RS_GAME_CODE:
                 identifier->game_main_version = RS_MAIN_GAME_CODE;
+                identifier->game_sub_version = R_SUB_GAME_CODE;
+                identifier->game_sub_version_undetermined = 1;
                 break;
             case FRLG_GAME_CODE:
                 identifier->game_main_version = FRLG_MAIN_GAME_CODE;
+                identifier->game_sub_version = FR_SUB_GAME_CODE;
+                identifier->game_sub_version_undetermined = 1;
                 break;
             default:
                 identifier->game_main_version = E_MAIN_GAME_CODE;
                 break;
         }
-        identifier->game_sub_version_undetermined = 1;
     }
 }

@@ -32,10 +32,11 @@ void print_evolution_animation_internal(struct gen3_mon_data_unenc*, u8);
 const u8* get_language_string(u8);
 
 const char* person_strings[] = {"You", "Other"};
-const char* game_strings[] = {"RS", "FRLG", "E"};
+const char* maingame_strings[] = {"RS", "FRLG", "E"};
 const char* unidentified_string = "Unidentified";
 const char* subgame_rs_strings[] = {"R", "S"};
 const char* subgame_frlg_strings[] = {"FR", "LG"};
+const char* game_strings[] = {"???", "Sapphire", "Ruby", "Emerald", "Fire Red", "Leaf Green"};
 const char* actor_strings[] = {"Master", "Slave"};
 const char* region_strings[] = {"Int", "Jap"};
 const char* target_strings[] = {"Gen 1", "Gen 2", "Gen 3"};
@@ -53,7 +54,7 @@ print_info_functions_t print_info_functions[PAGES_TOTAL] = {print_pokemon_page1,
 void print_game_info(struct game_data_t* game_data, int index) {
     default_reset_screen();
     PRINT_FUNCTION("\n Game: ");
-    const char* chosen_str = game_strings[game_data[index].game_identifier.game_main_version];
+    const char* chosen_str = maingame_strings[game_data[index].game_identifier.game_main_version];
     switch(game_data[index].game_identifier.game_main_version) {
         case RS_MAIN_GAME_CODE:
             if(game_data[index].game_identifier.game_sub_version != UNDETERMINED)
@@ -338,10 +339,18 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     default_reset_screen();
     PRINT_FUNCTION("\n  System Language: <\x01>\n\n", get_language_string(get_sys_language()));
     PRINT_FUNCTION("  Gen 1/2 Language: <\x01>\n\n", get_language_string(get_target_int_language()));
+    PRINT_FUNCTION("  Gen 1/2 to: <\x01>\n\n", game_strings[get_default_conversion_game()]);
+    if(get_conversion_colo_xd())
+        PRINT_FUNCTION("  Gen 1/2 to Colo/XD: <True>\n\n");
+    else
+        PRINT_FUNCTION("  Gen 1/2 to Colo/XD: <False>\n\n");
     u8 curr_y = get_text_y();
     if(is_loaded) {
         if(has_rtc_events(game_identifier))
-            PRINT_FUNCTION("  Clock Settings");
+            PRINT_FUNCTION("  Clock Settings\n\n");
+        set_text_y(curr_y+2);
+        if(game_identifier->game_sub_version_undetermined)
+            PRINT_FUNCTION("  Game Loaded: <\x01>\n\n", game_strings[id_to_version(game_identifier)]);
         
         set_text_y(Y_LIMIT-3);
         PRINT_FUNCTION("  Cheats");
@@ -360,7 +369,7 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
         */
     }
 
-    set_text_y(curr_y+2);
+    set_text_y(curr_y+4);
     PRINT_FUNCTION("  Color Settings");
 
     print_bottom_info();

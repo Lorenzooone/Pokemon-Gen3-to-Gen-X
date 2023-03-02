@@ -57,6 +57,7 @@ enum TRADE_POSSIBILITY can_trade(struct game_data_priv_t*, u8);
 u8 is_in_pokemon_center(struct game_data_priv_t*, u8);
 u8 read_gen_3_data(struct game_data_t*, struct game_data_priv_t*);
 void alter_game_data_language(struct game_data_t*, struct game_data_priv_t*);
+void alter_game_data_version(struct game_data_t*);
 void process_party_data(struct game_data_t*, struct gen2_party*, struct gen1_party*);
 void alter_party_data_language(struct game_data_t*, struct gen2_party*, struct gen1_party*);
 struct game_data_t* get_own_game_data(void);

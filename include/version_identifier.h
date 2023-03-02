@@ -21,6 +21,7 @@
 #define E_VERSION_ID 3
 #define FR_VERSION_ID 4
 #define LG_VERSION_ID (FR_VERSION_ID+1)
+#define FIRST_VERSION_ID S_VERSION_ID
 
 struct game_identity {
     u8 language;
@@ -34,6 +35,7 @@ struct game_identity {
 void init_game_identifier(struct game_identity*);
 u8 is_trainer_name_japanese(u8*);
 void get_game_id(struct game_identity*);
+void change_sub_version(struct game_identity*);
 void determine_game_with_save(struct game_identity*, u8, u8, u16);
 u8 determine_possible_main_game_for_slot(u8, u8, u16);
 u8 id_to_version(struct game_identity*);

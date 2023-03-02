@@ -386,6 +386,12 @@ void alter_game_data_language(struct game_data_t* game_data, struct game_data_pr
     }
 }
 
+void alter_game_data_version(struct game_data_t* game_data) {
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
+        if(game_data->party_3_undec[i].is_valid_gen3)
+            set_deoxys_form(&game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
+}
+
 void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
     if(slot)
         slot = 1;

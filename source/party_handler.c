@@ -929,6 +929,18 @@ void sanitize_ot_name(u8* ot_name, u8 max_size, u8 language, u8 load_special_key
     limit_name_gen3(ot_name, max_size, name_limit);
 }
 
+void set_deoxys_form(struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
+    // Display the different Deoxys forms
+    dst->deoxys_form = DEOXYS_NORMAL;
+    if(main_version == E_MAIN_GAME_CODE)
+        dst->deoxys_form = DEOXYS_SPE;
+    if(main_version == FRLG_MAIN_GAME_CODE) {
+        dst->deoxys_form = DEOXYS_ATK;
+        if(sub_version == LG_SUB_GAME_CODE)
+            dst->deoxys_form = DEOXYS_DEF;
+    }
+}
+
 void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
     dst->src = src;
 
@@ -981,15 +993,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         misc->obedience = 1;
     
     // Display the different Deoxys forms
-    dst->deoxys_form = DEOXYS_NORMAL;
-    if(main_version == E_MAIN_GAME_CODE)
-        dst->deoxys_form = DEOXYS_SPE;
-    if(main_version == FRLG_MAIN_GAME_CODE) {
-        if(sub_version == FR_SUB_GAME_CODE)
-            dst->deoxys_form = DEOXYS_ATK;
-        if(sub_version == LG_SUB_GAME_CODE)
-            dst->deoxys_form = DEOXYS_DEF;
-    }
+    set_deoxys_form(dst, main_version, sub_version);
     
     make_evs_legal_gen3(evs);
     

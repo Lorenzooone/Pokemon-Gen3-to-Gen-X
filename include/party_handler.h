@@ -443,5 +443,6 @@ void update_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
 void give_pokerus_gen3(struct gen3_mon_data_unenc*);
 u8 would_update_end_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
 void sanitize_ot_name(u8*, u8, u8, u8);
+void set_deoxys_form(struct gen3_mon_data_unenc*, u8, u8);
 
 #endif

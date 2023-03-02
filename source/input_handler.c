@@ -435,8 +435,6 @@ u8 handle_input_learnable_moves_menu(u16 keys, u8* cursor_y_pos) {
 }
 
 u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struct game_identity* game_identifier, u8 is_loaded) {
-    u8 language;
-
     if(keys & KEY_B)
         return EXIT_BASE_SETTINGS;
     
@@ -446,75 +444,99 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 if(is_loaded)
                     *cursor_y_pos = 8;
                 else
-                    *cursor_y_pos = 3;
+                    *cursor_y_pos = 6;
             }
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
-                language = get_sys_language() + 1;
-                if(language >= NUM_LANGUAGES)
-                    language = FIRST_VALID_LANGUAGE;
-                set_sys_language(language);
+                set_sys_language(get_sys_language() + 1);
                 *update = 1;
             }
             else if(keys & KEY_LEFT) {
-                language = get_sys_language();
-                if(!language)
-                    language = FIRST_VALID_LANGUAGE;
-                language -= 1;
-                if(!language)
-                    language = NUM_LANGUAGES - 1;
-                set_sys_language(language);
+                set_sys_language(get_sys_language() - 1);
                 *update = 1;
             }
             break;
         case 1:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
-            else if(keys & KEY_DOWN) {
-                if(is_loaded && has_rtc_events(game_identifier))
-                    *cursor_y_pos += 1;
-                else
-                    *cursor_y_pos += 2;
-            }
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
-                language = get_target_int_language() + 1;
-                if(language >= NUM_LANGUAGES)
-                    language = UNKNOWN_LANGUAGE;
-                if(!language)
-                    language = FIRST_INTERNATIONAL_VALID_LANGUAGE;
-                set_target_int_language(language);
+                set_target_int_language(get_target_int_language() + 1);
                 *update = 1;
             }
             else if(keys & KEY_LEFT) {
-                language = get_target_int_language();
-                if(language >= NUM_LANGUAGES)
-                    language = NUM_LANGUAGES;
-                if(language < FIRST_INTERNATIONAL_VALID_LANGUAGE)
-                    language = FIRST_INTERNATIONAL_VALID_LANGUAGE + 1;
-                language -= 1;
-                if(language < FIRST_INTERNATIONAL_VALID_LANGUAGE)
-                    language = UNKNOWN_LANGUAGE;
-                set_target_int_language(language);
+                set_target_int_language(get_target_int_language() - 1);
                 *update = 1;
             }
             break;
         case 2:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                set_default_conversion_game(get_default_conversion_game() + 1);
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                set_default_conversion_game(get_default_conversion_game() - 1);
+                *update = 1;
+            }
+            break;
+        case 3:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN) {
+                if(is_loaded && has_rtc_events(game_identifier))
+                    *cursor_y_pos += 1;
+                else if(is_loaded && game_identifier->game_sub_version_undetermined)
+                    *cursor_y_pos += 2;
+                else
+                    *cursor_y_pos += 3;
+            }
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_conversion_colo_xd(!get_conversion_colo_xd());
+                *update = 1;
+            }
+            break;
+        case 4:
             if(keys & KEY_A)
                 ;
             else if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
-            else if(keys & KEY_DOWN)
-                *cursor_y_pos += 1;
+            else if(keys & KEY_DOWN) {
+                if(is_loaded && game_identifier->game_sub_version_undetermined)
+                    *cursor_y_pos += 1;
+                else
+                    *cursor_y_pos += 2;
+            }
             break;
-        case 3:
-            if(keys & KEY_A)
-                ;
-            else if(keys & KEY_UP) {
+        case 5:
+            if(keys & KEY_UP) {
                 if(is_loaded && has_rtc_events(game_identifier))
                     *cursor_y_pos -= 1;
                 else
                     *cursor_y_pos -= 2;
+            }
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                change_sub_version(game_identifier);
+                *update = 1;
+            }
+            break;
+        case 6:
+            if(keys & KEY_A)
+                ;
+            else if(keys & KEY_UP) {
+                if(is_loaded && game_identifier->game_sub_version_undetermined)
+                    *cursor_y_pos -= 1;
+                else if(is_loaded && has_rtc_events(game_identifier))
+                    *cursor_y_pos -= 2;
+                else
+                    *cursor_y_pos -= 3;
             }
             else if(keys & KEY_DOWN) {
                 if(is_loaded)
@@ -527,7 +549,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
             if(keys & KEY_A)
                 ;
             else if(keys & KEY_UP)
-                *cursor_y_pos = 3;
+                *cursor_y_pos = 6;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos = 0;
             break;

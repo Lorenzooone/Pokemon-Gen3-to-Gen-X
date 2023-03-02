@@ -951,6 +951,7 @@ int main(void)
                         if(get_is_cartridge_loaded()) {
                             alter_game_data_language(&game_data[0], &game_data_priv);
                             alter_party_data_language(&game_data[0], &game_data_priv.party_2, &game_data_priv.party_1);
+                            alter_game_data_version(&game_data[0]);
                         }
                         main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                     }

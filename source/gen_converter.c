@@ -693,7 +693,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
     // Prepare the TSV
     u16 tsv = (ot_id & 0xFFFF) ^ (ot_id >> 16);
 
-    u8 chosen_version = FR_VERSION_ID;
+    u8 chosen_version = get_default_conversion_game();
     if(!no_restrictions) {
         chosen_version = trainer_game_version;
         ot_gender = trainer_gender;
@@ -718,7 +718,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
             }
             else if(!is_shiny) {
                 // Prefer Colosseum/XD encounter, if possible
-                if(is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+                if(get_conversion_colo_xd() && is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
                     chosen_version = COLOSSEUM_CODE;
                     generate_generic_genderless_shadow_info_xd(wanted_nature, has_prev_check_tsv_in_xd(species), wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                     misc->ribbons |= COLO_RIBBON_VALUE;
@@ -735,7 +735,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
             break;
         case ROAMER_ENCOUNTER:
             // Prefer Colosseum/XD encounter, if possible
-            if(are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+            if(get_conversion_colo_xd() && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
                 chosen_version = COLOSSEUM_CODE;
                 if(!is_shiny)
                     generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
