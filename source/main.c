@@ -947,8 +947,13 @@ int main(void)
                 // TODO: Handle the Settings menu
                 returned_val = handle_input_base_settings_menu(keys, &cursor_y_pos, &update, &game_data[0].game_identifier, get_is_cartridge_loaded());
                 if(returned_val) {
-                    if(returned_val == EXIT_BASE_SETTINGS)
+                    if(returned_val == EXIT_BASE_SETTINGS) {
+                        if(get_is_cartridge_loaded()) {
+                            alter_game_data_language(&game_data[0], &game_data_priv);
+                            alter_party_data_language(&game_data[0], &game_data_priv.party_2, &game_data_priv.party_1);
+                        }
                         main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                    }
                 }
                 else {
                     print_base_settings_menu(&game_data->game_identifier, get_is_cartridge_loaded(), update);

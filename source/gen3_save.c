@@ -363,6 +363,29 @@ void process_party_data(struct game_data_t* game_data, struct gen2_party* party_
     party_1->total = curr_slot;
 }
 
+void alter_party_data_language(struct game_data_t* game_data, struct gen2_party* party_2, struct gen1_party* party_1) {
+    if(game_data->party_3.total > PARTY_SIZE)
+        game_data->party_3.total = PARTY_SIZE;
+    u8 curr_slot_gen2 = 0;
+    u8 curr_slot_gen1 = 0;
+    // Altering the order is strictly prohibited!!!
+    // Saved pointers/indexes would prevent this limitation, but they'd be "extra"
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++) {
+        if(game_data->party_3_undec[i].is_valid_gen3 && game_data->party_3_undec[i].is_valid_gen2 && (curr_slot_gen2 < party_2->total))
+            reconvert_strings_of_gen3_to_gen2(&game_data->party_3_undec[i], &party_2->mons[curr_slot_gen2++]);
+        if(game_data->party_3_undec[i].is_valid_gen3 && game_data->party_3_undec[i].is_valid_gen1 && (curr_slot_gen1 < party_1->total))
+            reconvert_strings_of_gen3_to_gen1(&game_data->party_3_undec[i], &party_1->mons[curr_slot_gen1++]);
+    }
+}
+
+void alter_game_data_language(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
+    if(game_data->game_identifier.language_is_sys) {
+        game_data->game_identifier.language = SYS_LANGUAGE;
+        text_gen3_copy(game_data_priv->trainer_name_raw, game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, OT_NAME_GEN3_MAX_SIZE+1);
+        sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language, 0);
+    }
+}
+
 void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
     if(slot)
         slot = 1;

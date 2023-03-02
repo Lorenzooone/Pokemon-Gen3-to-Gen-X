@@ -455,7 +455,6 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 if(language >= NUM_LANGUAGES)
                     language = FIRST_VALID_LANGUAGE;
                 set_sys_language(language);
-                //TODO: handle game_data_priv->trainer_name_raw... Maybe when we exit the menu?
                 *update = 1;
             }
             else if(keys & KEY_LEFT) {
@@ -466,7 +465,6 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 if(!language)
                     language = NUM_LANGUAGES - 1;
                 set_sys_language(language);
-                //TODO: handle game_data_priv->trainer_name_raw... Maybe when we exit the menu?
                 *update = 1;
             }
             break;
@@ -486,7 +484,6 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 if(!language)
                     language = FIRST_INTERNATIONAL_VALID_LANGUAGE;
                 set_target_int_language(language);
-                //TODO: handle gen1/2 party... Maybe when we exit the menu?
                 *update = 1;
             }
             else if(keys & KEY_LEFT) {
@@ -499,7 +496,6 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 if(language < FIRST_INTERNATIONAL_VALID_LANGUAGE)
                     language = UNKNOWN_LANGUAGE;
                 set_target_int_language(language);
-                //TODO: handle gen1/2 party... Maybe when we exit the menu?
                 *update = 1;
             }
             break;
