@@ -230,17 +230,17 @@ struct gen3_mon_growth {
     u8 pp_bonuses;
     u8 friendship;
     u16 unk;
-};
+} PACKED ALIGNED(4);
 
 struct gen3_mon_attacks {
     u16 moves[MOVES_SIZE];
     u8 pp[MOVES_SIZE];
-};
+} PACKED ALIGNED(4);
 
 struct gen3_mon_evs {
     u8 evs[EVS_TOTAL_GEN3];
     u8 contest[CONTEST_STATS_TOTAL];
-};
+} PACKED ALIGNED(4);
 
 struct gen3_mon_misc {
     u8 pokerus;
@@ -256,7 +256,7 @@ struct gen3_mon_misc {
     u32 ability : 1;
     u32 ribbons : 31;
     u32 obedience : 1;
-};
+} PACKED ALIGNED(4);
 
 struct gen3_mon_data_unenc {
     struct gen3_mon* src;

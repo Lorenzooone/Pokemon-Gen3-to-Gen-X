@@ -79,6 +79,7 @@ const u8* get_validity_keyboard(u8, u8);
 u8 use_special_keyboard(struct gen3_mon_misc*, u8);
 void sanitize_nickname(u8*, u8, u8, u16, u8);
 void set_deoxys_form_inner(struct gen3_mon_data_unenc*, u8, u8);
+u8 decrypt_to_data_unenc(struct gen3_mon*, struct gen3_mon_data_unenc*);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
@@ -953,9 +954,35 @@ void set_deoxys_form(struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_ve
         recalc_stats_gen3(dst, dst->src);
 }
 
+u8 decrypt_to_data_unenc(struct gen3_mon* src, struct gen3_mon_data_unenc* dst) {
+    u32 decryption[ENC_DATA_SIZE>>2];
+
+    // Initial data decryption
+    if(!decrypt_data(src, decryption))
+        return 0;
+
+    u8 index = get_index_key(src->pid);
+
+    struct gen3_mon_growth* tmp_growth = (struct gen3_mon_growth*)&decryption[((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3))>>2];
+    struct gen3_mon_attacks* tmp_attacks = (struct gen3_mon_attacks*)&decryption[((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3))>>2];
+    struct gen3_mon_evs* tmp_evs = (struct gen3_mon_evs*)&decryption[((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3))>>2];
+    struct gen3_mon_misc* tmp_misc = (struct gen3_mon_misc*)&decryption[((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3))>>2];
+
+    for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
+        ((u8*)&dst->growth)[i] = ((u8*)tmp_growth)[i];
+    for(size_t i = 0; i < sizeof(struct gen3_mon_attacks); i++)
+        ((u8*)&dst->attacks)[i] = ((u8*)tmp_attacks)[i];
+    for(size_t i = 0; i < sizeof(struct gen3_mon_evs); i++)
+        ((u8*)&dst->evs)[i] = ((u8*)tmp_evs)[i];
+    for(size_t i = 0; i < sizeof(struct gen3_mon_misc); i++)
+        ((u8*)&dst->misc)[i] = ((u8*)tmp_misc)[i];
+
+    return 1;
+}
+
 void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
     dst->src = src;
-
+    
     // Default roamer values
     dst->can_roamer_fix = 0;
     dst->fix_has_altered_ot = 0;
@@ -963,34 +990,22 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     // Default learnable moves values
     dst->learnable_moves = NULL;
     dst->successfully_decrypted = 0;
-
-    u32 decryption[ENC_DATA_SIZE>>2];
     
     // Initial data decryption
-    if(!decrypt_data(src, decryption)) {
+    if(!decrypt_to_data_unenc(src, dst)) {
         dst->is_valid_gen3 = 0;
         dst->is_valid_gen2 = 0;
         dst->is_valid_gen1 = 0;
         return;
     }
     
-    u8 index = get_index_key(src->pid);
     dst->successfully_decrypted = 1;
     
     // Makes the compiler happy
-    struct gen3_mon_growth* growth = (struct gen3_mon_growth*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 0)&3)));
-    struct gen3_mon_attacks* attacks = (struct gen3_mon_attacks*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 2)&3)));
-    struct gen3_mon_evs* evs = (struct gen3_mon_evs*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 4)&3)));
-    struct gen3_mon_misc* misc = (struct gen3_mon_misc*)(((uintptr_t)decryption)+((ENC_DATA_SIZE>>2)*((enc_positions[index] >> 6)&3)));
-    
-    for(size_t i = 0; i < sizeof(struct gen3_mon_growth); i++)
-        ((u8*)(&dst->growth))[i] = ((u8*)growth)[i];
-    for(size_t i = 0; i < sizeof(struct gen3_mon_attacks); i++)
-        ((u8*)(&dst->attacks))[i] = ((u8*)attacks)[i];
-    for(size_t i = 0; i < sizeof(struct gen3_mon_evs); i++)
-        ((u8*)(&dst->evs))[i] = ((u8*)evs)[i];
-    for(size_t i = 0; i < sizeof(struct gen3_mon_misc); i++)
-        ((u8*)(&dst->misc))[i] = ((u8*)misc)[i];
+    struct gen3_mon_growth* growth = &dst->growth;
+    struct gen3_mon_attacks* attacks = &dst->attacks;
+    struct gen3_mon_evs* evs = &dst->evs;
+    struct gen3_mon_misc* misc = &dst->misc;
     
     // Species checks
     if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0)) {
