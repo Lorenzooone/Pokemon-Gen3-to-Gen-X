@@ -78,6 +78,7 @@ u8 to_valid_level_gen3(struct gen3_mon*);
 const u8* get_validity_keyboard(u8, u8);
 u8 use_special_keyboard(struct gen3_mon_misc*, u8);
 void sanitize_nickname(u8*, u8, u8, u16, u8);
+void set_deoxys_form_inner(struct gen3_mon_data_unenc*, u8, u8);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
@@ -929,7 +930,7 @@ void sanitize_ot_name(u8* ot_name, u8 max_size, u8 language, u8 load_special_key
     limit_name_gen3(ot_name, max_size, name_limit);
 }
 
-void set_deoxys_form(struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
+void set_deoxys_form_inner(struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
     // Display the different Deoxys forms
     dst->deoxys_form = DEOXYS_NORMAL;
     if(main_version == E_MAIN_GAME_CODE)
@@ -939,6 +940,17 @@ void set_deoxys_form(struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_ve
         if(sub_version == LG_SUB_GAME_CODE)
             dst->deoxys_form = DEOXYS_DEF;
     }
+}
+
+void set_deoxys_form(struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
+    if(!dst->is_valid_gen3)
+        return;
+
+    set_deoxys_form_inner(dst, main_version, sub_version);
+
+    // Reclac the stats if needed
+    if(dst->growth.species == DEOXYS_SPECIES)
+        recalc_stats_gen3(dst, dst->src);
 }
 
 void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
@@ -993,7 +1005,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         misc->obedience = 1;
     
     // Display the different Deoxys forms
-    set_deoxys_form(dst, main_version, sub_version);
+    set_deoxys_form_inner(dst, main_version, sub_version);
     
     make_evs_legal_gen3(evs);
     
