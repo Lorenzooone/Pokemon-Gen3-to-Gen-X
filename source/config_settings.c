@@ -10,12 +10,16 @@
 #define DEFAULT_TARGET_INT_LANGUAGE UNKNOWN_LANGUAGE
 #define DEFAULT_CONVERSION_COLO_XD 1
 #define DEFAULT_DEFAULT_CONVERSION_GAME FR_VERSION_ID
+#define DEFAULT_GEN1_EVERSTONE 0
+#define DEFAULT_ALLOW_CROSS_GEN_EVOS 0
 
 static u8 sys_language;
 static u8 target_int_language;
 static u8 conversion_colo_xd;
 static u8 default_conversion_game;
 static u8 default_colours[NUM_COLOURS][NUM_SUB_COLOURS];
+static u8 gen1_everstone;
+static u8 allow_cross_gen_evos;
 
 void set_default_settings() {
     set_sys_language(DEFAULT_SYS_LANGUAGE);
@@ -25,6 +29,8 @@ void set_default_settings() {
     for(size_t i = 0; i < NUM_COLOURS; i++)
         for(size_t j = 0; j < NUM_SUB_COLOURS; j++)
             set_single_colour(i, j, default_colours_bin[(i*NUM_SUB_COLOURS)+j]);
+    set_gen1_everstone(DEFAULT_GEN1_EVERSTONE);
+    set_allow_cross_gen_evos(DEFAULT_ALLOW_CROSS_GEN_EVOS);
 }
 
 void set_sys_language(u8 new_val) {
@@ -60,6 +66,14 @@ void set_default_conversion_game(u8 new_val) {
     if(new_val >= (NUMBER_OF_GAMES+FIRST_VERSION_ID))
         new_val = FIRST_VERSION_ID;
     default_conversion_game = new_val;
+}
+
+void set_gen1_everstone(u8 new_val) {
+    gen1_everstone = new_val;
+}
+
+void set_allow_cross_gen_evos(u8 new_val) {
+    allow_cross_gen_evos = new_val;
 }
 
 void set_single_colour(u8 index, u8 sub_index, u8 new_colour) {
@@ -113,4 +127,12 @@ u8 get_single_colour(u8 index, u8 sub_index) {
     if(sub_index >= NUM_SUB_COLOURS)
         sub_index = 0;
     return default_colours[index][sub_index]&0x1F;
+}
+
+u8 get_gen1_everstone() {
+    return gen1_everstone;
+}
+
+u8 get_allow_cross_gen_evos() {
+    return allow_cross_gen_evos;
 }

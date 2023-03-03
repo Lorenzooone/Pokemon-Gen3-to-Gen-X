@@ -440,12 +440,8 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
     
     switch(*cursor_y_pos) {
         case 0:
-            if(keys & KEY_UP) {
-                if(is_loaded)
-                    *cursor_y_pos = 8;
-                else
-                    *cursor_y_pos = 6;
-            }
+            if(keys & KEY_UP)
+                *cursor_y_pos = 8;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
@@ -488,6 +484,16 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
         case 3:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_conversion_colo_xd(!get_conversion_colo_xd());
+                *update = 1;
+            }
+            break;
+        case 4:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN) {
                 if(is_loaded && has_rtc_events(game_identifier))
                     *cursor_y_pos += 1;
@@ -497,11 +503,11 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                     *cursor_y_pos += 3;
             }
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
-                set_conversion_colo_xd(!get_conversion_colo_xd());
+                set_gen1_everstone(!get_gen1_everstone());
                 *update = 1;
             }
             break;
-        case 4:
+        case 5:
             if(keys & KEY_A)
                 return ENTER_CLOCK_MENU;
             else if(keys & KEY_UP)
@@ -513,7 +519,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                     *cursor_y_pos += 2;
             }
             break;
-        case 5:
+        case 6:
             if(keys & KEY_UP) {
                 if(is_loaded && has_rtc_events(game_identifier))
                     *cursor_y_pos -= 1;
@@ -527,7 +533,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 *update = 1;
             }
             break;
-        case 6:
+        case 7:
             if(keys & KEY_A)
                 return ENTER_COLOUR_MENU;
             else if(keys & KEY_UP) {
@@ -538,18 +544,14 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 else
                     *cursor_y_pos -= 3;
             }
-            else if(keys & KEY_DOWN) {
-                if(is_loaded)
-                    *cursor_y_pos = 8;
-                else
-                    *cursor_y_pos = 0;
-            }
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
             break;
         case 8:
             if(keys & KEY_A)
                 return ENTER_CHEATS_MENU;
             else if(keys & KEY_UP)
-                *cursor_y_pos = 6;
+                *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos = 0;
             break;

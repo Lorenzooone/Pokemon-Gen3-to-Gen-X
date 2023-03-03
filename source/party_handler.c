@@ -52,7 +52,7 @@
 #define INITIAL_MAIL_GEN3 121
 #define LAST_MAIL_GEN3 132
 
-#define ACT_AS_GEN1_TRADE 1
+#define ACT_AS_GEN1_TRADE (!get_gen1_everstone())
 
 #define PID_POSITIONS 24
 
@@ -1130,23 +1130,30 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
     for(int i = 0; i < num_entries; i++)
         if(growth->species == trade_evolutions_base_ids[i])
             if((!trade_evolutions_item_ids[i]) || (growth->item == trade_evolutions_item_ids[i]))
-                if((trade_evolutions_evo_ids[i] <= max_index) && ((ACT_AS_GEN1_TRADE && (curr_gen == 1)) || (growth->item != EVERSTONE_ID))) {
-                    found = 1;
-                    // Load the pre-evo name
-                    mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
-                    // Determine if we're going to change the name
-                    u8 replace_name = 0;
-                    if(text_gen3_is_same(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))
-                        replace_name = 1;
-                    // Evolve
-                    growth->species = trade_evolutions_evo_ids[i];
-                    // Consume the evolution item, if needed
-                    if(growth->item == trade_evolutions_item_ids[i])
-                        growth->item = NO_ITEM_ID;
-                    // Update the name, if needed
-                    if(replace_name)
-                        text_gen3_copy(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language));
-                    break;
+                if(((ACT_AS_GEN1_TRADE && (curr_gen == 1)) || (growth->item != EVERSTONE_ID))) {
+                    u8 found_value = trade_evolutions_evo_ids[i] <= max_index;
+                    if((!found_value) && get_allow_cross_gen_evos()) {
+                        learnsets = (const u16*)learnset_evos_gen3_bin;
+                        found_value = 1;
+                    }
+                    if(found_value) {
+                        found = 1;
+                        // Load the pre-evo name
+                        mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
+                        // Determine if we're going to change the name
+                        u8 replace_name = 0;
+                        if(text_gen3_is_same(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))
+                            replace_name = 1;
+                        // Evolve
+                        growth->species = trade_evolutions_evo_ids[i];
+                        // Consume the evolution item, if needed
+                        if(growth->item == trade_evolutions_item_ids[i])
+                            growth->item = NO_ITEM_ID;
+                        // Update the name, if needed
+                        if(replace_name)
+                            text_gen3_copy(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language));
+                        break;
+                    }
                 }
     
     if(!found)

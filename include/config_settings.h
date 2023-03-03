@@ -19,6 +19,8 @@ void set_sys_language(u8);
 void set_target_int_language(u8);
 void set_conversion_colo_xd(u8);
 void set_default_conversion_game(u8);
+void set_gen1_everstone(u8);
+void set_allow_cross_gen_evos(u8);
 void set_single_colour(u8, u8, u8);
 u8 get_sys_language(void);
 u8 get_target_int_language(void);
@@ -27,5 +29,7 @@ u8 get_conversion_colo_xd(void);
 u8 get_default_conversion_game(void);
 u16 get_full_colour(u8);
 u8 get_single_colour(u8, u8);
+u8 get_gen1_everstone(void);
+u8 get_allow_cross_gen_evos(void);
 
 #endif

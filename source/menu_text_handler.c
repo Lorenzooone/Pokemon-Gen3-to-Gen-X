@@ -346,6 +346,10 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
         PRINT_FUNCTION("  Gen 1/2 to Colo/XD: <True>\n\n");
     else
         PRINT_FUNCTION("  Gen 1/2 to Colo/XD: <False>\n\n");
+    if(get_gen1_everstone())
+        PRINT_FUNCTION("  Gen 1 Everstone: <Enabled>\n\n");
+    else
+        PRINT_FUNCTION("  Gen 1 Everstone: <Disabled>\n\n");
     u8 curr_y = get_text_y();
     if(is_loaded) {
         if(has_rtc_events(game_identifier))
@@ -353,9 +357,6 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
         set_text_y(curr_y+2);
         if(game_identifier->game_sub_version_undetermined)
             PRINT_FUNCTION("  Game Loaded: <\x01>\n\n", game_strings[id_to_version(game_identifier)]);
-        
-        set_text_y(Y_LIMIT-3);
-        PRINT_FUNCTION("  Cheats");
         /*
         //change_time_of_day(game_data);
         //enable_rtc_reset(&game_data->clock_events);
@@ -373,6 +374,9 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
 
     set_text_y(curr_y+4);
     PRINT_FUNCTION("  Color Settings");
+
+    set_text_y(Y_LIMIT-3);
+    PRINT_FUNCTION("  Cheats");
 
     print_bottom_info();
 }
