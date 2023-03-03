@@ -74,7 +74,7 @@ void convert_strings_of_gen3_generic(struct gen3_mon*, u16, u8*, u8*, u8, u8, u8
 void convert_strings_of_gen12(struct gen3_mon*, u8, u8*, u8*, u8, u8);
 void special_convert_strings_distribution(struct gen3_mon*, u16);
 u8 text_handling_gen12_to_gen3(struct gen3_mon*, u16, u16, u8, u8*, u8*, u8, u8);
-void set_language_gen12_to_gen3(struct gen3_mon*, u16, u8, u8);
+void set_language_gen12_to_gen3(struct gen3_mon*, u16, u8, u8*, u8);
 void sanitize_ot_name_gen3_to_gen12(u8*, u8*, u8, u8);
 void sanitize_ot_name_gen12_to_gen3(u8*, u8*, u8);
 
@@ -1214,20 +1214,33 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     return 1;
 }
 
-void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8 is_jp) {
-    // TODO: Maybe detect the language, if not set in the settings...?
+void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8* nickname, u8 is_jp) {
+    u8 gen2_buffer[STRING_GEN2_MAX_SIZE];
+    u8 int_language = get_filtered_target_int_language();
+
+    if((!is_jp) && (get_target_int_language() == UNKNOWN_LANGUAGE)) {
+        u32 found_languages = 0;
+        for(size_t i = FIRST_INTERNATIONAL_VALID_LANGUAGE; i < NUM_LANGUAGES; i++)
+            if(text_gen2_is_same(nickname, get_pokemon_name_gen2(species, is_egg, i, gen2_buffer), STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP))
+                found_languages |= 1<<i;
+        if(found_languages && (!(found_languages & (1<<int_language))))
+            for(size_t i = FIRST_INTERNATIONAL_VALID_LANGUAGE; i < NUM_LANGUAGES; i++)
+                if(found_languages & (1<<i)) {
+                    int_language = i;
+                    break;
+                }
+    }
 
     if(is_jp)
         dst->language = JAPANESE_LANGUAGE;
     else
-        dst->language = get_filtered_target_int_language();
+        dst->language = int_language;
 
     if((species == MEW_SPECIES) || (species == CELEBI_SPECIES)) {
-        // TODO: Allow undistributed events...?
-        if(1 || is_jp)
+        if((!get_allow_undistributed_events()) || is_jp)
             dst->language = JAPANESE_LANGUAGE;
         else
-            dst->language = get_filtered_target_int_language();
+            dst->language = int_language;
     }
 
     if(is_egg)
@@ -1236,7 +1249,7 @@ void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8
 
 u8 text_handling_gen12_to_gen3(struct gen3_mon* dst, u16 species, u16 swapped_ot_id, u8 is_egg, u8* ot_name, u8* nickname, u8 is_jp, u8 no_restrictions) {
     // Handle language
-    set_language_gen12_to_gen3(dst, species, is_egg, is_jp);
+    set_language_gen12_to_gen3(dst, species, is_egg, nickname, is_jp);
 
     // Specially handle Celebi's event
     if((species == CELEBI_SPECIES) && (!is_egg)) {

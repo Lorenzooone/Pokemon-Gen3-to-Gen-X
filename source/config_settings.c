@@ -13,6 +13,8 @@
 #define DEFAULT_GEN1_EVERSTONE 0
 #define DEFAULT_ALLOW_CROSS_GEN_EVOS 0
 #define DEFAULT_EVOLVE_WITHOUT_TRADE 0
+#define DEFAULT_ALLOW_UNDISTRIBUTED_EVENTS 0
+#define DEFAULT_FAST_HATCH_EGGS 0
 
 static u8 sys_language;
 static u8 target_int_language;
@@ -22,6 +24,8 @@ static u8 default_colours[NUM_COLOURS][NUM_SUB_COLOURS];
 static u8 gen1_everstone;
 static u8 allow_cross_gen_evos;
 static u8 evolve_without_trade;
+static u8 allow_undistributed_events;
+static u8 fast_hatch_eggs;
 
 void set_default_settings() {
     set_sys_language(DEFAULT_SYS_LANGUAGE);
@@ -34,6 +38,8 @@ void set_default_settings() {
     set_gen1_everstone(DEFAULT_GEN1_EVERSTONE);
     set_allow_cross_gen_evos(DEFAULT_ALLOW_CROSS_GEN_EVOS);
     set_evolve_without_trade(DEFAULT_EVOLVE_WITHOUT_TRADE);
+    set_allow_undistributed_events(DEFAULT_ALLOW_UNDISTRIBUTED_EVENTS);
+    set_fast_hatch_eggs(DEFAULT_FAST_HATCH_EGGS);
 }
 
 void set_sys_language(u8 new_val) {
@@ -81,6 +87,14 @@ void set_allow_cross_gen_evos(u8 new_val) {
 
 void set_evolve_without_trade(u8 new_val) {
     evolve_without_trade = new_val;
+}
+
+void set_allow_undistributed_events(u8 new_val) {
+    allow_undistributed_events = new_val;
+}
+
+void set_fast_hatch_eggs(u8 new_val) {
+    fast_hatch_eggs = new_val;
 }
 
 void set_single_colour(u8 index, u8 sub_index, u8 new_colour) {
@@ -146,4 +160,12 @@ u8 get_allow_cross_gen_evos() {
 
 u8 get_evolve_without_trade() {
     return evolve_without_trade;
+}
+
+u8 get_allow_undistributed_events() {
+    return allow_undistributed_events;
+}
+
+u8 get_fast_hatch_eggs() {
+    return fast_hatch_eggs;
 }
