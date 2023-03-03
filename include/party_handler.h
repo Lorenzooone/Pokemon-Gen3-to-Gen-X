@@ -71,6 +71,8 @@
 #define BULBASAUR_SPECIES 1
 #define NIDORAN_F_SPECIES 29
 #define NIDORAN_M_SPECIES 32
+#define KADABRA_SPECIES 64
+#define ALAKAZAM_SPECIES 65
 #define MR_MIME_SPECIES 122
 #define ARTICUNO_SPECIES 144
 #define ZAPDOS_SPECIES 145
@@ -204,24 +206,43 @@ struct mail_gen3 {
     u16 species;
     u16 item;
     u16 unk;
-} PACKED;
+} PACKED ALIGNED(4);
 
 struct special_met_data_gen2 {
     u8 location;
     u8 level;
-};
+} PACKED ALIGNED(1);
+
+struct special_met_data_gen3 {
+    u8 origin_game : 4;
+    u8 obedience : 1;
+    u8 unused : 3;
+    u8 location;
+    u8 level : 7;
+    u8 unused_2 : 1;
+} PACKED ALIGNED(1);
+
+struct mon_general_met_data_gen3 {
+    u8 num_entries;
+    struct special_met_data_gen3 met_data_entries[];
+} PACKED ALIGNED(1);
+
+struct learnset_data_mon_moves {
+    u16 num_moves;
+    u16 moves[];
+} PACKED ALIGNED(2);
 
 struct exp_level {
     u32 exp_kind[6];
-};
+} PACKED ALIGNED(1);
 
 struct stats_gen_23 {
     u8 stats[GEN2_STATS_TOTAL];
-};
+} PACKED ALIGNED(1);
 
 struct stats_gen_1 {
     u8 stats[GEN1_STATS_TOTAL];
-};
+} PACKED ALIGNED(1);
 
 struct gen3_mon_growth {
     u16 species;
@@ -273,7 +294,7 @@ struct gen3_mon_data_unenc {
     u8 fix_has_altered_ot : 1;
     u8 successfully_decrypted : 1;
     const u8* pre_evo_string;
-    const u16* learnable_moves;
+    const struct learnset_data_mon_moves* learnable_moves;
     struct alternative_data_gen3 alter_nature;
     struct alternative_data_gen3 fixed_ivs;
     u32 comm_pid;

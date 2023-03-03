@@ -80,6 +80,7 @@ u8 use_special_keyboard(struct gen3_mon_misc*, u8);
 void sanitize_nickname(u8*, u8, u8, u16, u8);
 void set_deoxys_form_inner(struct gen3_mon_data_unenc*, u8, u8);
 u8 decrypt_to_data_unenc(struct gen3_mon*, struct gen3_mon_data_unenc*);
+const struct learnset_data_mon_moves* extract_learnable_moves(const u16*, u16, u8);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
@@ -1001,11 +1002,14 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     dst->successfully_decrypted = 1;
     
-    // Makes the compiler happy
     struct gen3_mon_growth* growth = &dst->growth;
     struct gen3_mon_attacks* attacks = &dst->attacks;
     struct gen3_mon_evs* evs = &dst->evs;
     struct gen3_mon_misc* misc = &dst->misc;
+    
+    // Evolution testing
+    //if(growth->species == ALAKAZAM_SPECIES)
+    //    growth->species = KADABRA_SPECIES;
     
     // Species checks
     if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0)) {
@@ -1155,21 +1159,28 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
     recalc_stats_gen3(mon_data, mon);
     
     // Find if the mon should learn new moves
-    const u16* found_learnset = get_learnset_for_species(learnsets, growth->species);
-    if(found_learnset != NULL) {
-        u16 base_pos = 0;
-        u16 num_levels = found_learnset[base_pos++];
-        for(int j = 0; j < num_levels; j++) {
-            u16 level = found_learnset[base_pos++];
-            if(level == mon->level) {
-                mon_data->learnable_moves = &found_learnset[base_pos];
-                break;
-            }
-            base_pos += found_learnset[base_pos] + 1;
-        }
-    }
+    const struct learnset_data_mon_moves* found_learnset = extract_learnable_moves(learnsets, growth->species, mon->level);
+    if(found_learnset != NULL)
+        mon_data->learnable_moves = found_learnset;
 
     return 1;
+}
+
+const struct learnset_data_mon_moves* extract_learnable_moves(const u16* gen_learnsets, u16 species, u8 level) {
+    // Find if the mon should learn new moves
+    const u16* found_learnset = get_learnset_for_species(gen_learnsets, species);
+    if(found_learnset == NULL) 
+        return NULL;
+    u16 num_levels = found_learnset[0];
+    const u16* level_learnsets = found_learnset+1;
+    for(int j = 0; j < num_levels; j++) {
+        u16 moves_level = level_learnsets[0];
+        if(moves_level == level)
+            return (const struct learnset_data_mon_moves*)(level_learnsets+1);
+        u16 num_moves = level_learnsets[1];
+        level_learnsets += num_moves + 2;
+    }
+    return NULL;
 }
 
 enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc* mon, u32 index) {
@@ -1178,13 +1189,13 @@ enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc* mon, u
         return COMPLETED;
     }
     
-    u16 num_moves = mon->learnable_moves[0];
+    u16 num_moves = mon->learnable_moves->num_moves;
     if(index >= num_moves) {
         place_and_encrypt_gen3_data(mon, mon->src);
         return COMPLETED;
     }
     
-    u16 move = mon->learnable_moves[1+index];
+    u16 move = mon->learnable_moves->moves[index];
     
     if(!is_move_valid(move, LAST_VALID_GEN_3_MOVE))
         return SKIPPED;
@@ -1216,14 +1227,14 @@ u8 forget_and_learn_move(struct gen3_mon_data_unenc* mon, u32 index, u32 forget_
     if(mon->learnable_moves == NULL)
         return 0;
     
-    u16 num_moves = mon->learnable_moves[0];
+    u16 num_moves = mon->learnable_moves->num_moves;
     if(index >= num_moves)
         return 0;
     
     if(forget_index >= MOVES_SIZE)
         return 0;
     
-    u16 move = mon->learnable_moves[1+index];
+    u16 move = mon->learnable_moves->moves[index];
 
     if(!is_move_valid(move, LAST_VALID_GEN_3_MOVE))
         return 0;

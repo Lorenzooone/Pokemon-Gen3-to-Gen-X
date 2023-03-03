@@ -723,7 +723,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
                     generate_generic_genderless_shadow_info_xd(wanted_nature, has_prev_check_tsv_in_xd(species), wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                     misc->ribbons |= COLO_RIBBON_VALUE;
                     is_ability_set = 1;
-                    data_dst->learnable_moves = get_learnset_for_species((const u16*)learnset_static_xd_bin, species);
+                    data_dst->learnable_moves = (const struct learnset_data_mon_moves*)get_learnset_for_species((const u16*)learnset_static_xd_bin, species);
                 }
                 else
                     generate_static_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
@@ -778,17 +778,17 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
     
     if(find_in_table) {
         u16 mon_index = get_mon_index(species, dst->pid, 0, 0);
-        const u8* possible_met_data = search_table_for_index(searchable_table, mon_index);
+        const struct mon_general_met_data_gen3* possible_met_data = (const struct mon_general_met_data_gen3*)search_table_for_index(searchable_table, mon_index);
         if(possible_met_data != NULL) {
-            u8 num_elems = possible_met_data[0];
+            u8 num_elems = possible_met_data->num_entries;
             u8 chosen_entry = 0;
             for(int i = 0; i < num_elems; i++)
-                if((possible_met_data[1+(3*i)]&0xF) == chosen_version)
+                if((possible_met_data->met_data_entries[i].origin_game) == chosen_version)
                     chosen_entry = i;
-            chosen_version = possible_met_data[1+(3*chosen_entry)] & 0xF;
-            obedience = (possible_met_data[1+(3*chosen_entry)] >> 4) & 1;
-            met_location = possible_met_data[2+(3*chosen_entry)];
-            met_level = possible_met_data[3+(3*chosen_entry)] & 0x7F;
+            chosen_version = possible_met_data->met_data_entries[chosen_entry].origin_game;
+            obedience = possible_met_data->met_data_entries[chosen_entry].obedience;
+            met_location = possible_met_data->met_data_entries[chosen_entry].location;
+            met_level = possible_met_data->met_data_entries[chosen_entry].level;
         }
     }
     

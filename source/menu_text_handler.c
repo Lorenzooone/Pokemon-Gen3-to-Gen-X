@@ -181,7 +181,7 @@ void print_learnable_move(struct gen3_mon_data_unenc* mon, u16 index, enum MOVES
     if(mon->learnable_moves == NULL)
         return;
 
-    u16 move = mon->learnable_moves[1+index];
+    u16 move = mon->learnable_moves->moves[index];
     
     set_text_y(LEARN_MOVE_MESSAGE_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
@@ -407,12 +407,12 @@ void print_evolution_animation_internal(struct gen3_mon_data_unenc* mon, u8 is_s
     set_text_y(EVOLUTION_ANIMATION_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
     if(!is_second_run) {
-        PRINT_FUNCTION("Huh?! \x01\n\n", mon->pre_evo_string);
+        PRINT_FUNCTION("Huh?! \x05\n\n", mon->pre_evo_string, SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
         set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
         PRINT_FUNCTION("is evolving?!");
     }
     else {
-        PRINT_FUNCTION("\x01 evolved\n\n", mon->pre_evo_string);
+        PRINT_FUNCTION("\x05 evolved\n\n", mon->pre_evo_string, SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
         set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
         PRINT_FUNCTION("into \x05!", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
     }
@@ -578,7 +578,7 @@ void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
     if(mon->learnable_moves == NULL)
         return;
 
-    u16 move = mon->learnable_moves[1+index];
+    u16 move = mon->learnable_moves->moves[index];
 
     print_pokemon_base_data(1, mon, BASE_Y_SPRITE_IV_FIX_PAGE, BASE_X_SPRITE_IV_FIX_PAGE);
 
