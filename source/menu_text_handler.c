@@ -30,6 +30,7 @@ void print_pokemon_page4(struct gen3_mon_data_unenc*);
 void print_pokemon_page5(struct gen3_mon_data_unenc*);
 void print_evolution_animation_internal(struct gen3_mon_data_unenc*, u8);
 const u8* get_language_string(u8);
+void print_single_colour_info(u8);
 
 const char* person_strings[] = {"You", "Other"};
 const char* maingame_strings[] = {"RS", "FRLG", "E"};
@@ -45,6 +46,7 @@ const char* contest_strings[] = {"Coolness", "Beauty", "Cuteness", "Smartness", 
 const char* language_strings[NUM_LANGUAGES+1] = {"???", "Japanese", "English", "French", "Italian", "German", "Korean", "Spanish", "Unknown"};
 const char* trade_start_state_strings[] = {"Unknown", "Entering Room", "Starting Trade", "Ending Trade", "Waiting Trade", "Trading Party Data", "Synchronizing", "Completed"};
 const char* offer_strings[] = {"Sending ", "Receiving"};
+const char colours_chars[] = {'R', 'G', 'B'};
 const char* invalid_strings[][PRINTABLE_INVALID_STRINGS] = {{"      TRADE REJECTED!", "The Pok\xE9mon offered by the", "other player has issues!"}, {"      TRADE REJECTED!", "The trade would leave you", "with no usable Pok\xE9mon!"}};
 
 const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
@@ -375,17 +377,38 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     print_bottom_info();
 }
 
+void print_single_colour_info(u8 colour) {
+    for(int i = 0; i < NUM_SUB_COLOURS; i++) {
+        set_text_x((BASE_X_CURSOR_COLOURS_SETTINGS_MENU_IN>>3)+(i*(BASE_X_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU_IN>>3))+2);
+        if(colour < NUM_COLOURS)
+            PRINT_FUNCTION("\x0B", get_single_colour(colour, i), 2);
+        else
+            PRINT_FUNCTION(" \x02", colours_chars[i]);
+    }
+}
+
 void print_colour_settings_menu(u8 update) {
     if(!update)
         return;
 
     default_reset_screen();
-    PRINT_FUNCTION("\n  Colour         R    G    B\n\n");
-    PRINT_FUNCTION("  Background:   \x0B   \x0B   \x0B\n\n", get_single_colour(BACKGROUND_COLOUR_POS, R_SUB_INDEX), 2, get_single_colour(BACKGROUND_COLOUR_POS, G_SUB_INDEX), 2, get_single_colour(BACKGROUND_COLOUR_POS, B_SUB_INDEX), 2);
-    PRINT_FUNCTION("  Font:         \x0B   \x0B   \x0B\n\n", get_single_colour(FONT_COLOUR_POS, R_SUB_INDEX), 2, get_single_colour(FONT_COLOUR_POS, G_SUB_INDEX), 2, get_single_colour(FONT_COLOUR_POS, B_SUB_INDEX), 2);
-    PRINT_FUNCTION("  Window 1:     \x0B   \x0B   \x0B\n\n", get_single_colour(WINDOW_COLOUR_1_POS, R_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_1_POS, G_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_1_POS, B_SUB_INDEX), 2);
-    PRINT_FUNCTION("  Window 2:     \x0B   \x0B   \x0B\n\n", get_single_colour(WINDOW_COLOUR_2_POS, R_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_2_POS, G_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_2_POS, B_SUB_INDEX), 2);
-    PRINT_FUNCTION("  Cursor:       \x0B   \x0B   \x0B\n\n", get_single_colour(SPRITE_COLOUR_POS, R_SUB_INDEX), 2, get_single_colour(SPRITE_COLOUR_POS, G_SUB_INDEX), 2, get_single_colour(SPRITE_COLOUR_POS, B_SUB_INDEX), 2);
+    PRINT_FUNCTION("\n  Colour");
+    print_single_colour_info(NUM_COLOURS);
+    set_text_y(BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3);
+    PRINT_FUNCTION("  Background:");
+    print_single_colour_info(BACKGROUND_COLOUR_POS);
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+(BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3));
+    PRINT_FUNCTION("  Font:");
+    print_single_colour_info(FONT_COLOUR_POS);
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*2));
+    PRINT_FUNCTION("  Window 1:");
+    print_single_colour_info(WINDOW_COLOUR_1_POS);
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*3));
+    PRINT_FUNCTION("  Window 2:");
+    print_single_colour_info(WINDOW_COLOUR_2_POS);
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*4));
+    PRINT_FUNCTION("  Cursor:");
+    print_single_colour_info(SPRITE_COLOUR_POS);
     
     init_colour_window();
     clear_colour_window();
