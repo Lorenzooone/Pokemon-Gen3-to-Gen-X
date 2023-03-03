@@ -56,5 +56,6 @@ void wait_for_vblank_if_needed(void);
 u8 get_bg_priority(u8);
 u8 get_curr_priority(void);
 u8 get_loaded_priority(void);
+void set_text_palettes(void);
 
 #endif

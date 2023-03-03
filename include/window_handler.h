@@ -45,6 +45,12 @@
 #define WAITING_WINDOW_X ((TOTAL_X_SIZE>>1)-((WAITING_WINDOW_X_SIZE+1)>>1))
 #define WAITING_WINDOW_Y ((TOTAL_Y_SIZE>>1)-((WAITING_WINDOW_Y_SIZE+1)>>1))
 
+#define COLOURS_WINDOW_SCREEN 0
+#define COLOURS_WINDOW_X 1
+#define COLOURS_WINDOW_Y_SIZE 3
+#define COLOURS_WINDOW_Y (TOTAL_Y_SIZE-1-1-COLOURS_WINDOW_Y_SIZE)
+#define COLOURS_WINDOW_X_SIZE (TOTAL_X_SIZE-COLOURS_WINDOW_X-1)
+
 #define CRASH_WINDOW_SCREEN 3
 #define CRASH_WINDOW_X_SIZE 21
 #define CRASH_WINDOW_Y_SIZE 5
@@ -122,6 +128,9 @@ void clear_evolution_animation_window(void);
 
 void init_saving_window(void);
 void clear_saving_window(void);
+
+void init_colour_window(void);
+void clear_colour_window(void);
 
 void init_loading_window(void);
 void clear_loading_window(void);

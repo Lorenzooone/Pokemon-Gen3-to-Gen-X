@@ -9,7 +9,11 @@
 #define CANCEL_IV_FIX 0xFF
 #define DENIED_LEARNING 0xFF
 #define EXIT_BASE_SETTINGS 0xFF
+#define EXIT_COLOURS_SETTINGS 0xFF
 #define DO_NOT_FORGET_MOVE 0xFF
+#define ENTER_COLOUR_MENU 1
+#define ENTER_CLOCK_MENU 2
+#define ENTER_CHEATS_MENU 3
 #define ENTER_LEARN_MENU 1
 #define CONFIRM_IV_FIX 1
 #define CANCEL_NATURE 0xFF
@@ -41,5 +45,6 @@ u8 handle_input_base_settings_menu(u16, u8*, u8*, struct game_identity*, u8);
 u8 handle_input_offer_options(u16, u8*, u8*);
 u8 handle_input_swap_cartridge_menu(u16);
 u8 handle_input_trade_setup(u16, u8);
+u8 handle_input_colours_menu(u16, u8*, u8*, u8*);
 
 #endif

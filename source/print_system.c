@@ -6,17 +6,13 @@
 #include "graphics_handler.h"
 #include "sprite_handler.h"
 #include "useful_qualifiers.h"
+#include "config_settings.h"
 #include <stddef.h>
 
 #include "text_gen3_to_general_int_bin.h"
 #include "amiga_font_c_bin.h"
 #include "jp_font_c_bin.h"
 #include "window_graphics_bin.h"
-
-#define BASE_COLOUR RGB8(58,110,165)
-#define FONT_COLOUR RGB5(31,31,31)
-#define WINDOW_COLOUR_1 RGB5(15,15,15)
-#define WINDOW_COLOUR_2 RGB5(28,28,28)
 
 #define VRAM_SIZE 0x10000
 #define VRAM_END (VRAM+VRAM_SIZE)
@@ -140,6 +136,15 @@ void init_numbers() {
                     numbers_storage[l + (k*10) + (j*100) + (i*1000)] = l | (k<<4) | (j<<8) | (i<<12);
 }
 
+void set_text_palettes() {
+    BG_COLORS[0]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_COLORS[(PALETTE*PALETTE_SIZE)]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_COLORS[(PALETTE*PALETTE_SIZE)+1]=get_full_colour(FONT_COLOUR_POS);
+	BG_COLORS[(PALETTE*PALETTE_SIZE)+2]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_COLORS[(PALETTE*PALETTE_SIZE)+3]=get_full_colour(WINDOW_COLOUR_1_POS);
+	BG_COLORS[(PALETTE*PALETTE_SIZE)+4]=get_full_colour(WINDOW_COLOUR_2_POS);
+}
+
 void init_text_system() {
     REG_DISPCNT = 0;
     screens_flush = 0;
@@ -150,12 +155,7 @@ void init_text_system() {
         set_arrangements(i);
         set_bg_pos(i, 0, 0);
     }
-    BG_COLORS[0]=BASE_COLOUR;
-	BG_COLORS[(PALETTE*PALETTE_SIZE)]=BASE_COLOUR;
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+1]=FONT_COLOUR;
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+2]=BASE_COLOUR;
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+3]=WINDOW_COLOUR_1;
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+4]=WINDOW_COLOUR_2;
+    set_text_palettes();
     set_screen(0);
     
     // This is for the first frame

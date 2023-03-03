@@ -2,6 +2,7 @@
 #include "sprite_handler.h"
 #include "graphics_handler.h"
 #include "print_system.h"
+#include "config_settings.h"
 #include <stddef.h>
 
 #include "sprite_cursor_bin.h"
@@ -19,6 +20,7 @@
 #define SPRITE_TILE_SIZE (SPRITE_BASE_SIZE_MULTIPLIER*SPRITE_BASE_TILE_SIZE)
 #define SPRITE_ALT_DISTANCE (SPRITE_BASE_TILE_SIZE*TILE_SIZE)
 
+#define CURSOR_SPRITE_PALETTE_INDEX 9
 #define SPRITE_SIZE (SPRITE_BASE_SIZE_MULTIPLIER*SPRITE_ALT_DISTANCE)
 #define OVRAM_START ((uintptr_t)OBJ_BASE_ADR)
 #define OVRAM_SIZE 0x8000
@@ -160,7 +162,7 @@ void init_cursor(){
             vram_pos[j] = sprite_cursor_gfx[j];
     }
     for(int i = 0; i < TOTAL_BG; i++) {
-        set_attributes(OFF_SCREEN_SPRITE, 0, (SPRITE_TILE_SIZE*__sprite_counter) | ((3-i)<<10));
+        set_attributes(OFF_SCREEN_SPRITE, 0, (SPRITE_TILE_SIZE*__sprite_counter) | ((3-i)<<10) | ((sprite_palettes_bin_size>>5)<<12));
         if(i < TOTAL_BG-1)
             inc_inner_sprite_counter();
     }
@@ -170,11 +172,16 @@ void init_cursor(){
     inc_sprite_counter();
 }
 
+void set_cursor_palette() {
+    SPRITE_PALETTE[(sprite_palettes_bin_size>>1)+CURSOR_SPRITE_PALETTE_INDEX] = get_full_colour(SPRITE_COLOUR_POS);
+}
+
 void init_oam_palette(){
     for(size_t i = 0; i < (sprite_palettes_bin_size>>1); i++)
         SPRITE_PALETTE[i] = sprite_palettes_bin_16[i];
     for(size_t i = 0; i < (item_icon_palette_bin_size>>1); i++)
         SPRITE_PALETTE[i+(sprite_palettes_bin_size>>1)] = item_icon_palette_bin_16[i];
+    set_cursor_palette();
 }
 
 void init_item_icon(){

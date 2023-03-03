@@ -56,6 +56,7 @@ void cursor_update_main_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
 void cursor_update_base_settings_menu(u8);
+void cursor_update_colours_settings_menu(u8, u8);
 void handle_learnable_moves_message(struct game_data_t*, u8, u8*, u32*, enum MOVES_PRINTING_TYPE);
 void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8, u8*);
@@ -79,6 +80,7 @@ void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
 void base_settings_menu_init(struct game_data_t*, u8*);
+void colours_settings_menu_init(u8*, u8*);
 void learnable_moves_message_init(struct game_data_t*, u8);
 void learnable_move_menu_init(struct game_data_t*, u8, u8, u8*);
 void conclude_trade(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
@@ -90,7 +92,7 @@ void crash_on_bad_trade(void);
 void wait_frames(int);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -214,6 +216,14 @@ void cursor_update_offer_options(u8 cursor_y_pos, u8 cursor_x_pos) {
 
 void cursor_update_base_settings_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_BASE_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_BASE_SETTINGS_MENU * cursor_y_pos));
+}
+
+void cursor_update_colours_settings_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
+    if(!cursor_x_pos)
+        update_cursor_base_x(BASE_X_CURSOR_COLOURS_SETTINGS_MENU);
+    else
+        update_cursor_base_x(BASE_X_CURSOR_COLOURS_SETTINGS_MENU_IN + ((cursor_x_pos-1) * BASE_X_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU_IN));
+    update_cursor_y(BASE_Y_CURSOR_COLOURS_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU * cursor_y_pos));
 }
 
 void wait_frames(int num_frames) {
@@ -523,6 +533,19 @@ void base_settings_menu_init(struct game_data_t* game_data, u8* cursor_y_pos) {
     prepare_flush();
 }
 
+void colours_settings_menu_init(u8* cursor_y_pos, u8* cursor_x_pos) {
+    curr_state = COLOURS_SETTINGS_MENU;
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    print_colour_settings_menu(1);
+    enable_screen(BASE_SCREEN);
+    *cursor_y_pos = 0;
+    *cursor_x_pos = 0;
+    cursor_update_colours_settings_menu(*cursor_y_pos, *cursor_x_pos);
+    prepare_flush();
+}
+
 void conclude_trade(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
     stop_transfer(master);
     main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
@@ -594,8 +617,8 @@ int main(void)
     counter = 0;
     input_counter = 0;
     find_optimal_ewram_settings();
-    init_text_system();
     set_default_settings();
+    init_text_system();
     init_enc_positions();
     init_rng(0,0);
     init_save_data();
@@ -947,7 +970,13 @@ int main(void)
                 // TODO: Handle the Settings menu
                 returned_val = handle_input_base_settings_menu(keys, &cursor_y_pos, &update, &game_data[0].game_identifier, get_is_cartridge_loaded());
                 if(returned_val) {
-                    if(returned_val == EXIT_BASE_SETTINGS) {
+                    if(returned_val == ENTER_COLOUR_MENU)
+                        colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
+                    else if(returned_val == ENTER_CLOCK_MENU)
+                        colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
+                    else if(returned_val == ENTER_CHEATS_MENU)
+                        colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
+                    else if(returned_val == EXIT_BASE_SETTINGS) {
                         if(get_is_cartridge_loaded()) {
                             alter_game_data_language(&game_data[0], &game_data_priv);
                             alter_party_data_language(&game_data[0], &game_data_priv.party_2, &game_data_priv.party_1);
@@ -959,6 +988,20 @@ int main(void)
                 else {
                     print_base_settings_menu(&game_data->game_identifier, get_is_cartridge_loaded(), update);
                     cursor_update_base_settings_menu(cursor_y_pos);
+                }
+                break;
+            case COLOURS_SETTINGS_MENU:
+                returned_val = handle_input_colours_menu(keys, &cursor_y_pos, &cursor_x_pos, &update);
+                if(returned_val)
+                    base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                else {
+                    if(update) {
+                        VBlankIntrWait();
+                        set_text_palettes();
+                        set_cursor_palette();
+                    }
+                    print_colour_settings_menu(update);
+                    cursor_update_colours_settings_menu(cursor_y_pos, cursor_x_pos);
                 }
                 break;
             case SWAP_CARTRIDGE_MENU:

@@ -375,6 +375,29 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     print_bottom_info();
 }
 
+void print_colour_settings_menu(u8 update) {
+    if(!update)
+        return;
+
+    default_reset_screen();
+    PRINT_FUNCTION("\n  Colour         R    G    B\n\n");
+    PRINT_FUNCTION("  Background:   \x0B   \x0B   \x0B\n\n", get_single_colour(BACKGROUND_COLOUR_POS, R_SUB_INDEX), 2, get_single_colour(BACKGROUND_COLOUR_POS, G_SUB_INDEX), 2, get_single_colour(BACKGROUND_COLOUR_POS, B_SUB_INDEX), 2);
+    PRINT_FUNCTION("  Font:         \x0B   \x0B   \x0B\n\n", get_single_colour(FONT_COLOUR_POS, R_SUB_INDEX), 2, get_single_colour(FONT_COLOUR_POS, G_SUB_INDEX), 2, get_single_colour(FONT_COLOUR_POS, B_SUB_INDEX), 2);
+    PRINT_FUNCTION("  Window 1:     \x0B   \x0B   \x0B\n\n", get_single_colour(WINDOW_COLOUR_1_POS, R_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_1_POS, G_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_1_POS, B_SUB_INDEX), 2);
+    PRINT_FUNCTION("  Window 2:     \x0B   \x0B   \x0B\n\n", get_single_colour(WINDOW_COLOUR_2_POS, R_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_2_POS, G_SUB_INDEX), 2, get_single_colour(WINDOW_COLOUR_2_POS, B_SUB_INDEX), 2);
+    PRINT_FUNCTION("  Cursor:       \x0B   \x0B   \x0B\n\n", get_single_colour(SPRITE_COLOUR_POS, R_SUB_INDEX), 2, get_single_colour(SPRITE_COLOUR_POS, G_SUB_INDEX), 2, get_single_colour(SPRITE_COLOUR_POS, B_SUB_INDEX), 2);
+    
+    init_colour_window();
+    clear_colour_window();
+    
+    set_text_y(COLOURS_WINDOW_Y+(COLOURS_WINDOW_Y_SIZE>>1));
+    set_text_x(COLOURS_WINDOW_X+(COLOURS_WINDOW_X_SIZE>>1)-((11+1)>>1));
+    PRINT_FUNCTION("Test Window");
+
+    print_bottom_info();
+    PRINT_FUNCTION(" - UP/DOWN: Change");
+}
+
 void print_trade_options(u8 cursor_x_pos, u8 own_menu){
     reset_screen(BLANK_FILL);
     init_trade_options_window();

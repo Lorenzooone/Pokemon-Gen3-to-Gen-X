@@ -48,6 +48,12 @@
 #define BASE_Y_CURSOR_BASE_SETTINGS_MENU 8
 #define BASE_Y_CURSOR_INCREMENT_BASE_SETTINGS_MENU 16
 
+#define BASE_X_CURSOR_COLOURS_SETTINGS_MENU 2
+#define BASE_X_CURSOR_COLOURS_SETTINGS_MENU_IN (2+112)
+#define BASE_X_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU_IN 40
+#define BASE_Y_CURSOR_COLOURS_SETTINGS_MENU 24
+#define BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU 16
+
 #define BASE_X_CURSOR_TRADE_OPTIONS 2
 #define BASE_X_CURSOR_INCREMENT_TRADE_OPTIONS (SCREEN_HALF_X<<3)
 #define BASE_Y_CURSOR_TRADE_OPTIONS (TRADE_OPTIONS_WINDOW_Y<<3)
@@ -92,5 +98,6 @@ void reset_sprites_to_cursor(u8);
 void reset_sprites_to_party(void);
 void fade_all_sprites_to_white(u16);
 void remove_fade_all_sprites(void);
+void set_cursor_palette(void);
 
 #endif

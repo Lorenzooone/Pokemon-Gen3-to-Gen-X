@@ -503,7 +503,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
             break;
         case 4:
             if(keys & KEY_A)
-                ;
+                return ENTER_CLOCK_MENU;
             else if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN) {
@@ -529,7 +529,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
             break;
         case 6:
             if(keys & KEY_A)
-                ;
+                return ENTER_COLOUR_MENU;
             else if(keys & KEY_UP) {
                 if(is_loaded && game_identifier->game_sub_version_undetermined)
                     *cursor_y_pos -= 1;
@@ -547,7 +547,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
             break;
         case 8:
             if(keys & KEY_A)
-                ;
+                return ENTER_CHEATS_MENU;
             else if(keys & KEY_UP)
                 *cursor_y_pos = 6;
             else if(keys & KEY_DOWN)
@@ -557,6 +557,49 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
             *cursor_y_pos = 0;
     }
 
+    return 0;
+}
+
+u8 handle_input_colours_menu(u16 keys, u8* cursor_y_pos, u8* cursor_x_pos, u8* update) {
+    
+    if((keys & KEY_B) && (!(*cursor_x_pos)))
+        return EXIT_COLOURS_SETTINGS;
+
+    if(keys & KEY_B)
+        *cursor_x_pos = 0;
+    else if(keys & KEY_A) {
+        if(!(*cursor_x_pos))
+            *cursor_x_pos += 1;
+        else {
+            set_single_colour(*cursor_y_pos, (*cursor_x_pos)-1, get_single_colour(*cursor_y_pos, (*cursor_x_pos)-1)+1);
+            *update = 1;
+        }
+    }
+    else if((keys & KEY_LEFT) && (*cursor_x_pos))
+        *cursor_x_pos -= 1;
+    else if((keys & KEY_RIGHT) && ((*cursor_x_pos) < NUM_SUB_COLOURS))
+        *cursor_x_pos += 1;
+    else if((keys & KEY_UP) && (*cursor_x_pos)) {
+        set_single_colour(*cursor_y_pos, (*cursor_x_pos)-1, get_single_colour(*cursor_y_pos, (*cursor_x_pos)-1) + 1);
+        *update = 1;
+    }
+    else if((keys & KEY_DOWN) && (*cursor_x_pos)) {
+        set_single_colour(*cursor_y_pos, (*cursor_x_pos)-1, get_single_colour(*cursor_y_pos, (*cursor_x_pos)-1) - 1);
+        *update = 1;
+    }
+    else if(keys & KEY_UP) {
+        if(*cursor_y_pos)
+            *cursor_y_pos -= 1;
+        else
+            *cursor_y_pos = NUM_COLOURS-1;
+    }
+    else if(keys & KEY_DOWN) {
+        if((*cursor_y_pos) >= (NUM_COLOURS-1))
+            *cursor_y_pos = 0;
+        else
+            *cursor_y_pos += 1;
+    }
+    
     return 0;
 }
 

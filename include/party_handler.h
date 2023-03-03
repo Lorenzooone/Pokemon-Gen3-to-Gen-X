@@ -234,7 +234,7 @@ struct learnset_data_mon_moves {
 
 struct exp_level {
     u32 exp_kind[6];
-} PACKED ALIGNED(1);
+} PACKED ALIGNED(4);
 
 struct stats_gen_23 {
     u8 stats[GEN2_STATS_TOTAL];

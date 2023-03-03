@@ -34,5 +34,6 @@ void print_offer_screen(struct game_data_t*, u8, u8);
 void print_base_settings_menu(struct game_identity*, u8, u8);
 void print_offer_options_screen(struct game_data_t*, u8, u8);
 void print_trade_options(u8, u8);
+void print_colour_settings_menu(u8);
 
 #endif
