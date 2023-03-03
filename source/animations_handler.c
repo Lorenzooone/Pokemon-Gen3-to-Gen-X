@@ -39,6 +39,20 @@ u8 curr_fade_val;
 enum EVOLUTION_ANIMATION_STATE {START, FADE_IN, REVERSE_FADE_IN, END};
 enum EVOLUTION_ANIMATION_STATE curr_evolution_animation_state;
 
+void start_with_evolution_animation() {
+    animation_counter = WAIT_TRADE_END-1;
+}
+
+void prepare_evolution_animation_only(struct gen3_mon_data_unenc* own_mon) {
+    sprite_indexes[OTHER_SPRITE_INDEX] = get_next_sprite_index();
+    sprite_ys[OTHER_SPRITE_INDEX] = BASE_Y_SPRITE_TRADE_ANIMATION_SEND;
+    load_pokemon_sprite_raw(own_mon, 0, BASE_Y_SPRITE_TRADE_ANIMATION_SEND, BASE_X_SPRITE_TRADE_ANIMATION);
+    animation_counter = 0;
+    animation_completed = 0;
+    animate_evolution = 0;
+    is_animating_evolution = 0;
+}
+
 void setup_evolution_animation(struct gen3_mon_data_unenc* own_mon, u8 evo_screen) {
     sprite_indexes[EVOLUTION_SPRITE_INDEX] = get_next_sprite_index();
     screen_nums[EVOLUTION_SPRITE_INDEX] = evo_screen;
@@ -89,7 +103,7 @@ void advance_evolution_animation() {
                 if(curr_fade_val == EVO_FADES_NUM) {
                     curr_evolution_animation_state = REVERSE_FADE_IN;
                     raw_update_sprite_y(sprite_indexes[EVOLUTION_SPRITE_INDEX], sprite_ys[OTHER_SPRITE_INDEX]);
-                    raw_update_sprite_y(sprite_indexes[OTHER_SPRITE_INDEX], sprite_ys[OWN_SPRITE_INDEX]);
+                    raw_update_sprite_y(sprite_indexes[OTHER_SPRITE_INDEX], BASE_Y_SPRITE_TRADE_ANIMATION_RECV);
                 }
                 else
                     fade_all_sprites_to_white(curr_fade_val + FADE_VAL_BASE);

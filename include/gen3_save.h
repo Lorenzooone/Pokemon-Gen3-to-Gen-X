@@ -51,6 +51,7 @@ enum TRADE_POSSIBILITY {FULL_TRADE_POSSIBLE, PARTIAL_TRADE_POSSIBLE, TRADE_IMPOS
 
 void init_game_data(struct game_data_t*);
 void init_save_data(void);
+void increase_game_stat(u32*, u32);
 u8 has_cartridge_been_removed(void);
 u8 get_is_cartridge_loaded(void);
 enum TRADE_POSSIBILITY can_trade(struct game_data_priv_t*, u8);

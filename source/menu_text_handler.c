@@ -20,7 +20,7 @@
 #define PRINTABLE_INVALID_STRINGS 3
 
 void print_basic_alter_conf_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
-void print_pokemon_base_data(u8, struct gen3_mon_data_unenc*, u8, u8);
+void print_pokemon_base_data(u8, struct gen3_mon_data_unenc*, u8, u8, u8);
 void print_pokemon_base_info(u8, struct gen3_mon_data_unenc*, u8);
 void print_bottom_info(void);
 void print_pokemon_page1(struct gen3_mon_data_unenc*);
@@ -33,10 +33,12 @@ const u8* get_language_string(u8);
 void print_single_colour_info(u8);
 
 const char* person_strings[] = {"You", "Other"};
+#if ENABLE_PRINT_GAME_INFO
 const char* maingame_strings[] = {"RS", "FRLG", "E"};
 const char* unidentified_string = "Unidentified";
 const char* subgame_rs_strings[] = {"R", "S"};
 const char* subgame_frlg_strings[] = {"FR", "LG"};
+#endif
 const char* game_strings[] = {"???", "Sapphire", "Ruby", "Emerald", "Fire Red", "Leaf Green"};
 const char* actor_strings[] = {"Master", "Slave"};
 const char* region_strings[] = {"Int", "Jap"};
@@ -53,6 +55,7 @@ const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xF
 typedef void (*print_info_functions_t)(struct gen3_mon_data_unenc*);
 print_info_functions_t print_info_functions[PAGES_TOTAL] = {print_pokemon_page1, print_pokemon_page2, print_pokemon_page3, print_pokemon_page4, print_pokemon_page5};
 
+#if ENABLE_PRINT_GAME_INFO
 void print_game_info(struct game_data_t* game_data, int index) {
     default_reset_screen();
     PRINT_FUNCTION("\n Game: ");
@@ -74,6 +77,7 @@ void print_game_info(struct game_data_t* game_data, int index) {
     }
     PRINT_FUNCTION("\x01\n", chosen_str);
 }
+#endif
 
 void print_crash(enum CRASH_REASONS reason) {
     reset_screen(BLANK_FILL);
@@ -425,7 +429,7 @@ void print_colour_settings_menu(u8 update) {
     PRINT_FUNCTION(" - UP/DOWN: Change");
 }
 
-void print_trade_options(u8 cursor_x_pos, u8 own_menu){
+void print_trade_options(u8 cursor_x_pos, u8 own_menu, u8 evolution){
     reset_screen(BLANK_FILL);
     init_trade_options_window();
     clear_trade_options_window();
@@ -433,7 +437,9 @@ void print_trade_options(u8 cursor_x_pos, u8 own_menu){
     set_text_x(TRADE_OPTIONS_WINDOW_X);
     PRINT_FUNCTION("  Summary");
     set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
-    if(own_menu)
+    if(own_menu && evolution)
+        PRINT_FUNCTION("  Evolve");
+    else if(own_menu)
         PRINT_FUNCTION("  Fix IV");
     else if(cursor_x_pos)
         PRINT_FUNCTION("  Set Nature");
@@ -578,7 +584,7 @@ void print_set_nature(u8 load_sprites, struct gen3_mon_data_unenc* mon) {
         return;
     }
 
-    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_NATURE_PAGE, BASE_X_SPRITE_NATURE_PAGE);
+    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_NATURE_PAGE, BASE_X_SPRITE_NATURE_PAGE, 1);
 
     print_basic_alter_conf_data(mon, &mon->alter_nature);
     
@@ -597,7 +603,7 @@ void print_iv_fix(struct gen3_mon_data_unenc* mon) {
         return;
     }
 
-    print_pokemon_base_data(1, mon, BASE_Y_SPRITE_IV_FIX_PAGE, BASE_X_SPRITE_IV_FIX_PAGE);
+    print_pokemon_base_data(1, mon, BASE_Y_SPRITE_IV_FIX_PAGE, BASE_X_SPRITE_IV_FIX_PAGE, 1);
     u16 species = mon->growth.species;
 
     print_basic_alter_conf_data(mon, &mon->fixed_ivs);
@@ -630,7 +636,7 @@ void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
 
     u16 move = mon->learnable_moves->moves[index];
 
-    print_pokemon_base_data(1, mon, BASE_Y_SPRITE_IV_FIX_PAGE, BASE_X_SPRITE_IV_FIX_PAGE);
+    print_pokemon_base_data(1, mon, BASE_Y_SPRITE_LEARN_MOVE_PAGE, BASE_X_SPRITE_LEARN_MOVE_PAGE, 1);
 
     u8 base_x = 0;
     u8 base_y = get_text_y() + 1;
@@ -664,7 +670,88 @@ void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
     PRINT_FUNCTION("NEW");
 }
 
-void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 y, u8 x) {
+void print_evolution_window(struct gen3_mon_data_unenc* mon) {
+    u8 useless = 0;
+    reset_screen(BLANK_FILL);
+
+    if((!mon->is_valid_gen3) || (mon->is_egg))
+        return;
+
+    u16 num_species = can_own_menu_evolve(mon);
+    if(!num_species)
+        return;
+
+    init_evolution_window(num_species);
+    clear_evolution_window(num_species);
+
+    set_text_y(EVOLUTION_WINDOW_Y-(EVOLUTION_WINDOW_Y_SIZE_INCREMENT*num_species));
+    set_text_x(EVOLUTION_WINDOW_X);
+    PRINT_FUNCTION("Evolve into:\n\n");
+    for(size_t i = 0; i < num_species; i++) {
+        u16 new_species = get_own_menu_evolution_species(mon, i, &useless);
+        set_text_x(EVOLUTION_WINDOW_X);
+        if(new_species && (new_species <= LAST_VALID_GEN_3_MON))
+            PRINT_FUNCTION("  \x05\n\n", get_pokemon_name_pure(new_species, 0, SYS_LANGUAGE), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+    }
+}
+
+void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen, u8 update) {
+    if(!update)
+        return;
+
+    u8 old_screen = get_screen_num();
+    set_screen(screen);
+    default_reset_screen();
+
+    if((!mon->is_valid_gen3) || (mon->is_egg))
+        return;
+
+    u8 needs_levelup = 0;
+    u16 old_species = mon->growth.species;
+    u16 new_species = get_own_menu_evolution_species(mon, index, &needs_levelup);
+    mon->src->level = to_valid_level_gen3(mon->src);
+    u8 old_level = mon->src->level;
+    if((!new_species) || (new_species > LAST_VALID_GEN_3_MON))
+        return;
+    
+    if(needs_levelup)
+        mon->src->level += 1;
+    if(mon->src->level > MAX_LEVEL)
+        mon->src->level = MAX_LEVEL;
+    mon->growth.species = new_species;
+
+    print_pokemon_base_data(1, mon, BASE_Y_SPRITE_EVOLUTION_PAGE, BASE_X_SPRITE_EVOLUTION_PAGE, 0);
+
+    u8 base_x = 0;
+    u8 base_y = get_text_y() + 1;
+    set_text_y(base_y);
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+        set_text_x(base_x);
+        PRINT_FUNCTION("\x11: \x09\x02\n", stat_strings[i], 3, calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
+        if(i == ((GEN2_STATS_TOTAL-1)>>1)) {
+            set_text_y(base_y);
+            base_x += X_LIMIT>>1;
+        }
+    }
+    PRINT_FUNCTION("Ability: \x01", get_ability_name_raw(mon));
+    PRINT_FUNCTION("\nHidden Power: \x01 \x03\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    if(needs_levelup)
+        PRINT_FUNCTION("Level: from \x03 to \x03\n", old_level, mon->src->level);
+    else
+        PRINT_FUNCTION("\n");
+    PRINT_FUNCTION("MOVES\n\n");
+    for(size_t i = 0; i < MOVES_SIZE; i++)
+        PRINT_FUNCTION("\x01\n\n", get_move_name_gen3(&mon->attacks, i));
+
+    set_text_y(Y_LIMIT-1);
+    PRINT_FUNCTION("A: Confirm - B: Go Back");
+
+    mon->growth.species = old_species;
+    mon->src->level = old_level;
+    set_screen(old_screen);
+}
+
+void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 y, u8 x, u8 print_nickname) {
     u8 is_shiny = is_shiny_gen3_raw(mon, 0);
     u8 has_pokerus = has_pokerus_gen3_raw(mon);
     u8 language = get_valid_language(mon->src->language);
@@ -679,7 +766,9 @@ void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     set_text_x((x>>3) + POKEMON_SPRITE_X_TILES);
     
     if(!is_egg) {
-        PRINT_FUNCTION("\x05 - \x05 \x02\n", mon->src->nickname, GET_LANGUAGE_NICKNAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language), get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE, get_pokemon_gender_char_raw(mon));
+        if(print_nickname)
+            PRINT_FUNCTION("\x05 - ", mon->src->nickname, GET_LANGUAGE_NICKNAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language));
+        PRINT_FUNCTION("\x05 \x02\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE, get_pokemon_gender_char_raw(mon));
     
         set_text_x((x>>3) + POKEMON_SPRITE_X_TILES);
         
@@ -718,7 +807,7 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     if(page < page_total)
         PRINT_FUNCTION(">");
     
-    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE);
+    print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE, 1);
 }
 
 void print_bottom_info(){

@@ -44,6 +44,8 @@
 #define SAVED_GAME_STAT_NUM 0
 #define NUM_TRADES_STAT_NUM 21
 
+#define GAME_STAT_LIMIT 0xFFFFFF
+
 #define RSE_PARTY 0x234
 #define FRLG_PARTY 0x34
 
@@ -326,6 +328,13 @@ u32 get_stat_save(u8 slot, int section, u8 game_id, u16 stat_num) {
 void set_stat_save(u8* buffer_8, u8 game_id, u16 stat_num, u32 value) {
     for(size_t j = 0; j < sizeof(u32); j++)
         buffer_8[game_stats_pos[game_id] + (stat_num<<2) + j] = (value >> (8*j)) & 0xFF;
+}
+
+void increase_game_stat(u32* game_stat, u32 increase) {
+    if((*game_stat) < GAME_STAT_LIMIT)
+        *game_stat += increase;
+    if((*game_stat) > GAME_STAT_LIMIT)
+        *game_stat = GAME_STAT_LIMIT;
 }
 
 void process_party_data(struct game_data_t* game_data, struct gen2_party* party_2, struct gen1_party* party_1) {

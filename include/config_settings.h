@@ -22,6 +22,7 @@ void set_default_conversion_game(u8);
 void set_gen1_everstone(u8);
 void set_allow_cross_gen_evos(u8);
 void set_single_colour(u8, u8, u8);
+void set_evolve_without_trade(u8);
 u8 get_sys_language(void);
 u8 get_target_int_language(void);
 u8 get_filtered_target_int_language(void);
@@ -31,5 +32,6 @@ u16 get_full_colour(u8);
 u8 get_single_colour(u8, u8);
 u8 get_gen1_everstone(void);
 u8 get_allow_cross_gen_evos(void);
+u8 get_evolve_without_trade(void);
 
 #endif

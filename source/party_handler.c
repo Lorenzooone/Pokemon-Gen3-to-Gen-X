@@ -47,6 +47,7 @@
 #include "pokemon_moves_pp_bin.h"
 #include "trainer_names_bin.h"
 #include "trainer_names_celebi_bin.h"
+#include "special_evolutions_bin.h"
 
 #define UNOWN_B_START 415
 #define INITIAL_MAIL_GEN3 121
@@ -81,6 +82,9 @@ void sanitize_nickname(u8*, u8, u8, u16, u8);
 void set_deoxys_form_inner(struct gen3_mon_data_unenc*, u8, u8);
 u8 decrypt_to_data_unenc(struct gen3_mon*, struct gen3_mon_data_unenc*);
 const struct learnset_data_mon_moves* extract_learnable_moves(const u16*, u16, u8);
+const u16* get_special_evolutions(u16);
+u16 get_trade_evolution(u16, u16, u8, u8*, u8*);
+void evolve_mon(struct gen3_mon*, struct gen3_mon_data_unenc*, u16, u8, const u16*);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
@@ -1008,6 +1012,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     struct gen3_mon_misc* misc = &dst->misc;
     
     // Evolution testing
+    //if((growth->species == ESPEON_SPECIES) || (growth->species == UMBREON_SPECIES))
+    //    growth->species = EEVEE_SPECIES;
     //if(growth->species == ALAKAZAM_SPECIES)
     //    growth->species = KADABRA_SPECIES;
     
@@ -1066,7 +1072,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     
     src->level = to_valid_level_gen3(src);
     
-    growth->exp = get_proper_exp_raw(dst);
+    growth->exp = get_proper_exp(src, growth, dst->is_egg, dst->deoxys_form);
     
     // Fix Nincada evolving to Shedinja in a Japanese game
     if((!dst->is_egg) && (growth->species == SHEDINJA_SPECIES))
@@ -1102,62 +1108,21 @@ void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){
     mon->mail_id = GEN3_NO_MAIL;
 }
 
-u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 curr_gen) {
-    const u16* learnsets = (const u16*)learnset_evos_gen3_bin;
-    const u16* trade_evolutions = (const u16*)trade_evolutions_bin;
-    u16 num_entries = trade_evolutions[0];
-    const u16* trade_evolutions_base_ids = trade_evolutions+1;
-    const u16* trade_evolutions_item_ids = trade_evolutions+1+num_entries;
-    const u16* trade_evolutions_evo_ids = trade_evolutions+1+(2*num_entries);
-
-    u16 max_index = LAST_VALID_GEN_3_MON;
-    if(curr_gen == 1) {
-        learnsets = (const u16*)learnset_evos_gen1_bin;
-        max_index = LAST_VALID_GEN_1_MON;
-    }
-    if(curr_gen == 2) {
-        learnsets = (const u16*)learnset_evos_gen2_bin;
-        max_index = LAST_VALID_GEN_2_MON;
-    }
-    
-    if((!mon_data->is_valid_gen3) || mon_data->is_egg)
-        return 0;
-    
-    struct gen3_mon_growth* growth = &mon_data->growth;
-    
-    u8 found = 0;
-    
-    for(int i = 0; i < num_entries; i++)
-        if(growth->species == trade_evolutions_base_ids[i])
-            if((!trade_evolutions_item_ids[i]) || (growth->item == trade_evolutions_item_ids[i]))
-                if(((ACT_AS_GEN1_TRADE && (curr_gen == 1)) || (growth->item != EVERSTONE_ID))) {
-                    u8 found_value = trade_evolutions_evo_ids[i] <= max_index;
-                    if((!found_value) && get_allow_cross_gen_evos()) {
-                        learnsets = (const u16*)learnset_evos_gen3_bin;
-                        found_value = 1;
-                    }
-                    if(found_value) {
-                        found = 1;
-                        // Load the pre-evo name
-                        mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
-                        // Determine if we're going to change the name
-                        u8 replace_name = 0;
-                        if(text_gen3_is_same(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))
-                            replace_name = 1;
-                        // Evolve
-                        growth->species = trade_evolutions_evo_ids[i];
-                        // Consume the evolution item, if needed
-                        if(growth->item == trade_evolutions_item_ids[i])
-                            growth->item = NO_ITEM_ID;
-                        // Update the name, if needed
-                        if(replace_name)
-                            text_gen3_copy(get_pokemon_name_pure(growth->species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language));
-                        break;
-                    }
-                }
-    
-    if(!found)
-        return 0;
+void evolve_mon(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u16 evolved_species, u8 consume_item, const u16* learnsets) {
+    // Load the pre-evo name
+    mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
+    // Determine if we're going to change the name
+    u8 replace_name = 0;
+    if(text_gen3_is_same(get_pokemon_name_pure(mon_data->growth.species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))
+        replace_name = 1;
+    // Evolve
+    mon_data->growth.species = evolved_species;
+    // Consume the evolution item, if needed
+    if(consume_item)
+        mon_data->growth.item = NO_ITEM_ID;
+    // Update the name, if needed
+    if(replace_name)
+        text_gen3_copy(get_pokemon_name_pure(mon_data->growth.species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language));
     
     // Update growth
     place_and_encrypt_gen3_data(mon_data, mon);
@@ -1166,9 +1131,157 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
     recalc_stats_gen3(mon_data, mon);
     
     // Find if the mon should learn new moves
-    const struct learnset_data_mon_moves* found_learnset = extract_learnable_moves(learnsets, growth->species, mon->level);
+    const struct learnset_data_mon_moves* found_learnset = extract_learnable_moves(learnsets, mon_data->growth.species, mon->level);
     if(found_learnset != NULL)
         mon_data->learnable_moves = found_learnset;
+}
+
+const u16* get_special_evolutions(u16 species) {
+    const u16* special_evolutions = (const u16*)special_evolutions_bin;
+    u16 num_entries = special_evolutions[0];
+    for(size_t i = 0; i < num_entries; i++) {
+        size_t pos = special_evolutions[1+i]>>1;
+        if(special_evolutions[pos] == species)
+            return &special_evolutions[pos+1];
+    }
+    return NULL;
+}
+
+u8 own_menu_evolve(struct gen3_mon_data_unenc* mon_data, u8 index) {
+    const u16* learnsets = (const u16*)learnset_evos_gen3_bin;
+
+    if((!mon_data->is_valid_gen3) || mon_data->is_egg)
+        return 0;
+
+    const u16* special_evolutions = get_special_evolutions(mon_data->growth.species);
+
+    mon_data->growth.friendship = BASE_FRIENDSHIP;
+
+    if(!special_evolutions) {
+        if(get_evolve_without_trade())
+            return trade_evolve(mon_data->src, mon_data, 3);
+        else
+            return 0;
+    }
+
+    u16 num_evos = special_evolutions[0];
+
+    if(index >= num_evos)
+        return 0;
+
+    u16 evolved_species = special_evolutions[1+index];
+
+    if((!evolved_species) || (evolved_species > LAST_VALID_GEN_3_MON))
+        return 0;
+
+    mon_data->src->level = to_valid_level_gen3(mon_data->src);
+    mon_data->src->level += 1;
+    if(mon_data->src->level >= MAX_LEVEL)
+        mon_data->src->level = MAX_LEVEL;
+    mon_data->growth.exp = get_proper_exp_raw(mon_data);
+    // The actual evolution logic
+    evolve_mon(mon_data->src, mon_data, evolved_species, 0, learnsets);
+
+    return 1;
+}
+
+u16 get_own_menu_evolution_species(struct gen3_mon_data_unenc* mon_data, u8 index, u8* is_special) {
+    u8 useless = 0;
+    *is_special = 0;
+
+    if((!mon_data->is_valid_gen3) || mon_data->is_egg)
+        return 0;
+
+    const u16* special_evolutions = get_special_evolutions(mon_data->growth.species);
+
+    if(!special_evolutions) {
+        if(get_evolve_without_trade())
+            return get_trade_evolution(mon_data->growth.species, mon_data->growth.item, 3, &useless, &useless);
+        else
+            return 0;
+    }
+
+    u16 num_evos = special_evolutions[0];
+
+    if(index >= num_evos)
+        return 0;
+
+    u16 evolved_species = special_evolutions[1+index];
+
+    if((!evolved_species) || (evolved_species > LAST_VALID_GEN_3_MON))
+        evolved_species = 0;
+
+    *is_special = 1;
+    return evolved_species;
+}
+
+u16 can_own_menu_evolve(struct gen3_mon_data_unenc* mon_data) {
+    u8 useless = 0;
+
+    if((!mon_data->is_valid_gen3) || mon_data->is_egg)
+        return 0;
+
+    const u16* special_evolutions = get_special_evolutions(mon_data->growth.species);
+    if(special_evolutions)
+        return special_evolutions[0];
+
+    if(get_evolve_without_trade() && get_trade_evolution(mon_data->growth.species, mon_data->growth.item, 3, &useless, &useless))
+        return 1;
+
+    return 0;
+}
+
+u16 get_trade_evolution(u16 species, u16 item, u8 curr_gen, u8* consume_item, u8* cross_gen_evo) {
+    const u16* trade_evolutions = (const u16*)trade_evolutions_bin;
+    u16 num_entries = trade_evolutions[0];
+    const u16* trade_evolutions_base_ids = trade_evolutions+1;
+    const u16* trade_evolutions_item_ids = trade_evolutions+1+num_entries;
+    const u16* trade_evolutions_evo_ids = trade_evolutions+1+(2*num_entries);
+    u16 max_index = LAST_VALID_GEN_3_MON;
+    if(curr_gen == 1)
+        max_index = LAST_VALID_GEN_1_MON;
+    if(curr_gen == 2)
+        max_index = LAST_VALID_GEN_2_MON;
+    *consume_item = 0;
+    *cross_gen_evo = 0;
+    for(int i = 0; i < num_entries; i++)
+        if(species == trade_evolutions_base_ids[i])
+            if((!trade_evolutions_item_ids[i]) || (item == trade_evolutions_item_ids[i]))
+                if(((ACT_AS_GEN1_TRADE && (curr_gen == 1)) || (item != EVERSTONE_ID)))
+                    if((trade_evolutions_evo_ids[i] <= max_index) || get_allow_cross_gen_evos()) {
+                        if(trade_evolutions_item_ids[i])
+                            *consume_item = 1;
+                        if(trade_evolutions_evo_ids[i] > max_index)
+                            *cross_gen_evo = 1;
+                        return trade_evolutions_evo_ids[i];
+                    }
+    return 0;
+}
+
+u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 curr_gen) {
+    const u16* learnsets = (const u16*)learnset_evos_gen3_bin;
+
+    if(curr_gen == 1)
+        learnsets = (const u16*)learnset_evos_gen1_bin;
+    if(curr_gen == 2)
+        learnsets = (const u16*)learnset_evos_gen2_bin;
+    
+    if((!mon_data->is_valid_gen3) || mon_data->is_egg)
+        return 0;
+    
+    u8 consume_item = 0;
+    u8 cross_gen_evo = 0;
+    
+    u16 evolved_species = get_trade_evolution(mon_data->growth.species, mon_data->growth.item, curr_gen, &consume_item, &cross_gen_evo);
+    
+    if((!evolved_species) || (evolved_species > LAST_VALID_GEN_3_MON))
+        return 0;
+    
+    if(cross_gen_evo)
+        learnsets = (const u16*)learnset_evos_gen3_bin;
+    
+    // The actual evolution logic
+    evolve_mon(mon, mon_data, evolved_species, consume_item, learnsets);
 
     return 1;
 }

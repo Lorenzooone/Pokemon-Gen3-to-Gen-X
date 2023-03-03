@@ -51,6 +51,13 @@
 #define COLOURS_WINDOW_Y (TOTAL_Y_SIZE-1-1-COLOURS_WINDOW_Y_SIZE)
 #define COLOURS_WINDOW_X_SIZE (TOTAL_X_SIZE-COLOURS_WINDOW_X-1)
 
+#define EVOLUTION_WINDOW_SCREEN 3
+#define EVOLUTION_WINDOW_Y_SIZE 1
+#define EVOLUTION_WINDOW_Y_SIZE_INCREMENT 2
+#define EVOLUTION_WINDOW_X_SIZE (NICKNAME_GEN3_MAX_SIZE+2)
+#define EVOLUTION_WINDOW_X (TOTAL_X_SIZE-1-EVOLUTION_WINDOW_X_SIZE)
+#define EVOLUTION_WINDOW_Y (TOTAL_Y_SIZE-1-1-EVOLUTION_WINDOW_Y_SIZE)
+
 #define CRASH_WINDOW_SCREEN 3
 #define CRASH_WINDOW_X_SIZE 21
 #define CRASH_WINDOW_Y_SIZE 5
@@ -110,6 +117,9 @@ void clear_offer_options_window(void);
 
 void init_waiting_window(s8);
 void clear_waiting_window(s8);
+
+void init_evolution_window(u8);
+void clear_evolution_window(u8);
 
 void init_crash_window(void);
 void clear_crash_window(void);

@@ -44,6 +44,7 @@
 #define INFO_SCREEN 3
 #define NATURE_SCREEN 2
 #define IV_FIX_SCREEN 2
+#define EVOLUTION_MENU_SCREEN 2
 
 void vblank_update_function(void);
 void find_optimal_ewram_settings(void);
@@ -57,6 +58,7 @@ void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
 void cursor_update_base_settings_menu(u8);
 void cursor_update_colours_settings_menu(u8, u8);
+void cursor_update_evolutions_menu(u8, u16);
 void handle_learnable_moves_message(struct game_data_t*, u8, u8*, u32*, enum MOVES_PRINTING_TYPE);
 void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8, u8*);
@@ -64,7 +66,7 @@ void trade_cancel_print_screen(u8);
 void saving_print_screen(void);
 void loading_print_screen(void);
 void rejected_print_screen(u8);
-void trading_animation_init(struct game_data_t*, u8, u8);
+void trading_animation_init(struct game_data_t*, u8, u8, u8);
 void evolution_animation_init(struct game_data_t*, u8);
 void offer_init(struct game_data_t*, u8, u8, u8*, u8*, u8);
 void waiting_init(s8);
@@ -72,7 +74,7 @@ void invalid_init(u8);
 void waiting_offer_init(u8, u8);
 void waiting_accept_init(u8);
 void waiting_success_init(void);
-void trade_options_init(u8, u8*, u8);
+void trade_options_init(u8, u8*, u8, u8);
 void trade_menu_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8, u8*, u8*);
 void start_trade_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8*);
 void main_menu_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
@@ -83,6 +85,7 @@ void base_settings_menu_init(struct game_data_t*, u8*);
 void colours_settings_menu_init(u8*, u8*);
 void learnable_moves_message_init(struct game_data_t*, u8);
 void learnable_move_menu_init(struct game_data_t*, u8, u8, u8*);
+void evolution_menu_init(struct game_data_t*, u8, u8, u8*, u16);
 void conclude_trade(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
 void return_to_trade_menu(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8, u8*, u8*);
 void prepare_crash_screen(enum CRASH_REASONS);
@@ -90,9 +93,10 @@ void crash_on_cartridge_removed(void);
 void crash_on_bad_save(u8, u8);
 void crash_on_bad_trade(void);
 void wait_frames(int);
+void complete_save_menu(struct game_data_t*, struct game_data_priv_t*, u8, u8);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -218,6 +222,10 @@ void cursor_update_base_settings_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_BASE_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_BASE_SETTINGS_MENU * cursor_y_pos));
 }
 
+void cursor_update_evolutions_menu(u8 cursor_y_pos, u16 num_evolutions) {
+    update_cursor_y(BASE_Y_CURSOR_EVOLUTIONS_MENU - ((num_evolutions-1)*(EVOLUTION_WINDOW_Y_SIZE_INCREMENT<<3)) + (BASE_Y_CURSOR_INCREMENT_EVOLUTIONS_MENU * cursor_y_pos));
+}
+
 void cursor_update_colours_settings_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
     if(!cursor_x_pos)
         update_cursor_base_x(BASE_X_CURSOR_COLOURS_SETTINGS_MENU);
@@ -320,21 +328,26 @@ void loading_print_screen() {
     prepare_flush();
 }
 
-void trading_animation_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon) {
+void trading_animation_init(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8 print_messages) {
     set_screen(BASE_SCREEN);
     reset_sprites_to_party();
     disable_all_screens_but_current();
     disable_all_cursors();
     disable_all_sprites();
     default_reset_screen();
-    set_screen(TRADE_ANIMATION_SEND_WINDOW_SCREEN);
-    print_trade_animation_send(&game_data[0].party_3_undec[own_mon]);
-    set_screen(TRADE_ANIMATION_RECV_WINDOW_SCREEN);
-    print_trade_animation_recv(&game_data[1].party_3_undec[other_mon]);
+    if(print_messages) {
+        set_screen(TRADE_ANIMATION_SEND_WINDOW_SCREEN);
+        print_trade_animation_send(&game_data[0].party_3_undec[own_mon]);
+        set_screen(TRADE_ANIMATION_RECV_WINDOW_SCREEN);
+        print_trade_animation_recv(&game_data[1].party_3_undec[other_mon]);
+        enable_screen(TRADE_ANIMATION_SEND_WINDOW_SCREEN);
+    }
     set_screen(BASE_SCREEN);
     enable_screen(BASE_SCREEN);
-    enable_screen(TRADE_ANIMATION_SEND_WINDOW_SCREEN);
-    setup_trade_animation(&game_data[0].party_3_undec[own_mon], &game_data[1].party_3_undec[other_mon], TRADE_ANIMATION_SEND_WINDOW_SCREEN, TRADE_ANIMATION_RECV_WINDOW_SCREEN);
+    if(print_messages)
+        setup_trade_animation(&game_data[0].party_3_undec[own_mon], &game_data[1].party_3_undec[other_mon], TRADE_ANIMATION_SEND_WINDOW_SCREEN, TRADE_ANIMATION_RECV_WINDOW_SCREEN);
+    else
+        prepare_evolution_animation_only(&game_data[0].party_3_undec[own_mon]);
     prepare_flush();
 }
 
@@ -403,10 +416,10 @@ void waiting_success_init() {
     try_to_success();
 }
 
-void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos, u8 own_menu) {
+void trade_options_init(u8 cursor_x_pos, u8* submenu_cursor_x_pos, u8 own_menu, u8 evolve) {
     curr_state = TRADE_OPTIONS;
     set_screen(TRADE_OPTIONS_WINDOW_SCREEN);
-    print_trade_options(cursor_x_pos, own_menu);
+    print_trade_options(cursor_x_pos, own_menu, evolve);
     enable_screen(TRADE_OPTIONS_WINDOW_SCREEN);
     *submenu_cursor_x_pos = 0;
     cursor_update_trade_options(*submenu_cursor_x_pos);
@@ -424,6 +437,7 @@ void trade_menu_init(struct game_data_t* game_data, struct game_data_priv_t* gam
     trade_cancel_print_screen(1);
     set_party_sprite_counter();
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
+    enable_screen(BASE_SCREEN);
     check_bad_trade_received(game_data, game_data_priv, target, region, master, curr_gen, own_menu, cursor_y_pos);
     prepare_flush();
 }
@@ -439,6 +453,7 @@ void start_trade_init(struct game_data_t* game_data, struct game_data_priv_t* ga
         disable_all_screens_but_current();
         reset_sprites_to_cursor(1);
         disable_all_cursors();
+        enable_screen(BASE_SCREEN);
         prepare_flush();
         start_transfer(master, curr_gen);
     }
@@ -458,6 +473,7 @@ void main_menu_init(struct game_data_t* game_data, struct game_data_priv_t* game
     *cursor_y_pos = init_cursor_y_pos_main_menu();
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU);
     cursor_update_main_menu(*cursor_y_pos);
+    enable_screen(BASE_SCREEN);
     prepare_flush();
 }
 
@@ -491,6 +507,20 @@ void iv_fix_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mo
     disable_all_sprites();
     print_iv_fix(&game_data[cursor_x_pos].party_3_undec[curr_mon]);
     enable_screen(IV_FIX_SCREEN);
+    prepare_flush();
+}
+
+void evolution_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* cursor_y_pos, u16 num_evolutions) {
+    curr_state = EVOLUTION_MENU;
+    disable_all_sprites();
+    *cursor_y_pos = 0;
+    print_evolution_menu(&game_data[cursor_x_pos].party_3_undec[curr_mon], *cursor_y_pos, EVOLUTION_MENU_SCREEN, 1);
+    enable_screen(EVOLUTION_MENU_SCREEN);
+    set_screen(EVOLUTION_WINDOW_SCREEN);
+    print_evolution_window(&game_data[cursor_x_pos].party_3_undec[curr_mon]);
+    enable_screen(EVOLUTION_WINDOW_SCREEN);
+    update_cursor_base_x(BASE_X_CURSOR_EVOLUTIONS_MENU);
+    cursor_update_evolutions_menu(*cursor_y_pos, num_evolutions);
     prepare_flush();
 }
 
@@ -560,6 +590,7 @@ void return_to_trade_menu(struct game_data_t* game_data, struct game_data_priv_t
     enable_all_sprites();
     trade_cancel_print_screen(1);
     cursor_update_trading_menu(*cursor_y_pos, *cursor_x_pos);
+    enable_screen(BASE_SCREEN);
     check_bad_trade_received(game_data, game_data_priv, target, region, master, curr_gen, own_menu, cursor_y_pos);
     prepare_flush();
 }
@@ -611,6 +642,13 @@ void crash_on_bad_trade() {
         VBlankIntrWait();
 }
 
+void complete_save_menu(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 disable_transfer, u8 master) {
+    u8 success = complete_write_gen_3_data(game_data);
+    if(!success)
+        crash_on_bad_save(disable_transfer, master);
+    process_party_data(game_data, &game_data_priv->party_2, &game_data_priv->party_1);
+}
+
 int main(void)
 {
     curr_state = MAIN_MENU;
@@ -657,6 +695,7 @@ int main(void)
     u8 region = 0;
     u8 master = 0;
     u8 curr_gen = 0;
+    u16 num_evolutions = 0;
     u8 own_menu = 0;
     u8 cursor_y_pos = 0;
     u8 cursor_x_pos = 0;
@@ -725,18 +764,13 @@ int main(void)
                         case RECEIVED_ACCEPT:
                             keys = 0;
                             if(has_accepted_offer()) {
-                                trading_animation_init(game_data, curr_mon, other_mon);
+                                trading_animation_init(game_data, curr_mon, other_mon, 1);
                                 prepare_gen23_success(&game_data[0].party_3_undec[curr_mon], &game_data[1].party_3_undec[other_mon]);
                                 evolved = trade_mons(game_data, &game_data_priv, curr_mon, other_mon, curr_gen);
                                 if(evolved)
                                     evolution_animation_init(game_data, curr_mon);
-                                game_data_priv.num_trades_stat++;
-                                if(game_data_priv.num_trades_stat > 0xFFFFFF)
-                                    game_data_priv.num_trades_stat = 0xFFFFFF;
-                                if(game_data_priv.num_saves_stat < 0xFFFFFF)
-                                    game_data_priv.num_saves_stat--;
-                                if(game_data_priv.num_saves_stat > 0xFFFFFF)
-                                    game_data_priv.num_saves_stat = 0xFFFFFF;
+                                increase_game_stat(&game_data_priv.num_trades_stat, 1);
+                                increase_game_stat(&game_data_priv.num_saves_stat, -1);
                                 curr_state = TRADING_ANIMATION;
                                 learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
                                 success = pre_write_gen_3_data(&game_data[0], &game_data_priv, !learnable_moves);
@@ -755,12 +789,9 @@ int main(void)
                             break;
                         case RECEIVED_SUCCESS:
                             keys = 0;
-                            success = complete_write_gen_3_data(&game_data[0]);
-                            if(!success)
-                                crash_on_bad_save(1, master);
+                            complete_save_menu(&game_data[0], &game_data_priv, 1, master);
                             if(curr_gen == 3)
                                 wait_frames(SWI_DivMod(get_rng() & 0x7FFFFFFF, MAX_RANDOM_WAIT_TIME));
-                            process_party_data(&game_data[0], &game_data_priv.party_2, &game_data_priv.party_1);
                             stop_transfer(master);
                             start_trade_init(&game_data[0], &game_data_priv, target, region, master, curr_gen, &cursor_y_pos);
                             break;
@@ -776,8 +807,13 @@ int main(void)
                             learnable_moves_message_init(game_data, curr_mon);
                             curr_move = 0;
                         }
-                        else
+                        else if(!own_menu)
                             waiting_success_init();
+                        else {
+                            saving_print_screen();
+                            complete_save_menu(&game_data[0], &game_data_priv, 0, master);
+                            main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                        }   
                     }
                     break;
                 case LEARNABLE_MOVES_MESSAGE:
@@ -803,7 +839,13 @@ int main(void)
                                 disable_screen(LEARN_MOVE_MESSAGE_WINDOW_SCREEN);
                                 prepare_flush();
                                 move_go_on = 1;
-                                waiting_success_init();
+                                if(!own_menu)
+                                    waiting_success_init();
+                                else {
+                                    saving_print_screen();
+                                    complete_save_menu(&game_data[0], &game_data_priv, 0, master);
+                                    main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                                }
                                 break;
                             default:
                                 curr_move++;
@@ -858,9 +900,10 @@ int main(void)
                     if(returned_val == CANCEL_TRADING)
                         main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                     else if(returned_val) {
-                        // TODO: Handle Eevee into Umbreon/Espeon
                         if(game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3 && (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg) && game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix)
-                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu);
+                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu, 0);
+                        else if(can_own_menu_evolve(&game_data[cursor_x_pos].party_3_undec[curr_mon]))
+                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu, 1);
                         else
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                     }
@@ -872,7 +915,7 @@ int main(void)
                         if(cursor_x_pos && ((curr_gen ==3) || (!game_data[cursor_x_pos].party_3_undec[curr_mon].is_valid_gen3) || game_data[cursor_x_pos].party_3_undec[curr_mon].is_egg))
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else
-                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu);
+                            trade_options_init(cursor_x_pos, &submenu_cursor_x_pos, own_menu, 0);
                     }
                 }
                 break;
@@ -909,8 +952,13 @@ int main(void)
                         if(!submenu_cursor_x_pos)
                             info_menu_init(game_data, cursor_x_pos, curr_mon, &curr_page, 0);
                         else if(own_menu) {
-                            // TODO: Handle Eevee into Umbreon/Espeon
-                            iv_fix_menu_init(game_data, cursor_x_pos, curr_mon);
+                            if(game_data[cursor_x_pos].party_3_undec[curr_mon].can_roamer_fix)
+                                iv_fix_menu_init(game_data, cursor_x_pos, curr_mon);
+                            else {
+                                num_evolutions = can_own_menu_evolve(&game_data[cursor_x_pos].party_3_undec[curr_mon]);
+                                if(num_evolutions)
+                                    evolution_menu_init(game_data, cursor_x_pos, curr_mon, &submenu_cursor_y_pos, num_evolutions);
+                            }
                         }
                         else if(!cursor_x_pos) {
                             prepare_gen3_offer(&game_data[0].party_3_undec[curr_mon]);
@@ -924,6 +972,32 @@ int main(void)
                     cursor_update_trade_options(submenu_cursor_x_pos);
                 break;
             case WAITING_DATA:
+                break;
+            case EVOLUTION_MENU:
+                returned_val = handle_input_evolution_menu(keys, &submenu_cursor_y_pos, &update, num_evolutions);
+                if(returned_val == CANCEL_NATURE)
+                    return_to_trade_menu(game_data, &game_data_priv, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                else if(returned_val) {
+                    trading_animation_init(game_data, curr_mon, other_mon, 0);
+                    evolved = own_menu_evolve(&game_data[0].party_3_undec[curr_mon], submenu_cursor_y_pos);
+                    if(!evolved)
+                        main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                    else {
+                        evolution_animation_init(game_data, curr_mon);
+                        start_with_evolution_animation();
+                        increase_game_stat(&game_data_priv.num_trades_stat, 2);
+                        increase_game_stat(&game_data_priv.num_saves_stat, -1);
+                        curr_state = TRADING_ANIMATION;
+                        learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
+                        success = pre_write_gen_3_data(&game_data[0], &game_data_priv, !learnable_moves);
+                        if(!success)
+                            crash_on_bad_save(0, master);
+                    }
+                }
+                else {
+                    print_evolution_menu(&game_data[cursor_x_pos].party_3_undec[curr_mon], submenu_cursor_y_pos, EVOLUTION_MENU_SCREEN, 1);
+                    cursor_update_evolutions_menu(submenu_cursor_y_pos, num_evolutions);
+                }
                 break;
             case NATURE_SETTING:
                 returned_val = handle_input_nature_menu(keys);
@@ -955,11 +1029,9 @@ int main(void)
                             if(!cursor_x_pos) {
                                 saving_print_screen();
                                 success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
-                                if(success)
-                                    success = complete_write_gen_3_data(&game_data[0]);
                                 if(!success)
                                     crash_on_bad_save(0, master);
-                                process_party_data(&game_data[0], &game_data_priv.party_2, &game_data_priv.party_1);
+                                complete_save_menu(&game_data[0], &game_data_priv, 0, master);
                             }
                         }
                         return_to_trade_menu(game_data, &game_data_priv, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);

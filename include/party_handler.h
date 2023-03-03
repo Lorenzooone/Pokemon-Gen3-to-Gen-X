@@ -74,10 +74,13 @@
 #define KADABRA_SPECIES 64
 #define ALAKAZAM_SPECIES 65
 #define MR_MIME_SPECIES 122
+#define EEVEE_SPECIES 133
 #define ARTICUNO_SPECIES 144
 #define ZAPDOS_SPECIES 145
 #define MOLTRES_SPECIES 146
 #define MEW_SPECIES 151
+#define ESPEON_SPECIES 196
+#define UMBREON_SPECIES 197
 #define UNOWN_SPECIES 201
 #define RAIKOU_SPECIES 243
 #define ENTEI_SPECIES 244
@@ -465,5 +468,8 @@ void give_pokerus_gen3(struct gen3_mon_data_unenc*);
 u8 would_update_end_pokerus_gen3(struct gen3_mon_data_unenc*, u16);
 void sanitize_ot_name(u8*, u8, u8, u8);
 void set_deoxys_form(struct gen3_mon_data_unenc*, u8, u8);
+u16 can_own_menu_evolve(struct gen3_mon_data_unenc*);
+u8 own_menu_evolve(struct gen3_mon_data_unenc*, u8);
+u16 get_own_menu_evolution_species(struct gen3_mon_data_unenc*, u8, u8*);
 
 #endif

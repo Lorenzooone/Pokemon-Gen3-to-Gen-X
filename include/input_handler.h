@@ -7,6 +7,7 @@
 #define CANCEL_INFO 0xFF
 #define CANCEL_TRADING 0xFF
 #define CANCEL_IV_FIX 0xFF
+#define EXIT_EVOLUTION 0xFF
 #define DENIED_LEARNING 0xFF
 #define EXIT_BASE_SETTINGS 0xFF
 #define EXIT_COLOURS_SETTINGS 0xFF
@@ -46,5 +47,6 @@ u8 handle_input_offer_options(u16, u8*, u8*);
 u8 handle_input_swap_cartridge_menu(u16);
 u8 handle_input_trade_setup(u16, u8);
 u8 handle_input_colours_menu(u16, u8*, u8*, u8*);
+u8 handle_input_evolution_menu(u16, u8*, u8*, u16);
 
 #endif

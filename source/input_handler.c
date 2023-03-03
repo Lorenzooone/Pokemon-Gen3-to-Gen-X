@@ -434,6 +434,33 @@ u8 handle_input_learnable_moves_menu(u16 keys, u8* cursor_y_pos) {
     return 0;
 }
 
+u8 handle_input_evolution_menu(u16 keys, u8* cursor_y_pos, u8* update, u16 num_evolutions) {
+    if(keys & KEY_B)
+        return EXIT_EVOLUTION;
+
+    if(keys & KEY_A)
+        return 1;
+
+    u8 new_cursor_y_pos = *cursor_y_pos;
+    if(keys & KEY_UP) {
+        if(new_cursor_y_pos)
+            new_cursor_y_pos -= 1;
+        else
+            new_cursor_y_pos = num_evolutions-1;
+    }
+    else if(keys & KEY_DOWN) {
+        new_cursor_y_pos += 1;
+        if(new_cursor_y_pos >= num_evolutions)
+            new_cursor_y_pos = 0;
+    }
+
+    if((*cursor_y_pos) != new_cursor_y_pos)
+        *update = 1;
+    *cursor_y_pos = new_cursor_y_pos;
+
+    return 0;
+}
+
 u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struct game_identity* game_identifier, u8 is_loaded) {
     if(keys & KEY_B)
         return EXIT_BASE_SETTINGS;
