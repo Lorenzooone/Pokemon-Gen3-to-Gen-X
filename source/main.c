@@ -714,6 +714,7 @@ int main(void)
     //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 1, 0, 0);
     //worst_case_conversion_tester(&counter);
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
+    // TODO: Add version numbers
     scanKeys();
     keys = keysDown();
     
