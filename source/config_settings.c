@@ -27,6 +27,8 @@ static u8 evolve_without_trade;
 static u8 allow_undistributed_events;
 static u8 fast_hatch_eggs;
 
+const struct version_t version = { .main_version = 1, .sub_version = 0, .revision_version = 0, .revision_letter = ' '};
+
 void set_default_settings() {
     set_sys_language(DEFAULT_SYS_LANGUAGE);
     set_target_int_language(DEFAULT_TARGET_INT_LANGUAGE);
@@ -168,4 +170,8 @@ u8 get_allow_undistributed_events() {
 
 u8 get_fast_hatch_eggs() {
     return fast_hatch_eggs;
+}
+
+const struct version_t* get_version() {
+    return &version;
 }

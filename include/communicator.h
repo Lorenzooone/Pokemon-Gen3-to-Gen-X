@@ -4,7 +4,7 @@
 #include "party_handler.h"
 #include "timing_basic.h"
 
-#define VCOUNT_WAIT_TIME_NS 820000
+#define VCOUNT_WAIT_TIME_NS 900000
 #define VCOUNT_WAIT_LINES (VCOUNT_WAIT_TIME_NS/NS_PER_SCANLINE)
 
 #define IN_PARTY_TRADE_GEN3 0x80

@@ -1050,6 +1050,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
 
     // Bad egg checks
     if(src->is_bad_egg) {
+        dst->successfully_decrypted = 0;
         dst->is_valid_gen3 = 0;
         dst->is_valid_gen2 = 0;
         dst->is_valid_gen1 = 0;

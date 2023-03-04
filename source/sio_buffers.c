@@ -365,6 +365,7 @@ void prepare_gen3_trade_data(struct game_data_t* game_data, u32* buffer, size_t*
         game_data->party_3.total = PARTY_SIZE;
     
     copy_bytes(&game_data->party_3, &td->party_3, sizeof(struct gen3_party), 0, 0);
+    copy_bytes(get_version(), &td->version, sizeof(struct version_t), 0, 0);
     for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
         game_data->party_3_undec[i].comm_pid = game_data->party_3_undec[i].src->pid;
     u32* party_buf = (u32*)&td->party_3;

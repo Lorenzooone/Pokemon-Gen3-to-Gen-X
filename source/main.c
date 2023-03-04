@@ -732,7 +732,6 @@ int main(void)
     //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 1, 0, 0);
     //worst_case_conversion_tester(&counter);
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
-    // TODO: Add version numbers
     scanKeys();
     keys = keysDown();
     
@@ -809,9 +808,9 @@ int main(void)
                         case RECEIVED_SUCCESS:
                             keys = 0;
                             complete_save_menu(&game_data[0], &game_data_priv, 1, master);
+                            stop_transfer(master);
                             if(curr_gen == 3)
                                 wait_frames(SWI_DivMod(get_rng() & 0x7FFFFFFF, MAX_RANDOM_WAIT_TIME));
-                            stop_transfer(master);
                             start_trade_init(&game_data[0], &game_data_priv, target, region, master, curr_gen, &cursor_y_pos);
                             break;
                         default:

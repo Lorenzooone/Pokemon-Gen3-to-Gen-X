@@ -383,6 +383,9 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     PRINT_FUNCTION("  Cheats");
 
     print_bottom_info();
+    const struct version_t* version = get_version();
+    set_text_x(X_LIMIT-(4+(3*3)+1));
+    PRINT_FUNCTION("V.\x03.\x03.\x03\x02", version->main_version, version->sub_version, version->revision_version, version->revision_letter);
 }
 
 void print_cheats_menu(u8 update) {

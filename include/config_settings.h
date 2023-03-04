@@ -1,7 +1,8 @@
 #ifndef CONFIG_SETTINGS__
-#define CONFIG_SETTINGS
+#define CONFIG_SETTINGS__
 
 #include <stddef.h>
+#include "useful_qualifiers.h"
 
 #define NUM_COLOURS 5
 #define NUM_SUB_COLOURS 3
@@ -13,6 +14,13 @@
 #define R_SUB_INDEX 0
 #define G_SUB_INDEX 1
 #define B_SUB_INDEX 2
+
+struct version_t {
+    u8 main_version;
+    u8 sub_version;
+    u8 revision_version;
+    u8 revision_letter;
+} PACKED ALIGNED(4);
 
 void set_default_settings(void);
 void set_sys_language(u8);
@@ -37,5 +45,6 @@ u8 get_allow_cross_gen_evos(void);
 u8 get_evolve_without_trade(void);
 u8 get_allow_undistributed_events(void);
 u8 get_fast_hatch_eggs(void);
+const struct version_t* get_version(void);
 
 #endif

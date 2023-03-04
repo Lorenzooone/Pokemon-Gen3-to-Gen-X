@@ -3,6 +3,7 @@
 
 #include "party_handler.h"
 #include "gen3_save.h"
+#include "config_settings.h"
 #include "useful_qualifiers.h"
 #include <stddef.h>
 
@@ -136,6 +137,7 @@ struct gen3_trade_data {
     struct gen3_party party_3;
     u32 checksum_party;
     struct game_identity game_identifier;
+    struct version_t version;
     u8 giftRibbons[GIFT_RIBBONS];
     u8 trainer_name[OT_NAME_GEN3_MAX_SIZE+1];
     u8 trainer_gender;
