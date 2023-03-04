@@ -996,7 +996,32 @@ void print_pokemon_pages(u8 update, u8 load_sprites, struct gen3_mon_data_unenc*
     print_bottom_info();
 }
 
-void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
+void print_load_warnings(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
+    default_reset_screen();
+
+    set_text_x((X_LIMIT-8)>>1);
+    PRINT_FUNCTION("WARNING!\n\n");
+    if(!is_in_pokemon_center(game_data_priv, game_data->game_identifier.game_main_version)){
+        PRINT_FUNCTION("The player did not save\n");
+        PRINT_FUNCTION("in a Pok\xE9mon Center!\n\n");
+    }
+    if(can_trade(game_data_priv, game_data->game_identifier.game_main_version) == PARTIAL_TRADE_POSSIBLE) {
+        PRINT_FUNCTION("Normally, the game should not\n");
+        PRINT_FUNCTION("be able to trade to certain\n");
+        PRINT_FUNCTION("other versions!\n\n");
+    }
+    if(get_party_usable_num(game_data) < MIN_ACTIVE_MON_TRADING) {
+        PRINT_FUNCTION("Normally, the game requires\n");
+        PRINT_FUNCTION("having more active Pok\xE9mon in\n");
+        PRINT_FUNCTION("the party in order to trade!\n\n");
+    }
+        
+    set_text_y(Y_LIMIT-3);
+    PRINT_FUNCTION("  Proceed at your own risk!\n\n");
+    PRINT_FUNCTION("Press any button to continue!");
+}
+
+void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master, struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
     if(!update)
         return;
     
@@ -1007,7 +1032,14 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master) {
     if(!get_valid_options_main()) {
         set_text_y(1);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Error reading the data!");
+        if(game_data_priv->game_is_suspended)
+            PRINT_FUNCTION("Found suspend data!");
+        else if(!get_is_cartridge_loaded())
+            PRINT_FUNCTION("Error reading the data!");
+        else if(can_trade(game_data_priv, game_data->game_identifier.game_main_version) == TRADE_IMPOSSIBLE)
+            PRINT_FUNCTION("Pok\xE9""dex not obtained!");
+        else
+            PRINT_FUNCTION("No valid Pok\xE9mon found!");
         set_text_y(9);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         PRINT_FUNCTION("Send Multiboot");

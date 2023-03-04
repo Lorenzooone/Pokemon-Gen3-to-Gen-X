@@ -27,6 +27,7 @@
 #define SECTION_DEX_SEEN_1_ID 1
 #define SECTION_DEX_SEEN_2_ID 4
 #define SECTION_MAIL_ID 3
+#define SECTION_CHALLENGE_STATUS_ID 0
 #define SECTION_GIFT_RIBBON_ID 4
 
 #define TRAINER_NAME_POS 0
@@ -46,10 +47,14 @@
 
 #define GAME_STAT_LIMIT 0xFFFFFF
 
+#define RS_BATTLE_TOWER_LEVEL_POS 0x554
+
 #define RSE_PARTY 0x234
 #define FRLG_PARTY 0x34
 
 #define VALID_MAPS 35
+
+#define CHALLENGE_STATUS_PAUSED 2
 
 enum SAVING_KIND {FULL_SAVE, NON_PARTY_SAVE, PARTY_ONLY_SAVE};
 
@@ -91,6 +96,7 @@ const u16 vars_pos[NUM_MAIN_GAME_ID] = {0x3C0, 0x80, 0x41C};
 const u8 has_stat_enc_key[NUM_MAIN_GAME_ID] = {0, 1, 1};
 const u16 stat_enc_key_pos[NUM_MAIN_GAME_ID] = {0, 0xF20, 0xAC};
 const u16 game_stats_pos[NUM_MAIN_GAME_ID] = {0x5C0, 0x280, 0x61C};
+const u16 challenge_status_pos[NUM_MAIN_GAME_ID] = {0x556, 0xAD, 0xCA8};
 const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0x0406, 0x0503, 0x0504, 0x0603, 0x0604, 0x0700, 0x0701, 0x0804, 0x0805, 0x090a, 0x090b, 0x0a05, 0x0a06, 0x0b05, 0x0b06, 0x0c02, 0x0c03, 0x0d06, 0x0d07, 0x0e03, 0x0e04, 0x0f02, 0x0f03, 0x100c, 0x100d, 0x100a, 0x1918, 0x1919, 0x191a, 0x191b};
 // 0x1A05 is the Battle Tower's lobby. I think it's fine...?
 // Since you have access to a PC and all, so...
@@ -257,6 +263,8 @@ u8 trade_mons(struct game_data_t* game_data, struct game_data_priv_t* game_data_
 }
 
 u8 get_party_usable_num(struct game_data_t* game_data) {
+    if(!get_is_cartridge_loaded())
+        return 0;
     u8 found_size = 0;
     gen3_party_total_t party_size = game_data->party_3.total;
     if(party_size > PARTY_SIZE)
@@ -466,6 +474,16 @@ void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t
 
         if(section_id == SECTION_SAVE_LOCATION_FLAGS_ID)
             game_data_priv->save_warp_flags = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + SAVE_LOCATION_FLAGS_POS);
+
+        if(section_id == SECTION_CHALLENGE_STATUS_ID) {
+            u8 tower_level = 0;
+            if(game_id == RS_MAIN_GAME_CODE)
+                tower_level = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + RS_BATTLE_TOWER_LEVEL_POS) & 1;
+            if((game_id == E_MAIN_GAME_CODE) || (game_id == RS_MAIN_GAME_CODE))
+                game_data_priv->game_is_suspended = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + challenge_status_pos[game_id] + tower_level) == CHALLENGE_STATUS_PAUSED;
+            else
+                game_data_priv->game_is_suspended = 0;
+        }
 
         if(section_id == SECTION_LOCATION_ID)
             game_data_priv->curr_map = read_short_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + LOCATION_POS);
@@ -713,6 +731,12 @@ void load_cartridge(){
     is_cartridge_loaded = 1;
 }
 
+u8 loaded_data_has_warnings(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
+    if((!get_is_cartridge_loaded()) || (can_trade(game_data_priv, game_data->game_identifier.game_main_version) == TRADE_IMPOSSIBLE))
+        return 0;
+    return (!is_in_pokemon_center(game_data_priv, game_data->game_identifier.game_main_version)) || (can_trade(game_data_priv, game_data->game_identifier.game_main_version) == PARTIAL_TRADE_POSSIBLE) || (get_party_usable_num(game_data) < MIN_ACTIVE_MON_TRADING);
+}
+
 u8 get_is_cartridge_loaded(){
     return is_cartridge_loaded;
 }
@@ -732,6 +756,8 @@ u8 read_gen_3_data(struct game_data_t* game_data, struct game_data_priv_t* game_
     unload_cartridge();
     init_bank();
     
+    game_data_priv->game_is_suspended = 0;
+    
     u8 slot = get_slot(&game_data->game_identifier);
     in_use_slot = slot;
     if(slot == INVALID_SLOT)
@@ -739,9 +765,12 @@ u8 read_gen_3_data(struct game_data_t* game_data, struct game_data_priv_t* game_
     
     read_party(slot, game_data, game_data_priv);
     own_game_data_ptr = game_data;
-
+    
+    if(game_data_priv->game_is_suspended)
+        return 0;
+    
     load_cartridge();
-
+    
     return 1;
 }
 

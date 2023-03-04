@@ -14,6 +14,8 @@
 #define SECTION_VARS_ID 2
 #define SECTION_GAME_STATS_ID 2
 
+#define MIN_ACTIVE_MON_TRADING 2
+
 struct game_data_priv_t {
     u32 seen_unown_pid;
     u32 seen_spinda_pid;
@@ -24,6 +26,7 @@ struct game_data_priv_t {
     u8 full_link_flag : 1;
     u8 dex_obtained_flag : 1;
     u8 game_cleared_flag : 1;
+    u8 game_is_suspended : 1;
     u8 nat_dex_magic;
     u8 save_warp_flags;
     u16 curr_map;
@@ -78,5 +81,6 @@ void set_stat_save(u8*, u8, u16, u32);
 u8 get_sys_flag_byte_save(u8, int, u8, u16);
 void set_sys_flag_byte_save(u8*, u8, u16, u8);
 u8 give_pokerus_to_party(struct game_data_t*);
+u8 loaded_data_has_warnings(struct game_data_t*, struct game_data_priv_t*);
 
 #endif

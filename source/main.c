@@ -86,6 +86,7 @@ void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
 void base_settings_menu_init(struct game_data_t*, u8*);
+void load_warnings_menu_init(struct game_data_t*, struct game_data_priv_t*);
 void colours_settings_menu_init(u8*, u8*);
 void clock_settings_menu_init(struct game_data_priv_t*, struct saved_time_t*, u8*, u8);
 void cheats_menu_init(u8*);
@@ -101,6 +102,7 @@ void crash_on_bad_save(u8, u8);
 void crash_on_bad_trade(void);
 void wait_frames(int);
 void complete_save_menu(struct game_data_t*, struct game_data_priv_t*, u8, u8);
+void complete_cartridge_loading(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
 int main(void);
 
 enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK};
@@ -485,13 +487,25 @@ void main_menu_init(struct game_data_t* game_data, struct game_data_priv_t* game
     prepare_main_options(game_data, game_data_priv);
     set_screen(BASE_SCREEN);
     set_bg_pos(BASE_SCREEN, 0, 0);
-    print_main_menu(1, target, region, master);
+    print_main_menu(1, target, region, master, game_data, game_data_priv);
     disable_all_screens_but_current();
     reset_sprites_to_cursor(1);
     disable_all_cursors();
     *cursor_y_pos = init_cursor_y_pos_main_menu();
     update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU);
     cursor_update_main_menu(*cursor_y_pos);
+    enable_screen(BASE_SCREEN);
+    prepare_flush();
+}
+
+void load_warnings_menu_init(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
+    curr_state = WARNINGS_WHEN_LOADING;
+    set_screen(BASE_SCREEN);
+    set_bg_pos(BASE_SCREEN, 0, 0);
+    print_load_warnings(game_data, game_data_priv);
+    disable_all_screens_but_current();
+    reset_sprites_to_cursor(1);
+    disable_all_cursors();
     enable_screen(BASE_SCREEN);
     prepare_flush();
 }
@@ -708,6 +722,17 @@ void complete_save_menu(struct game_data_t* game_data, struct game_data_priv_t* 
     process_party_data(game_data, &game_data_priv->party_2, &game_data_priv->party_1);
 }
 
+void complete_cartridge_loading(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
+    init_game_data(game_data);
+    get_game_id(&game_data->game_identifier);
+    read_gen_3_data(game_data, game_data_priv);
+    prepare_main_options(game_data, game_data_priv);
+    if((!get_valid_options_main()) || (!loaded_data_has_warnings(game_data, game_data_priv)))
+        main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
+    else
+        load_warnings_menu_init(game_data, game_data_priv);
+}
+
 int main(void)
 {
     curr_state = MAIN_MENU;
@@ -724,9 +749,6 @@ int main(void)
     struct game_data_priv_t game_data_priv;
     struct saved_time_t time_change;
     
-    init_game_data(&game_data[0]);
-    get_game_id(&game_data[0].game_identifier);
-    
     init_sprites();
     init_oam_palette();
     init_sprite_counter();
@@ -739,8 +761,6 @@ int main(void)
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
     irqDisable(IRQ_SERIAL);
-    
-    read_gen_3_data(&game_data[0], &game_data_priv);
     
     init_item_icon();
     init_cursor();
@@ -769,7 +789,7 @@ int main(void)
     u8 curr_page = 0;
     const u8* party_selected_mons[2] = {&curr_mon, &other_mon};
     
-    main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+    complete_cartridge_loading(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
     
     //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 1, 0, 0);
     //worst_case_conversion_tester(&counter);
@@ -785,6 +805,11 @@ int main(void)
             scanKeys();
             keys = keysDown();
             switch(curr_state) {
+                case WARNINGS_WHEN_LOADING:
+                    if(keys)
+                        main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                    keys = 0;
+                    break;
                 case START_TRADE:
                     if(get_start_state_raw() == START_TRADE_DON) {
                         keys = 0;
@@ -922,7 +947,7 @@ int main(void)
         switch(curr_state) {
             case MAIN_MENU:
                 returned_val = handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
-                print_main_menu(update, target, region, master);
+                print_main_menu(update, target, region, master, &game_data[0], &game_data_priv);
                 cursor_update_main_menu(cursor_y_pos);
                 if(returned_val == START_MULTIBOOT) {
                     curr_state = MULTIBOOT;
@@ -1202,12 +1227,11 @@ int main(void)
                 returned_val = handle_input_swap_cartridge_menu(keys);
                 if(returned_val) {
                     loading_print_screen();
-                    init_game_data(&game_data[0]);
-                    get_game_id(&game_data[0].game_identifier);
-                    read_gen_3_data(&game_data[0], &game_data_priv);
-                    // TODO: Print warnings for bad location/no nat dex/other
-                    main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                    complete_cartridge_loading(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                 }
+                break;
+            case WARNINGS_WHEN_LOADING:
+                main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                 break;
             case OFFER_MENU:
                 returned_val = handle_input_offer_options(keys, &submenu_cursor_y_pos, &submenu_cursor_x_pos);

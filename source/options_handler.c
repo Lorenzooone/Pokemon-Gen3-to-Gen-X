@@ -13,6 +13,8 @@ u8 options_trade[2][PARTY_SIZE];
 u8 num_options_trade[2];
 
 u8 is_valid_for_gen(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 gen) {
+    if((!get_is_cartridge_loaded()) || (can_trade(game_data_priv, game_data->game_identifier.game_main_version) == TRADE_IMPOSSIBLE))
+        return 0;
     u8 found_size = get_party_usable_num(game_data);
     if(!found_size)
         return 0;
