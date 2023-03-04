@@ -394,6 +394,9 @@ u16 convert_ivs_of_gen3(struct gen3_mon_misc* misc, u16 species, u32 pid, u8 is_
         if(((is_gen2) && (species > LAST_VALID_GEN_2_MON)) || ((!is_gen2) && (species > LAST_VALID_GEN_1_MON)))
             return 0;
     
+    // To debug shinies going to gen 1/2
+    //is_shiny = 1;
+    
     // Prepare gender related data
     u8 gender_threshold = get_gender_thresholds_gen12(gender_kind);
     u8 gender_useless_ivs = get_gender_useless_atk_ivs_gen12(gender_kind);
@@ -701,6 +704,8 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
 
     u8 encounter_type = get_encounter_type_gen3(species);
     u8 is_shiny = is_shiny_gen2_unfiltered(wanted_ivs);
+    // To debug shiny Unown stuff
+    //is_shiny = 1;
     u32 ivs = 0;
     u8 ability = 0;
     u8 is_ability_set = 0;

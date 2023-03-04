@@ -14,7 +14,7 @@
 #include "mod_nature_bases_bin.h"
 //#include "gba3_bad_diffs_bin.h"
 //#include "rgba3_bad_diffs_bin.h"
-    
+
 #define TEST_WORST_CASE 0
 
 #if TEST_WORST_CASE
