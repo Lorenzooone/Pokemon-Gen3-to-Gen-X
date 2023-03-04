@@ -41,5 +41,6 @@ void print_trade_options(u8, u8, u8);
 void print_colour_settings_menu(u8);
 void print_evolution_menu(struct gen3_mon_data_unenc*, u16, u8, u8);
 void print_evolution_window(struct gen3_mon_data_unenc*);
+void print_cheats_menu(u8);
 
 #endif

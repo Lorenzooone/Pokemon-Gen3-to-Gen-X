@@ -385,6 +385,31 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     print_bottom_info();
 }
 
+void print_cheats_menu(u8 update) {
+    if(!update)
+        return;
+
+    default_reset_screen();
+    if(get_allow_cross_gen_evos())
+        PRINT_FUNCTION("\n  Cross-Gen Evo.: <Enabled>\n\n");
+    else
+        PRINT_FUNCTION("\n  Cross-Gen Evo.: <Disabled>\n\n");
+    if(get_evolve_without_trade())
+        PRINT_FUNCTION("  Tradeless Evo.: <Enabled>\n\n");
+    else
+        PRINT_FUNCTION("  Tradeless Evo.: <Disabled>\n\n");
+    if(get_allow_undistributed_events())
+        PRINT_FUNCTION("  Undistr. Events: <Enabled>\n\n");
+    else
+        PRINT_FUNCTION("  Undistr. Events: <Disabled>\n\n");
+    if(get_fast_hatch_eggs())
+        PRINT_FUNCTION("  Fast Hatch Eggs: <Enabled>\n\n");
+    else
+        PRINT_FUNCTION("  Fast Hatch Eggs: <Disabled>\n\n");
+
+    print_bottom_info();
+}
+
 void print_single_colour_info(u8 colour) {
     for(int i = 0; i < NUM_SUB_COLOURS; i++) {
         set_text_x((BASE_X_CURSOR_COLOURS_SETTINGS_MENU_IN>>3)+(i*(BASE_X_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU_IN>>3))+2);

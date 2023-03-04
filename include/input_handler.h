@@ -48,5 +48,6 @@ u8 handle_input_swap_cartridge_menu(u16);
 u8 handle_input_trade_setup(u16, u8);
 u8 handle_input_colours_menu(u16, u8*, u8*, u8*);
 u8 handle_input_evolution_menu(u16, u8*, u8*, u16);
+u8 handle_input_cheats_menu(u16, u8*, u8*);
 
 #endif

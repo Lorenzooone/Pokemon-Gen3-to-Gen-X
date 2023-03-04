@@ -584,6 +584,60 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
             break;
         default:
             *cursor_y_pos = 0;
+            break;
+    }
+
+    return 0;
+}
+
+u8 handle_input_cheats_menu(u16 keys, u8* cursor_y_pos, u8* update) {
+    if(keys & KEY_B)
+        return EXIT_BASE_SETTINGS;
+    
+    switch(*cursor_y_pos) {
+        case 0:
+            if(keys & KEY_UP)
+                *cursor_y_pos = 3;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_allow_cross_gen_evos(!get_allow_cross_gen_evos());
+                *update = 1;
+            }
+            break;
+        case 1:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_evolve_without_trade(!get_evolve_without_trade());
+                *update = 1;
+            }
+            break;
+        case 2:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_allow_undistributed_events(!get_allow_undistributed_events());
+                *update = 1;
+            }
+            break;
+        case 3:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos = 0;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_fast_hatch_eggs(!get_fast_hatch_eggs());
+                *update = 1;
+            }
+            break;
+        default:
+            *cursor_y_pos = 0;
+            break;
     }
 
     return 0;

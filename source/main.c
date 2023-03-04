@@ -54,6 +54,7 @@ void cursor_update_learnable_move_message_menu(u8);
 void cursor_update_learnable_move_menu(u8);
 void cursor_update_trading_menu(u8, u8);
 void cursor_update_main_menu(u8);
+void cursor_update_cheats_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
 void cursor_update_base_settings_menu(u8);
@@ -83,6 +84,7 @@ void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
 void base_settings_menu_init(struct game_data_t*, u8*);
 void colours_settings_menu_init(u8*, u8*);
+void cheats_menu_init(u8*);
 void learnable_moves_message_init(struct game_data_t*, u8);
 void learnable_move_menu_init(struct game_data_t*, u8, u8, u8*);
 void evolution_menu_init(struct game_data_t*, u8, u8, u8*, u16);
@@ -194,6 +196,10 @@ void cursor_update_trading_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
 
 void cursor_update_main_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+}
+
+void cursor_update_cheats_menu(u8 cursor_y_pos) {
+    update_cursor_y(BASE_Y_CURSOR_CHEATS_MENU + (BASE_Y_CURSOR_INCREMENT_CHEATS_MENU * cursor_y_pos));
 }
 
 void cursor_update_learnable_move_menu(u8 cursor_y_pos) {
@@ -573,6 +579,18 @@ void colours_settings_menu_init(u8* cursor_y_pos, u8* cursor_x_pos) {
     *cursor_y_pos = 0;
     *cursor_x_pos = 0;
     cursor_update_colours_settings_menu(*cursor_y_pos, *cursor_x_pos);
+    prepare_flush();
+}
+
+void cheats_menu_init(u8* cursor_y_pos) {
+    curr_state = CHEATS_MENU;
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    print_cheats_menu(1);
+    enable_screen(BASE_SCREEN);
+    *cursor_y_pos = 0;
+    cursor_update_cheats_menu(*cursor_y_pos);
     prepare_flush();
 }
 
@@ -1048,7 +1066,7 @@ int main(void)
                     else if(returned_val == ENTER_CLOCK_MENU)
                         colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
                     else if(returned_val == ENTER_CHEATS_MENU)
-                        colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
+                        cheats_menu_init(&cursor_y_pos);
                     else if(returned_val == EXIT_BASE_SETTINGS) {
                         if(get_is_cartridge_loaded()) {
                             alter_game_data_language(&game_data[0], &game_data_priv);
@@ -1075,6 +1093,15 @@ int main(void)
                     }
                     print_colour_settings_menu(update);
                     cursor_update_colours_settings_menu(cursor_y_pos, cursor_x_pos);
+                }
+                break;
+            case CHEATS_MENU:
+                returned_val = handle_input_cheats_menu(keys, &cursor_y_pos, &update);
+                if(returned_val)
+                    base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                else {
+                    print_cheats_menu(update);
+                    cursor_update_cheats_menu(cursor_y_pos);
                 }
                 break;
             case SWAP_CARTRIDGE_MENU:
