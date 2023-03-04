@@ -388,6 +388,50 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     PRINT_FUNCTION("V.\x03.\x03.\x03\x02", version->main_version, version->sub_version, version->revision_version, version->revision_letter);
 }
 
+void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* time_change, u8 update) {
+    if(!update)
+        return;
+
+    struct saved_time_t base_time;
+    struct saved_time_t new_time;
+
+    get_clean_time(&clock_events->saved_time, &base_time);
+    get_increased_time(&clock_events->saved_time, time_change, &new_time);
+
+    default_reset_screen();
+
+    if(is_daytime(clock_events, time_change))
+        PRINT_FUNCTION("\n  Time: <Day>\n\n");
+    else
+        PRINT_FUNCTION("\n  Time: <Night>\n\n");
+    if(is_high_tide(clock_events, time_change))
+        PRINT_FUNCTION("  Shoal Cave Tide: <High>\n\n");
+    else
+        PRINT_FUNCTION("  Shoal Cave Tide: <Low>\n\n");
+    u8 curr_y = get_text_y();
+    if(is_rtc_reset_enabled(clock_events))
+        PRINT_FUNCTION("  Clock Reset Menu: <Enabled>");
+    else
+        PRINT_FUNCTION("  Clock Reset Menu: <Disabled>");
+    set_text_y(curr_y+2);
+
+    PRINT_FUNCTION("  Days Increase:    <\x0B>\n", time_change->d, 5);
+    PRINT_FUNCTION("  Hours Increase:   <\x0B>\n", time_change->h, 2);
+    PRINT_FUNCTION("  Minutes Increase: <\x0B>\n", time_change->m, 2);
+    PRINT_FUNCTION("  Seconds Increase: <\x0B>\n", time_change->s, 2);
+
+    set_text_y(Y_LIMIT-8);
+    PRINT_FUNCTION("  Save and Exit\n\n");
+    PRINT_FUNCTION("Base Time: \x0B-\x0B:\x0B:\x0B\n", base_time.d, 5, base_time.h, 2, base_time.m, 2, base_time.s, 2);
+    PRINT_FUNCTION("New Time:  \x0B-\x0B:\x0B:\x0B\n", new_time.d, 5, new_time.h, 2, new_time.m, 2, new_time.s, 2);
+    set_text_y(Y_LIMIT-4);
+    PRINT_FUNCTION("Issues may arise when changing");
+    set_text_y(Y_LIMIT-3);
+    PRINT_FUNCTION("the time of a Working Battery.");
+    set_text_y(Y_LIMIT-1);
+    PRINT_FUNCTION("B: Exit Without Saving");
+}
+
 void print_cheats_menu(u8 update) {
     if(!update)
         return;
@@ -409,6 +453,7 @@ void print_cheats_menu(u8 update) {
         PRINT_FUNCTION("  Fast Hatch Eggs: <Enabled>\n\n");
     else
         PRINT_FUNCTION("  Fast Hatch Eggs: <Disabled>\n\n");
+    PRINT_FUNCTION("  Give Pok\xE9rus to Party\n\n");
 
     print_bottom_info();
 }
@@ -807,12 +852,25 @@ void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
             PRINT_FUNCTION(" - ");
     
         if(has_pokerus == HAS_POKERUS)
-            PRINT_FUNCTION("Has Pokerus");
+            PRINT_FUNCTION("Has Pok\xE9rus");
         else if(has_pokerus == HAD_POKERUS)
-            PRINT_FUNCTION("Had Pokerus");
+            PRINT_FUNCTION("Had Pok\xE9rus");
     }
     else
         PRINT_FUNCTION("\x05\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+}
+
+void print_warning_when_clock_changed() {
+    default_reset_screen();
+    PRINT_FUNCTION("\nAdvancing the clock will\n");
+    PRINT_FUNCTION("result in the Pok\xE9rus\n");
+    PRINT_FUNCTION("expiring for at least\n");
+    PRINT_FUNCTION("one Pok\xE9mon!\n\n");
+    PRINT_FUNCTION("Continue Anyway?");
+    set_text_y(BASE_Y_CURSOR_CLOCK_WARNING>>3);
+    PRINT_FUNCTION("  Yes");
+    set_text_x(BASE_X_CURSOR_INCREMENT_CLOCK_WARNING>>3);
+    PRINT_FUNCTION("  No");
 }
 
 void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 page) {

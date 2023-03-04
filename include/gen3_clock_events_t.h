@@ -6,6 +6,11 @@
 
 #define ACTUALLY_RUN_EVENTS 1
 
+#define MAX_DAYS 0xFFFF
+#define MAX_HOURS 24
+#define MAX_MINUTES 60
+#define MAX_SECONDS 60
+
 #define DAILY_FLAGS_TOTAL 0x40
 #define TOTAL_DEWFORD_TRENDS 5
 #define TOTAL_TV_SHOWS 25

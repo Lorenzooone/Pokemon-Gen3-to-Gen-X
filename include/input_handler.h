@@ -10,6 +10,9 @@
 #define EXIT_EVOLUTION 0xFF
 #define DENIED_LEARNING 0xFF
 #define EXIT_BASE_SETTINGS 0xFF
+#define EXIT_CHEAT_SETTINGS 0xFF
+#define EXIT_CLOCK_SETTINGS 0xFF
+#define EXIT_CLOCK_WARNING_SETTINGS 0xFF
 #define EXIT_COLOURS_SETTINGS 0xFF
 #define DO_NOT_FORGET_MOVE 0xFF
 #define ENTER_COLOUR_MENU 1
@@ -49,5 +52,7 @@ u8 handle_input_trade_setup(u16, u8);
 u8 handle_input_colours_menu(u16, u8*, u8*, u8*);
 u8 handle_input_evolution_menu(u16, u8*, u8*, u16);
 u8 handle_input_cheats_menu(u16, u8*, u8*);
+u8 handle_input_clock_menu(u16, struct clock_events_t*, struct saved_time_t*, u8*, u8*);
+u8 handle_input_clock_warning_menu(u16, u8*);
 
 #endif

@@ -10,15 +10,18 @@ void normalize_time(struct saved_time_t*);
 void enable_rtc_reset(struct clock_events_t*);
 void disable_rtc_reset(struct clock_events_t*);
 u8 is_rtc_reset_enabled(struct clock_events_t*);
-u8 is_daily_update_safe(struct game_data_t*, u16);
-void run_daily_update(struct game_data_t*, struct clock_events_t*, u16, u8);
-u8 is_daytime(struct clock_events_t*);
-void change_time_of_day(struct clock_events_t* game_data);
-u8 is_high_tide(struct clock_events_t* game_data);
-void change_tide(struct clock_events_t* game_data);
+u8 is_daily_update_safe(struct game_data_t*, struct clock_events_t*, struct saved_time_t*);
+void run_daily_update(struct game_data_t*, struct clock_events_t*, struct saved_time_t*, u8);
+u8 is_daytime(struct clock_events_t*, struct saved_time_t*);
+void change_time_of_day(struct clock_events_t*, struct saved_time_t*);
+u8 is_high_tide(struct clock_events_t*, struct saved_time_t*);
+void change_tide(struct clock_events_t*, struct saved_time_t*);
 void load_time_data(struct clock_events_t*, u16, int, int, u8, u8, u32);
 void store_time_data(struct clock_events_t*, u16, u8*, u8, u8, u32);
 u8 can_clock_run(struct clock_events_t*);
 void wipe_clock(struct clock_events_t*);
+void wipe_time(struct saved_time_t*);
+void get_clean_time(struct saved_time_t*, struct saved_time_t*);
+void get_increased_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
 
 #endif

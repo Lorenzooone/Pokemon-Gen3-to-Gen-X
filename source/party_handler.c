@@ -549,14 +549,16 @@ void update_pokerus_gen3(struct gen3_mon_data_unenc* data_src, u16 days_increase
         }
 }
 
-void give_pokerus_gen3(struct gen3_mon_data_unenc* data_src){
+u8 give_pokerus_gen3(struct gen3_mon_data_unenc* data_src){
     if(data_src->successfully_decrypted)
         if(!data_src->misc.pokerus) {
             // This is for resolving the issue in FRLG, not for cheating,
             // so a non-spreadable Pokérus is given
             data_src->misc.pokerus = 0x10;
             place_and_encrypt_gen3_data(data_src, data_src->src);
+            return 1;
         }
+    return 0;
 }
 
 u8 would_update_end_pokerus_gen3(struct gen3_mon_data_unenc* data_src, u16 days_increase){
@@ -1016,6 +1018,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     //    growth->species = EEVEE_SPECIES;
     //if(growth->species == ALAKAZAM_SPECIES)
     //    growth->species = KADABRA_SPECIES;
+    // Pokerus testing
+    //misc->pokerus = 0;
     
     // Species checks
     if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0)) {

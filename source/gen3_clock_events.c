@@ -12,10 +12,6 @@
 #include "berry_growth_data_bin.h"
 #endif
 
-#define MAX_DAYS 0xFFFF
-#define MAX_HOURS 24
-#define MAX_MINUTES 60
-#define MAX_SECONDS 60
 #define TIDE_OFFSET 3
 #define DAY_START 12
 
@@ -65,6 +61,7 @@
 void increase_clock(struct saved_time_t*, u16, u8, u8, u8, u8);
 void swap_time(struct saved_time_t*);
 void subtract_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
+void add_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
 void wipe_time(struct saved_time_t*);
 #if ACTUALLY_RUN_EVENTS
 static u32 get_next_seed(u32);
@@ -145,26 +142,29 @@ u8 has_rtc_events(struct game_identity* game_id) {
     return 0;
 }
 
-u8 is_daytime(struct clock_events_t* clock_events) {
-    swap_time(&clock_events->saved_time);
-    u8 retval = clock_events->saved_time.h >= DAY_START;
-    swap_time(&clock_events->saved_time);
+u8 is_daytime(struct clock_events_t* clock_events, struct saved_time_t* extra_time) {
+    struct saved_time_t tmp;
+    get_increased_time(&clock_events->saved_time, extra_time, &tmp);
+    u8 retval = tmp.h >= DAY_START;
     return retval;
 }
 
-void change_time_of_day(struct clock_events_t* clock_events) {
-    u16 curr_d = clock_events->saved_time.d;
-    increase_clock(&clock_events->saved_time, 0, MAX_HOURS>>1, 0, 0, 1);
-    if(clock_events->saved_time.d != curr_d)
-        increase_clock(&clock_events->saved_time, 0xFFFF, 0, 0, 0, 1);
+void change_time_of_day(struct clock_events_t* clock_events, struct saved_time_t* extra_time) {
+    struct saved_time_t tmp;
+    get_increased_time(&clock_events->saved_time, extra_time, &tmp);
+    u16 curr_d = tmp.d;
+    increase_clock(extra_time, 0, MAX_HOURS>>1, 0, 0, 0);
+    get_increased_time(&clock_events->saved_time, extra_time, &tmp);
+    if(tmp.d != curr_d)
+        increase_clock(extra_time, 0xFFFF, 0, 0, 0, 0);
 }
 
-u8 is_high_tide(struct clock_events_t* clock_events) {
-    swap_time(&clock_events->saved_time);
-    u8 tidal_hours = clock_events->saved_time.h - TIDE_OFFSET;
-    if(clock_events->saved_time.h < TIDE_OFFSET)
-        tidal_hours = clock_events->saved_time.h + MAX_HOURS - TIDE_OFFSET;
-    swap_time(&clock_events->saved_time);
+u8 is_high_tide(struct clock_events_t* clock_events, struct saved_time_t* extra_time) {
+    struct saved_time_t tmp;
+    get_increased_time(&clock_events->saved_time, extra_time, &tmp);
+    u8 tidal_hours = tmp.h - TIDE_OFFSET;
+    if(tmp.h < TIDE_OFFSET)
+        tidal_hours = tmp.h + MAX_HOURS - TIDE_OFFSET;
     if(tidal_hours >= (MAX_HOURS>>1))
         tidal_hours -= MAX_HOURS>>1;
     if(tidal_hours >= (MAX_HOURS>>2))
@@ -172,14 +172,17 @@ u8 is_high_tide(struct clock_events_t* clock_events) {
     return 0;
 }
 
-void change_tide(struct clock_events_t* clock_events) {
-    u16 curr_d = clock_events->saved_time.d;
-    u8 curr_daytime = is_daytime(clock_events);
-    increase_clock(&clock_events->saved_time, 0, MAX_HOURS>>2, 0, 0, 1);
-    if(is_daytime(clock_events) != curr_daytime)
-        change_time_of_day(clock_events);
-    if(clock_events->saved_time.d != curr_d)
-        increase_clock(&clock_events->saved_time, 0xFFFF, 0, 0, 0, 1);
+void change_tide(struct clock_events_t* clock_events, struct saved_time_t* extra_time) {
+    struct saved_time_t tmp;
+    get_increased_time(&clock_events->saved_time, extra_time, &tmp);
+    u16 curr_d = tmp.d;
+    u8 curr_daytime = is_daytime(clock_events, extra_time);
+    increase_clock(extra_time, 0, MAX_HOURS>>2, 0, 0, 0);
+    if(is_daytime(clock_events, extra_time) != curr_daytime)
+        change_time_of_day(clock_events, extra_time);
+    get_increased_time(&clock_events->saved_time, extra_time, &tmp);
+    if(tmp.d != curr_d)
+        increase_clock(extra_time, 0xFFFF, 0, 0, 0, 0);
 }
 
 void subtract_time(struct saved_time_t* base, struct saved_time_t* sub, struct saved_time_t* target) {
@@ -210,10 +213,53 @@ void subtract_time(struct saved_time_t* base, struct saved_time_t* sub, struct s
     normalize_time(target);
 }
 
+void add_time(struct saved_time_t* base, struct saved_time_t* add, struct saved_time_t* target) {
+    int s = base->s;
+    int m = base->m;
+    int h = base->h;
+    u16 d = base->d;
+    while((add->s+s) >= MAX_SECONDS) {
+        s -= MAX_SECONDS;
+        m++;
+    }
+    s += add->s;
+    while((add->m+m) >= MAX_MINUTES) {
+        m -= MAX_MINUTES;
+        h++;
+    }
+    m += add->m;
+    while((add->h+h) >= MAX_HOURS) {
+        h -= MAX_HOURS;
+        d++;
+    }
+    h += add->h;
+    d += add->d;
+    target->s = (u8)s;
+    target->m = (u8)m;
+    target->h = (u8)h;
+    target->d = d;
+    normalize_time(target);
+}
+
 void swap_time(struct saved_time_t* saved_time) {
     // 0 0 0 0 should result in 1 0 0 0
     // That is because the base time with an expired battery is 1 0 0 0, Jan 1 2000
     subtract_time(&base_rtc_time, saved_time, saved_time);
+}
+
+void get_clean_time(struct saved_time_t* saved_time, struct saved_time_t* target) {
+    swap_time(saved_time);
+    target->d = saved_time->d;
+    target->h = saved_time->h;
+    target->m = saved_time->m;
+    target->s = saved_time->s;
+    swap_time(saved_time);
+}
+
+void get_increased_time(struct saved_time_t* saved_time, struct saved_time_t* time_change, struct saved_time_t* target) {
+    swap_time(saved_time);
+    add_time(saved_time, time_change, target);
+    swap_time(saved_time);
 }
 
 void wipe_time(struct saved_time_t* saved_time) {
@@ -273,15 +319,15 @@ void normalize_time(struct saved_time_t* saved_time) {
 }
 
 #if ACTUALLY_RUN_EVENTS
-void run_daily_update(struct game_data_t* game_data, struct clock_events_t* clock_events, u16 days_increase, u8 is_game_cleared) {
+void run_daily_update(struct game_data_t* game_data, struct clock_events_t* clock_events, struct saved_time_t* extra_time, u8 is_game_cleared) {
 #else
-void run_daily_update(struct game_data_t* UNUSED(game_data), struct clock_events_t* clock_events, u16 days_increase, u8 UNUSED(is_game_cleared)) {
+void run_daily_update(struct game_data_t* UNUSED(game_data), struct clock_events_t* clock_events, struct saved_time_t* extra_time, u8 UNUSED(is_game_cleared)) {
 #endif
-    u16 d = days_increase;
-    u8 h = 0;
-    u8 m = 0;
-    u8 s = 0;
-    increase_clock(&clock_events->saved_time, d, h, m, s, 1);
+    swap_time(&clock_events->saved_time);
+    u16 d = clock_events->saved_time.d;
+    add_time(&clock_events->saved_time, extra_time, &clock_events->saved_time);
+    d = clock_events->saved_time.d - d;
+    swap_time(&clock_events->saved_time);
 
     #if ACTUALLY_RUN_EVENTS
     // To be 100% faithful, events should be stopped inside of a Pokémon Center...
@@ -304,8 +350,10 @@ void run_daily_update(struct game_data_t* UNUSED(game_data), struct clock_events
             reset_lottery(clock_events, d);
             clock_events->days_var += d;
         }
-        update_berry_trees(clock_events, d, h, m);
-        increase_clock(&clock_events->saved_berry_time, d, h, m, s, 0);
+        if(d || (extra_time->d != MAX_DAYS)) {
+            update_berry_trees(clock_events, extra_time->d, extra_time->h, extra_time->m);
+            add_time(&clock_events->saved_berry_time, extra_time, &clock_events->saved_berry_time);
+        }
     }
     #endif
 }
@@ -332,6 +380,22 @@ void wipe_clock(struct clock_events_t* clock_events) {
     clock_events->days_var = base_rtc_time.d;
     wipe_time(&clock_events->saved_time);
     wipe_time(&clock_events->saved_berry_time);
+}
+
+u8 is_daily_update_safe(struct game_data_t* game_data, struct clock_events_t* clock_events, struct saved_time_t* extra_time) {
+    swap_time(&clock_events->saved_time);
+    struct saved_time_t tmp;
+    u16 days_increase = clock_events->saved_time.d;
+    add_time(&clock_events->saved_time, extra_time, &tmp);
+    swap_time(&clock_events->saved_time);
+    days_increase = tmp.d - days_increase;
+    gen3_party_total_t num_mons = game_data->party_3.total;
+    if(num_mons > PARTY_SIZE)
+        num_mons = PARTY_SIZE;
+    for(gen3_party_total_t i = 0; i < num_mons; i++)
+        if(would_update_end_pokerus_gen3(&game_data->party_3_undec[i], days_increase))
+            return 0;
+    return 1;
 }
 
 #if ACTUALLY_RUN_EVENTS
@@ -686,16 +750,6 @@ void update_pokerus_daily(struct game_data_t* game_data, u16 days_increase) {
         num_mons = PARTY_SIZE;
     for(gen3_party_total_t i = 0; i < num_mons; i++)
         update_pokerus_gen3(&game_data->party_3_undec[i], days_increase);
-}
-
-u8 is_daily_update_safe(struct game_data_t* game_data, u16 days_increase) {
-    gen3_party_total_t num_mons = game_data->party_3.total;
-    if(num_mons > PARTY_SIZE)
-        num_mons = PARTY_SIZE;
-    for(gen3_party_total_t i = 0; i < num_mons; i++)
-        if(would_update_end_pokerus_gen3(&game_data->party_3_undec[i], days_increase))
-            return 0;
-    return 1;
 }
 
 void update_mirage_island(struct clock_events_t* clock_events, u16 days_increase) {

@@ -592,12 +592,12 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
 
 u8 handle_input_cheats_menu(u16 keys, u8* cursor_y_pos, u8* update) {
     if(keys & KEY_B)
-        return EXIT_BASE_SETTINGS;
+        return EXIT_CHEAT_SETTINGS;
     
     switch(*cursor_y_pos) {
         case 0:
             if(keys & KEY_UP)
-                *cursor_y_pos = 3;
+                *cursor_y_pos = 4;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
@@ -629,16 +629,166 @@ u8 handle_input_cheats_menu(u16 keys, u8* cursor_y_pos, u8* update) {
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
-                *cursor_y_pos = 0;
+                *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
                 set_fast_hatch_eggs(!get_fast_hatch_eggs());
                 *update = 1;
             }
             break;
+        case 4:
+            if(keys & KEY_A)
+                return 1;
+            else if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos = 0;
+            break;
         default:
             *cursor_y_pos = 0;
             break;
     }
+
+    return 0;
+}
+
+u8 handle_input_clock_menu(u16 keys, struct clock_events_t* clock_events, struct saved_time_t* time_change, u8* cursor_y_pos, u8* update) {
+    if(keys & KEY_B)
+        return EXIT_CLOCK_SETTINGS;
+    
+    switch(*cursor_y_pos) {
+        case 0:
+            if(keys & KEY_UP)
+                *cursor_y_pos = 11;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 2;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                change_time_of_day(clock_events, time_change);
+                *update = 1;
+            }
+            break;
+        case 2:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 2;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 2;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                change_tide(clock_events, time_change);
+                *update = 1;
+            }
+            break;
+        case 4:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 2;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 2;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                if(is_rtc_reset_enabled(clock_events))
+                    disable_rtc_reset(clock_events);
+                else
+                    enable_rtc_reset(clock_events);
+                *update = 1;
+            }
+            break;
+        case 6:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 2;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                time_change->d += 1;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                time_change->d -= 1;
+                *update = 1;
+            }
+            break;
+        case 7:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                if(time_change->h < MAX_HOURS-1)
+                    time_change->h += 1;
+                else
+                    time_change->h = 0;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                if(time_change->h)
+                    time_change->h -= 1;
+                else
+                    time_change->h = MAX_HOURS-1;
+                *update = 1;
+            }
+            break;
+        case 8:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                if(time_change->m < MAX_MINUTES-1)
+                    time_change->m += 1;
+                else
+                    time_change->m = 0;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                if(time_change->m)
+                    time_change->m -= 1;
+                else
+                    time_change->m = MAX_MINUTES-1;
+                *update = 1;
+            }
+            break;
+        case 9:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 2;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                if(time_change->s < MAX_SECONDS-1)
+                    time_change->s += 1;
+                else
+                    time_change->s = 0;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                if(time_change->s)
+                    time_change->s -= 1;
+                else
+                    time_change->s = MAX_SECONDS-1;
+                *update = 1;
+            }
+            break;
+        case 11:
+            if(keys & KEY_A)
+                return 1;
+            else if(keys & KEY_UP)
+                *cursor_y_pos -= 2;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos = 0;
+            break;
+        default:
+            *cursor_y_pos = 0;
+            break;
+    }
+
+    return 0;
+}
+
+u8 handle_input_clock_warning_menu(u16 keys, u8* cursor_x_pos) {
+    if((keys & KEY_A) && (*cursor_x_pos))
+        return EXIT_CLOCK_WARNING_SETTINGS;
+    if(keys & KEY_A)
+        return 1;
+
+    if(keys & KEY_B)
+        *cursor_x_pos = 1;
+    else if((keys & KEY_LEFT) || (keys & KEY_RIGHT))
+        *cursor_x_pos ^= 1;
 
     return 0;
 }

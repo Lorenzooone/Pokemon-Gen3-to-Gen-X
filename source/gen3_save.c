@@ -402,6 +402,15 @@ void alter_game_data_version(struct game_data_t* game_data) {
         set_deoxys_form(&game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
 }
 
+u8 give_pokerus_to_party(struct game_data_t* game_data) {
+    if(game_data->party_3.total > PARTY_SIZE)
+        game_data->party_3.total = PARTY_SIZE;
+    u8 found = 0;
+    for(gen3_party_total_t i = 0; i < game_data->party_3.total; i++)
+        found |= give_pokerus_gen3(&game_data->party_3_undec[i]);
+    return found;
+}
+
 void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
     if(slot)
         slot = 1;

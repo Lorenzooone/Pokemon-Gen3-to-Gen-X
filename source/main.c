@@ -6,6 +6,7 @@
 #include "sprite_handler.h"
 #include "version_identifier.h"
 #include "gen3_save.h"
+#include "gen3_clock_events.h"
 #include "options_handler.h"
 #include "input_handler.h"
 #include "menu_text_handler.h"
@@ -58,6 +59,8 @@ void cursor_update_cheats_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
 void cursor_update_base_settings_menu(u8);
+void cursor_update_clock_settings_menu(u8);
+void cursor_update_clock_warning(u8);
 void cursor_update_colours_settings_menu(u8, u8);
 void cursor_update_evolutions_menu(u8, u16);
 void handle_learnable_moves_message(struct game_data_t*, u8, u8*, u32*, enum MOVES_PRINTING_TYPE);
@@ -84,7 +87,9 @@ void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
 void base_settings_menu_init(struct game_data_t*, u8*);
 void colours_settings_menu_init(u8*, u8*);
+void clock_settings_menu_init(struct game_data_priv_t*, struct saved_time_t*, u8*, u8);
 void cheats_menu_init(u8*);
+void clock_warning_menu_init(u8*);
 void learnable_moves_message_init(struct game_data_t*, u8);
 void learnable_move_menu_init(struct game_data_t*, u8, u8, u8*);
 void evolution_menu_init(struct game_data_t*, u8, u8, u8*, u16);
@@ -98,7 +103,7 @@ void wait_frames(int);
 void complete_save_menu(struct game_data_t*, struct game_data_priv_t*, u8, u8);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -224,8 +229,16 @@ void cursor_update_offer_options(u8 cursor_y_pos, u8 cursor_x_pos) {
     update_cursor_y(BASE_Y_CURSOR_OFFER_OPTIONS + (BASE_Y_CURSOR_INCREMENT_OFFER_OPTIONS * cursor_y_pos));
 }
 
+void cursor_update_clock_warning(u8 cursor_x_pos) {
+    update_cursor_base_x(BASE_X_CURSOR_CLOCK_WARNING + (cursor_x_pos * BASE_X_CURSOR_INCREMENT_CLOCK_WARNING));
+}
+
 void cursor_update_base_settings_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_BASE_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_BASE_SETTINGS_MENU * cursor_y_pos));
+}
+
+void cursor_update_clock_settings_menu(u8 cursor_y_pos) {
+    update_cursor_y(BASE_Y_CURSOR_CLOCK_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_CLOCK_SETTINGS_MENU * cursor_y_pos));
 }
 
 void cursor_update_evolutions_menu(u8 cursor_y_pos, u16 num_evolutions) {
@@ -582,6 +595,34 @@ void colours_settings_menu_init(u8* cursor_y_pos, u8* cursor_x_pos) {
     prepare_flush();
 }
 
+void clock_settings_menu_init(struct game_data_priv_t* game_data_priv, struct saved_time_t* time_change, u8* cursor_y_pos, u8 reset_time) {
+    curr_state = CLOCK_SETTINGS_MENU;
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    if(reset_time)
+        wipe_time(time_change);
+    print_clock_menu(&game_data_priv->clock_events, time_change, 1);
+    enable_screen(BASE_SCREEN);
+    *cursor_y_pos = 0;
+    update_cursor_base_x(BASE_X_CURSOR_CLOCK_SETTINGS_MENU);
+    cursor_update_clock_settings_menu(*cursor_y_pos);
+    prepare_flush();
+}
+
+void clock_warning_menu_init(u8* cursor_x_pos) {
+    curr_state = WARNING_WHEN_ADVANCING_CLOCK;
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    print_warning_when_clock_changed();
+    enable_screen(BASE_SCREEN);
+    *cursor_x_pos = 1;
+    update_cursor_y(BASE_Y_CURSOR_CLOCK_WARNING);
+    cursor_update_clock_warning(*cursor_x_pos);
+    prepare_flush();
+}
+
 void cheats_menu_init(u8* cursor_y_pos) {
     curr_state = CHEATS_MENU;
     set_screen(BASE_SCREEN);
@@ -681,6 +722,7 @@ int main(void)
     u16 keys;
     struct game_data_t game_data[2];
     struct game_data_priv_t game_data_priv;
+    struct saved_time_t time_change;
     
     init_game_data(&game_data[0]);
     get_game_id(&game_data[0].game_identifier);
@@ -1057,13 +1099,12 @@ int main(void)
                 }
                 break;
             case BASE_SETTINGS_MENU:
-                // TODO: Handle the Settings menu
                 returned_val = handle_input_base_settings_menu(keys, &cursor_y_pos, &update, &game_data[0].game_identifier, get_is_cartridge_loaded());
                 if(returned_val) {
                     if(returned_val == ENTER_COLOUR_MENU)
                         colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
                     else if(returned_val == ENTER_CLOCK_MENU)
-                        colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
+                        clock_settings_menu_init(&game_data_priv, &time_change, &cursor_y_pos, 1);
                     else if(returned_val == ENTER_CHEATS_MENU)
                         cheats_menu_init(&cursor_y_pos);
                     else if(returned_val == EXIT_BASE_SETTINGS) {
@@ -1096,12 +1137,66 @@ int main(void)
                 break;
             case CHEATS_MENU:
                 returned_val = handle_input_cheats_menu(keys, &cursor_y_pos, &update);
-                if(returned_val)
-                    base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                if(returned_val) {
+                    if(returned_val == EXIT_CHEAT_SETTINGS)
+                        base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                    else {
+                        if(get_is_cartridge_loaded() && give_pokerus_to_party(&game_data[0])) {
+                            saving_print_screen();
+                            success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
+                            if(!success)
+                                crash_on_bad_save(0, master);
+                            complete_save_menu(&game_data[0], &game_data_priv, 0, master);
+                            cheats_menu_init(&cursor_y_pos);
+                        }
+                    }
+                }
                 else {
                     print_cheats_menu(update);
                     cursor_update_cheats_menu(cursor_y_pos);
                 }
+                break;
+            case CLOCK_SETTINGS_MENU:
+                returned_val = handle_input_clock_menu(keys, &game_data_priv.clock_events, &time_change, &cursor_y_pos, &update);
+                if(returned_val) {
+                    if(returned_val == EXIT_CLOCK_SETTINGS)
+                        base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                    else {
+                        if(!is_daily_update_safe(&game_data[0], &game_data_priv.clock_events, &time_change))
+                           clock_warning_menu_init(&cursor_x_pos);
+                        else {
+                            run_daily_update(&game_data[0], &game_data_priv.clock_events, &time_change, game_data_priv.game_cleared_flag);
+                            saving_print_screen();
+                            success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
+                            if(!success)
+                                crash_on_bad_save(0, master);
+                            complete_save_menu(&game_data[0], &game_data_priv, 0, master);
+                            base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                        }
+                    }
+                }
+                else {
+                    print_clock_menu(&game_data_priv.clock_events, &time_change, update);
+                    cursor_update_clock_settings_menu(cursor_y_pos);
+                }
+                break;
+            case WARNING_WHEN_ADVANCING_CLOCK:
+                returned_val = handle_input_clock_warning_menu(keys, &cursor_x_pos);
+                if(returned_val) {
+                    if(returned_val == EXIT_CLOCK_WARNING_SETTINGS)
+                        clock_settings_menu_init(&game_data_priv, &time_change, &cursor_y_pos, 0);
+                    else {
+                        run_daily_update(&game_data[0], &game_data_priv.clock_events, &time_change, game_data_priv.game_cleared_flag);
+                        saving_print_screen();
+                        success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
+                        if(!success)
+                            crash_on_bad_save(0, master);
+                        complete_save_menu(&game_data[0], &game_data_priv, 0, master);
+                        base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                    }
+                }
+                else
+                    cursor_update_clock_warning(cursor_x_pos);
                 break;
             case SWAP_CARTRIDGE_MENU:
                 returned_val = handle_input_swap_cartridge_menu(keys);

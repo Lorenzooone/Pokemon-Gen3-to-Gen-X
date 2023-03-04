@@ -77,5 +77,6 @@ u32 get_stat_save(u8, int, u8, u16);
 void set_stat_save(u8*, u8, u16, u32);
 u8 get_sys_flag_byte_save(u8, int, u8, u16);
 void set_sys_flag_byte_save(u8*, u8, u16, u8);
+u8 give_pokerus_to_party(struct game_data_t*);
 
 #endif
