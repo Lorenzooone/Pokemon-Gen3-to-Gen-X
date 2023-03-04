@@ -1033,7 +1033,7 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master, struct game
         set_text_y(1);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         if(game_data_priv->game_is_suspended)
-            PRINT_FUNCTION("Found suspend data!");
+            PRINT_FUNCTION("Error: Found Suspend data!");
         else if(!get_is_cartridge_loaded())
             PRINT_FUNCTION("Error reading the data!");
         else if(can_trade(game_data_priv, game_data->game_identifier.game_main_version) == TRADE_IMPOSSIBLE)
