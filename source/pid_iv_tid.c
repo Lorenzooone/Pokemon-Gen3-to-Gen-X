@@ -137,11 +137,11 @@ ALWAYS_INLINE void get_letter_valid_natures(u16 tsv, u8 letter, u8* valid_nature
             u8 letter_kind_table = (shiny_unown_banned_tsv_bin_32[i]>>0x14)&0xF;
             u8 letter_dist_table = (shiny_unown_banned_tsv_bin_32[i]>>0x10)&0xF;
             if(letter_kind == letter_kind_table) {
-                letter_dist += letter_dist_table;
-                if(letter_dist >= 5)
-                    letter_dist -= 5;
+                u8 inner_letter_dist = letter_dist + letter_dist_table;
+                if(inner_letter_dist >= 5)
+                    inner_letter_dist -= 5;
                 for(int j = 0; j < 5; j++)
-                    valid_natures[letter_dist + (j*5)] = 0;
+                    valid_natures[inner_letter_dist + (j*5)] = 0;
             }
         }
     }
