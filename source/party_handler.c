@@ -457,6 +457,8 @@ u8 make_moves_legal_gen3(struct gen3_mon_attacks* attacks, struct gen3_mon_growt
                         break;
                     }
             attacks->pp[i] = get_pp_of_move(attacks->moves[i], (growth->pp_bonuses>>(2*i))&3, LAST_VALID_GEN_3_MOVE);
+            if(attacks->pp[i] == 1)
+                growth->pp_bonuses &= ~(3<<(2*i));
         }
         return 1;
     }
@@ -1113,6 +1115,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         src->mail_id = GEN3_NO_MAIL;
         // Eggs cannot have pokerus
         misc->pokerus = 0;
+        // Eggs cannot have PP UPs
+        growth->pp_bonuses = 0;
         src->level = EGG_LEVEL_GEN3;
         if(get_fast_hatch_eggs())
             growth->friendship = 1;
