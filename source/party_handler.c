@@ -85,6 +85,10 @@ const struct learnset_data_mon_moves* extract_learnable_moves(const u16*, u16, u
 const u16* get_special_evolutions(u16);
 u16 get_trade_evolution(u16, u16, u8, u8*, u8*);
 void evolve_mon(struct gen3_mon*, struct gen3_mon_data_unenc*, u16, u8, const u16*);
+u8 is_pokerus_strain_valid(u8);
+u8 get_pokerus_strain_max_days(u8);
+u8 are_pokerus_days_valid(u8);
+void sanitize_pokerus(u8*);
 
 // Order is G A E M. Initialized by init_enc_positions
 u8 enc_positions[PID_POSITIONS];
@@ -858,6 +862,37 @@ void recalc_stats_gen3(struct gen3_mon_data_unenc* data_dst, struct gen3_mon* ds
     dst->status = 0;
 }
 
+u8 is_pokerus_strain_valid(u8 pokerus_byte) {
+    if(!pokerus_byte)
+        return 1;
+    if(!((pokerus_byte >> 4) & 7))
+        return 0;
+    return 1;
+}
+
+u8 get_pokerus_strain_max_days(u8 pokerus_byte) {
+    if(!((pokerus_byte >> 4) & 7))
+        return 0;
+    return ((pokerus_byte >> 4) & 3) + 1;
+}
+
+u8 are_pokerus_days_valid(u8 pokerus_byte) {
+    if(!pokerus_byte)
+        return 1;
+    if(!is_pokerus_strain_valid(pokerus_byte))
+        return 0;
+    if((pokerus_byte & 0xF) > get_pokerus_strain_max_days(pokerus_byte))
+        return 0;
+    return 1;
+}
+
+void sanitize_pokerus(u8* pokerus_byte) {
+    if(!is_pokerus_strain_valid(*pokerus_byte))
+        *pokerus_byte |= 0x10;
+    if(!are_pokerus_days_valid(*pokerus_byte))
+        *pokerus_byte = ((*pokerus_byte) & 0xF0) | get_pokerus_strain_max_days(*pokerus_byte);
+}
+
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc* src, struct gen3_mon* dst) {
     u8 index = get_index_key(dst->pid);
     
@@ -1065,6 +1100,9 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     if((src->language < FIRST_VALID_LANGUAGE) || (src->language >= NUM_LANGUAGES) || (src->language == KOREAN_LANGUAGE))
         src->language = DEFAULT_NAME_BAD_LANGUAGE;
     
+    // Sanitize pokerus data...
+    sanitize_pokerus(&misc->pokerus);
+    
     // We reuse this SOOOO much...
     dst->is_egg = is_egg_gen3(src, misc);
     if(dst->is_egg) {
@@ -1073,6 +1111,8 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         // Eggs should not have items or mails
         growth->item = NO_ITEM_ID;
         src->mail_id = GEN3_NO_MAIL;
+        // Eggs cannot have pokerus
+        misc->pokerus = 0;
         src->level = EGG_LEVEL_GEN3;
         if(get_fast_hatch_eggs())
             growth->friendship = 1;
