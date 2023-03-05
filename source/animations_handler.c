@@ -43,9 +43,10 @@ void start_with_evolution_animation() {
     animation_counter = WAIT_TRADE_END-1;
 }
 
-void prepare_evolution_animation_only(struct gen3_mon_data_unenc* own_mon) {
+void prepare_evolution_animation_only(struct gen3_mon_data_unenc* own_mon, u8 own_screen) {
     sprite_indexes[OTHER_SPRITE_INDEX] = get_next_sprite_index();
     sprite_ys[OTHER_SPRITE_INDEX] = BASE_Y_SPRITE_TRADE_ANIMATION_SEND;
+    screen_nums[OTHER_SPRITE_INDEX] = own_screen;
     load_pokemon_sprite_raw(own_mon, 0, BASE_Y_SPRITE_TRADE_ANIMATION_SEND, BASE_X_SPRITE_TRADE_ANIMATION);
     animation_counter = 0;
     animation_completed = 0;
@@ -90,7 +91,7 @@ void advance_evolution_animation() {
         case START:
             if(animation_counter == WAIT_EVO_START) {
                 curr_evolution_animation_state = FADE_IN;
-                swap_screen_enabled_state(screen_nums[EVOLUTION_SPRITE_INDEX]);
+                disable_screen(screen_nums[EVOLUTION_SPRITE_INDEX]);
                 prepare_flush();
                 animation_counter = 0;
                 curr_fade_val = 0;
@@ -116,7 +117,7 @@ void advance_evolution_animation() {
                     curr_evolution_animation_state = END;
                     remove_fade_all_sprites();
                     swap_buffer_screen(screen_nums[EVOLUTION_SPRITE_INDEX], 0);
-                    swap_screen_enabled_state(screen_nums[EVOLUTION_SPRITE_INDEX]);
+                    enable_screen(screen_nums[EVOLUTION_SPRITE_INDEX]);
                     prepare_flush();
                 }
                 else{
@@ -129,7 +130,7 @@ void advance_evolution_animation() {
         case END:
             if(animation_counter == WAIT_EVO_END) {
                 animation_completed = 1;
-                swap_screen_enabled_state(screen_nums[EVOLUTION_SPRITE_INDEX]);
+                disable_screen(screen_nums[EVOLUTION_SPRITE_INDEX]);
                 prepare_flush();
                 animation_counter = 0;
                 is_animating_evolution = 0;
@@ -155,14 +156,14 @@ void advance_trade_animation() {
     
     if(sprite_ys[OTHER_SPRITE_INDEX] == BASE_Y_SPRITE_TRADE_ANIMATION_SEND) {
         if(animation_counter == WAIT_TRADE_END) {
+            disable_screen(screen_nums[OTHER_SPRITE_INDEX]);
             if(!animate_evolution)
                 animation_completed = 1;
             else {
                 is_animating_evolution = 1;
-                swap_screen_enabled_state(screen_nums[EVOLUTION_SPRITE_INDEX]);
+                enable_screen(screen_nums[EVOLUTION_SPRITE_INDEX]);
                 curr_evolution_animation_state = START;
             }
-            swap_screen_enabled_state(screen_nums[OTHER_SPRITE_INDEX]);
             prepare_flush();
             animation_counter = 0;
         }

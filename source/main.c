@@ -368,7 +368,7 @@ void trading_animation_init(struct game_data_t* game_data, u8 own_mon, u8 other_
     if(print_messages)
         setup_trade_animation(&game_data[0].party_3_undec[own_mon], &game_data[1].party_3_undec[other_mon], TRADE_ANIMATION_SEND_WINDOW_SCREEN, TRADE_ANIMATION_RECV_WINDOW_SCREEN);
     else
-        prepare_evolution_animation_only(&game_data[0].party_3_undec[own_mon]);
+        prepare_evolution_animation_only(&game_data[0].party_3_undec[own_mon], TRADE_ANIMATION_RECV_WINDOW_SCREEN);
     prepare_flush();
 }
 
