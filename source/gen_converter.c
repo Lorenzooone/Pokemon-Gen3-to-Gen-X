@@ -704,7 +704,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
 
     u8 encounter_type = get_encounter_type_gen3(species);
     u8 is_shiny = is_shiny_gen2_unfiltered(wanted_ivs);
-    // To debug shiny Unown stuff
+    // To debug shiny Unown stuff more than normally possible
     //is_shiny = 1;
     u32 ivs = 0;
     u8 ability = 0;

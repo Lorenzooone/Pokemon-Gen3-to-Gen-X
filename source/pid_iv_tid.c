@@ -1078,7 +1078,7 @@ void generate_unown_shiny_info_letter_preloaded(u8 wanted_nature, u8 letter, u16
         if(wanted_nature >= NUM_NATURES)
             wanted_nature -= NUM_NATURES;
     }
-    _generate_unown_shiny_info(wanted_nature, letter, tsv, dst_pid, dst_ivs, get_rng());
+    _generate_unown_shiny_info(wanted_nature, tsv, letter, dst_pid, dst_ivs, get_rng());
 }
 
 u8 get_roamer_ivs(u32 pid, u8 hp_ivs, u8 atk_ivs, u32* dst_ivs) {
