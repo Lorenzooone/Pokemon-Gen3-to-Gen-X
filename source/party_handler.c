@@ -628,6 +628,8 @@ u8 get_mail_id_raw(struct gen3_mon_data_unenc* data_src) {
 u16 get_dex_index_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
         return NO_DEX_INDEX;
+    if(data_src->is_egg)
+        return NO_DEX_INDEX;
 
     const u16* dex_conversion_bin_16 = (const u16*)dex_conversion_bin;
     u16 mon_index = get_mon_index_raw(data_src);
