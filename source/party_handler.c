@@ -1374,7 +1374,7 @@ enum LEARNABLE_MOVES_RETVAL learn_if_possible(struct gen3_mon_data_unenc* mon, u
     
     u16 move = mon->learnable_moves->moves[index];
     
-    if(!is_move_valid(move, LAST_VALID_GEN_3_MOVE))
+    if((!is_move_valid(move, LAST_VALID_GEN_3_MOVE)) || (!move))
         return SKIPPED;
     
     struct gen3_mon_attacks* attacks = &mon->attacks;
@@ -1413,7 +1413,7 @@ u8 forget_and_learn_move(struct gen3_mon_data_unenc* mon, u32 index, u32 forget_
     
     u16 move = mon->learnable_moves->moves[index];
 
-    if(!is_move_valid(move, LAST_VALID_GEN_3_MOVE))
+    if((!is_move_valid(move, LAST_VALID_GEN_3_MOVE)) || (!move))
         return 0;
 
     struct gen3_mon_attacks* attacks = &mon->attacks;
