@@ -180,6 +180,19 @@ const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc* data_src){
     return get_pokemon_name(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->deoxys_form, SYS_LANGUAGE);
 }
 
+size_t get_pokemon_name_raw_language_limit(struct gen3_mon_data_unenc* data_src){
+    if(!data_src->is_valid_gen3)
+        return SYS_LANGUAGE_LIMIT;
+
+    if(IS_SYS_LANGUAGE_JAPANESE && (data_src->growth.species == UNOWN_SPECIES) && (!data_src->is_egg))
+        return SYS_LANGUAGE_LIMIT + 2; // Account for the space and the extra letter
+        
+    if(IS_SYS_LANGUAGE_JAPANESE && (data_src->growth.species == DEOXYS_SPECIES) && (!data_src->is_egg))
+        return SYS_LANGUAGE_LIMIT + 2; // Account for the space and the extra letter
+
+    return SYS_LANGUAGE_LIMIT;
+}
+
 const u16* get_learnset_for_species(const u16* learnsets, u16 species){
     u16 num_entries = learnsets[0];
     for(int i = 0; i < num_entries; i++) {
@@ -1168,6 +1181,7 @@ void clean_mail_gen3(struct mail_gen3* mail, struct gen3_mon* mon){
 void evolve_mon(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u16 evolved_species, u8 consume_item, const u16* learnsets) {
     // Load the pre-evo name
     mon_data->pre_evo_string = get_pokemon_name_raw(mon_data);
+    mon_data->pre_evo_string_length = get_pokemon_name_raw_language_limit(mon_data);
     // Determine if we're going to change the name
     u8 replace_name = 0;
     if(text_gen3_is_same(get_pokemon_name_pure(mon_data->growth.species, mon_data->is_egg, mon->language), mon->nickname, GET_LANGUAGE_NICKNAME_LIMIT(mon->language), GET_LANGUAGE_NICKNAME_LIMIT(mon->language)))

@@ -297,6 +297,7 @@ struct gen3_mon_data_unenc {
     u8 fix_has_altered_ot : 1;
     u8 successfully_decrypted : 1;
     const u8* pre_evo_string;
+    size_t pre_evo_string_length;
     const struct learnset_data_mon_moves* learnable_moves;
     struct alternative_data_gen3 alter_nature;
     struct alternative_data_gen3 fixed_ivs;
@@ -419,6 +420,7 @@ const u8* get_pokemon_name_pure(int, u8, u8);
 const u8* get_pokemon_name_language(u16, u8);
 const u16* get_learnset_for_species(const u16*, u16);
 const u8* get_pokemon_name_raw(struct gen3_mon_data_unenc*);
+size_t get_pokemon_name_raw_language_limit(struct gen3_mon_data_unenc*);
 u16 get_mon_index_raw(struct gen3_mon_data_unenc*);
 u8 has_item_raw(struct gen3_mon_data_unenc* data_src);
 const u8* get_item_name_raw(struct gen3_mon_data_unenc*);

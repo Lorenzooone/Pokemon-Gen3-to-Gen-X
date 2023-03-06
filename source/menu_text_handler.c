@@ -149,7 +149,7 @@ void print_trade_menu(struct game_data_t* game_data, u8 update, u8 curr_gen, u8 
             if(options[party_index][party_option_index] != 0xFF) {
                 struct gen3_mon_data_unenc* mon = &game_data[party_index].party_3_undec[options[party_index][party_option_index]];
                 // I tried just using printf here with left padding, but it's EXTREMELY slow
-                PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+                PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
                 if(load_sprites)
                     load_pokemon_sprite_raw(mon, 1, BASE_Y_SPRITE_TRADE_MENU + (i*BASE_Y_SPRITE_INCREMENT_TRADE_MENU), (BASE_X_SPRITE_INCREMENT_TRADE_MENU*j) + BASE_X_SPRITE_TRADE_MENU);
             }
@@ -194,17 +194,17 @@ void print_learnable_move(struct gen3_mon_data_unenc* mon, u16 index, enum MOVES
 
     switch(moves_printing_type) {
         case LEARNT_P:
-            PRINT_FUNCTION("\x05 learnt\n\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x05 learnt\n\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
             set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
             PRINT_FUNCTION("\x01!", get_move_name_raw(move));
             break;
         case DID_NOT_LEARN_P:
-            PRINT_FUNCTION("\x05 did not\n\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x05 did not\n\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
             set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
             PRINT_FUNCTION("learn \x01!", get_move_name_raw(move));
             break;
         case LEARNABLE_P:
-            PRINT_FUNCTION("\x05 wants to\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x05 wants to\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
             set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
             PRINT_FUNCTION("learn \x01!\n", get_move_name_raw(move));
             set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
@@ -245,7 +245,7 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
         set_text_x(POKEMON_SPRITE_X_TILES+(OFFER_WINDOW_X*i));
 
         if(!is_egg) {
-            PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
 
             set_text_y(curr_text_y++);
             set_text_x((OFFER_WINDOW_X*i));
@@ -280,7 +280,7 @@ void print_offer_screen(struct game_data_t* game_data, u8 own_mon, u8 other_mon)
             }
         }
         else
-            PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x05", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
     }
 }
 
@@ -313,14 +313,16 @@ void print_offer_options_screen(struct game_data_t* game_data, u8 own_mon, u8 ot
     clear_offer_options_window();
     set_text_y(OFFER_OPTIONS_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(OFFER_OPTIONS_WINDOW_X);
+    struct gen3_mon_data_unenc* own_mon_data = &game_data[0].party_3_undec[own_mon];
+    struct gen3_mon_data_unenc* other_mon_data = &game_data[1].party_3_undec[other_mon];
     if(!IS_SYS_LANGUAGE_JAPANESE) {
-        PRINT_FUNCTION("Trade \x05\n", get_pokemon_name_raw(&game_data[0].party_3_undec[own_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("Trade \x05\n", get_pokemon_name_raw(own_mon_data), get_pokemon_name_raw_language_limit(own_mon_data), IS_SYS_LANGUAGE_JAPANESE);
         set_text_x(OFFER_OPTIONS_WINDOW_X);
-        PRINT_FUNCTION("for \x05?\n\n", get_pokemon_name_raw(&game_data[1].party_3_undec[other_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("for \x05?\n\n", get_pokemon_name_raw(other_mon_data), get_pokemon_name_raw_language_limit(other_mon_data), IS_SYS_LANGUAGE_JAPANESE);
     }
     else {
-        PRINT_FUNCTION("Trade \x05 ", get_pokemon_name_raw(&game_data[0].party_3_undec[own_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
-        PRINT_FUNCTION("for \x05?\n\n", get_pokemon_name_raw(&game_data[1].party_3_undec[other_mon]), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("Trade \x05 ", get_pokemon_name_raw(own_mon_data), get_pokemon_name_raw_language_limit(own_mon_data), IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("for \x05?\n\n", get_pokemon_name_raw(other_mon_data), get_pokemon_name_raw_language_limit(other_mon_data), IS_SYS_LANGUAGE_JAPANESE);
     }
     set_text_x(OFFER_OPTIONS_WINDOW_X+2);
     PRINT_FUNCTION("Yes");
@@ -536,14 +538,14 @@ void print_evolution_animation_internal(struct gen3_mon_data_unenc* mon, u8 is_s
     set_text_y(EVOLUTION_ANIMATION_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
     if(!is_second_run) {
-        PRINT_FUNCTION("Huh?! \x05\n\n", mon->pre_evo_string, SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("Huh?! \x05\n\n", mon->pre_evo_string, mon->pre_evo_string_length, IS_SYS_LANGUAGE_JAPANESE);
         set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
         PRINT_FUNCTION("is evolving?!");
     }
     else {
-        PRINT_FUNCTION("\x05 evolved\n\n", mon->pre_evo_string, SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("\x05 evolved\n\n", mon->pre_evo_string, mon->pre_evo_string_length, IS_SYS_LANGUAGE_JAPANESE);
         set_text_x(EVOLUTION_ANIMATION_WINDOW_X);
-        PRINT_FUNCTION("into \x05!", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("into \x05!", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
     }
     swap_buffer_screen(get_screen_num(), 1);
 }
@@ -563,7 +565,7 @@ void print_trade_animation_send(struct gen3_mon_data_unenc* mon){
     set_text_y(TRADE_ANIMATION_SEND_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(TRADE_ANIMATION_SEND_WINDOW_X);
     if(!is_egg) {
-        PRINT_FUNCTION("Sending \x05 away...\n\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("Sending \x05 away...\n\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
         set_text_x(TRADE_ANIMATION_SEND_WINDOW_X);
         PRINT_FUNCTION("Goodbye, \x05!", mon->src->nickname, GET_LANGUAGE_NICKNAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language));
     }
@@ -584,7 +586,7 @@ void print_trade_animation_recv(struct gen3_mon_data_unenc* mon){
     set_text_y(TRADE_ANIMATION_RECV_WINDOW_Y+JAPANESE_Y_AUTO_INCREASE);
     set_text_x(TRADE_ANIMATION_RECV_WINDOW_X);
     if(!is_egg) {
-        PRINT_FUNCTION("Received \x05.\n\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("Received \x05.\n\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
         set_text_x(TRADE_ANIMATION_RECV_WINDOW_X);
         PRINT_FUNCTION("Welcome, \x05!", mon->src->nickname, GET_LANGUAGE_NICKNAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language));
     }
@@ -841,7 +843,7 @@ void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     if(!is_egg) {
         if(print_nickname)
             PRINT_FUNCTION("\x05 - ", mon->src->nickname, GET_LANGUAGE_NICKNAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language));
-        PRINT_FUNCTION("\x05 \x02\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE, get_pokemon_gender_char_raw(mon));
+        PRINT_FUNCTION("\x05 \x02\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE, get_pokemon_gender_char_raw(mon));
     
         set_text_x((x>>3) + POKEMON_SPRITE_X_TILES);
         
@@ -857,7 +859,7 @@ void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
             PRINT_FUNCTION("Had Pok\xE9rus");
     }
     else
-        PRINT_FUNCTION("\x05\n", get_pokemon_name_raw(mon), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+        PRINT_FUNCTION("\x05\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
 }
 
 void print_warning_when_clock_changed() {
