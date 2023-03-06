@@ -187,7 +187,7 @@ size_t get_pokemon_name_raw_language_limit(struct gen3_mon_data_unenc* data_src)
     if(IS_SYS_LANGUAGE_JAPANESE && (data_src->growth.species == UNOWN_SPECIES) && (!data_src->is_egg))
         return SYS_LANGUAGE_LIMIT + 2; // Account for the space and the extra letter
         
-    if(IS_SYS_LANGUAGE_JAPANESE && (data_src->growth.species == DEOXYS_SPECIES) && (!data_src->is_egg))
+    if(IS_SYS_LANGUAGE_JAPANESE && (data_src->growth.species == DEOXYS_SPECIES) && (!data_src->is_egg) && (data_src->deoxys_form))
         return SYS_LANGUAGE_LIMIT + 2; // Account for the space and the extra letter
 
     return SYS_LANGUAGE_LIMIT;
