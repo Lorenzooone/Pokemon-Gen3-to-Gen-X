@@ -923,7 +923,7 @@ void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
             PRINT_FUNCTION("\nHatched in \x01 Ball", get_pokeball_base_name_gen3_raw(mon));
     }
     else
-        PRINT_FUNCTION("\nHatches in : \x03 Egg Cycles\n\nHatches in: \x03 Steps", mon->growth.friendship, mon->growth.friendship * 0x100);
+        PRINT_FUNCTION("\nHatches in : \x03 Egg Cycles\n\nHatches in: \x03 Steps", mon->growth.friendship + 1, (mon->growth.friendship + 1) * 0x100);
 }
 
 void print_pokemon_page2(struct gen3_mon_data_unenc* mon) {

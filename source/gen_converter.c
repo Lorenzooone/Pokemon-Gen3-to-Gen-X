@@ -1139,8 +1139,11 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
         dst->stats[i] = swap_endian_short(calc_stats_gen2(growth->species, src->pid, i, dst->level, get_ivs_gen2(dst->ivs, i), swap_endian_short(dst->evs[i >= EVS_TOTAL_GEN12 ? EVS_TOTAL_GEN12-1 : i])));
     
     // Store egg cycles
-    if(dst_data->is_egg)
+    if(dst_data->is_egg) {
         dst->friendship = growth->friendship;
+        if(!dst->friendship)
+            dst->friendship = 1;
+    }
 
     // Text conversions
     convert_strings_of_gen3(src, growth->species, dst_data->ot_name, dst_data->ot_name_jp, dst_data->nickname, dst_data->nickname_jp, dst_data->is_egg, 1);

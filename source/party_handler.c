@@ -1134,7 +1134,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         growth->pp_bonuses = 0;
         src->level = EGG_LEVEL_GEN3;
         if(get_fast_hatch_eggs())
-            growth->friendship = 1;
+            growth->friendship = 0;
     }
     
     if((growth->item > LAST_VALID_GEN_3_ITEM) || (growth->item == ENIGMA_BERRY_ID))
