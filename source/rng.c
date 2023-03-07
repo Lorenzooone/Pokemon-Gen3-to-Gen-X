@@ -14,7 +14,7 @@ static u32 curr_seed_0;
 static u32 curr_seed_1;
 static u8 advances_enabled;
 
-ALWAYS_INLINE MAX_OPTIMIZE void u64_add(u32* src0_0_p, u32* src0_1_p, u32 src1_0, u32 src1_1)
+IWRAM_CODE ALWAYS_INLINE MAX_OPTIMIZE void u64_add(u32* src0_0_p, u32* src0_1_p, u32 src1_0, u32 src1_1)
 {
     u32 src0_0 = *src0_0_p;
     u32 src0_1 = *src0_1_p;
@@ -53,11 +53,11 @@ void init_rng(u32 val_0, u32 val_1) {
     enable_advances();
 }
 
-void disable_advances() {
+IWRAM_CODE void disable_advances() {
     advances_enabled = 0;
 }
 
-void enable_advances() {
+IWRAM_CODE void enable_advances() {
     advances_enabled = 1;
 }
 
@@ -67,7 +67,7 @@ void increase_rng(u32 increaser_0, u32 increaser_1) {
     enable_advances();
 }
 
-u32 get_rng() {
+IWRAM_CODE u32 get_rng() {
     // Link cable timings SHOULD give enough Randomness...
     disable_advances();
         u64_mul(&curr_seed_0, &curr_seed_1, FACTOR_0, FACTOR_1);
@@ -82,7 +82,7 @@ u32 get_rng() {
     return curr_seed_1;
 }
 
-void advance_rng() {
+IWRAM_CODE void advance_rng() {
     if(advances_enabled)
         get_rng();
 }

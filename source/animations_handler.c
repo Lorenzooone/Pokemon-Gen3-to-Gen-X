@@ -80,7 +80,7 @@ u8 has_animation_completed() {
     return animation_completed;
 }
 
-void advance_evolution_animation() {
+IWRAM_CODE void advance_evolution_animation() {
 
     if(animation_completed)
         return;
@@ -142,7 +142,7 @@ void advance_evolution_animation() {
 
 }
 
-void advance_trade_animation() {
+IWRAM_CODE void advance_trade_animation() {
 
     if(animation_completed)
         return;

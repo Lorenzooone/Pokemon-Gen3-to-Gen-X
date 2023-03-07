@@ -8,7 +8,7 @@
 void sio_normal_inner_slave(void);
 u8 sio_normal_inner_master(void);
 
-int timed_sio_normal_master(int data, int is_32, int vCountWait) {
+IWRAM_CODE int timed_sio_normal_master(int data, int is_32, int vCountWait) {
     u8 curr_vcount, target_vcount;
     
     if(is_32)
@@ -35,7 +35,7 @@ int timed_sio_normal_master(int data, int is_32, int vCountWait) {
         return (REG_SIODATA8 & 0xFF);
 }
 
-void sio_normal_inner_slave() {
+IWRAM_CODE void sio_normal_inner_slave() {
     // - Set Start=0 and SO=0 (SO=LOW indicates that slave is (almost) ready).
     REG_SIOCNT &= ~(SIO_START | SIO_SO_HIGH);
     // - Set Start=1 and SO=1 (SO=HIGH indicates not ready, applied after transfer).
@@ -73,12 +73,12 @@ IWRAM_CODE MAX_OPTIMIZE int sio_read(u8 is_32) {
     return data;
 }
 
-void sio_stop_irq_slave() {
+IWRAM_CODE void sio_stop_irq_slave() {
     REG_SIOCNT &= ~SIO_SO_HIGH;
     REG_SIOCNT &= ~SIO_IRQ;
 }
 
-void sio_normal_prepare_irq_slave(int data) {
+IWRAM_CODE void sio_normal_prepare_irq_slave(int data) {
     // - Initialize data which is to be sent to master.
     REG_SIODATA32 = data;
     REG_SIODATA8 = (data & 0xFF);
@@ -122,7 +122,7 @@ IWRAM_CODE MAX_OPTIMIZE u32 sio_send_master(u32 data, u8 is_32) {
     return sio_read(is_32);
 }
 
-u8 sio_normal_inner_master() {
+IWRAM_CODE u8 sio_normal_inner_master() {
     // - Wait for SI to become LOW (slave ready). (Check timeout here!)
     int curr_vcount = REG_VCOUNT;
     int target_vcount = curr_vcount + BLANK_LINES_WAIT;
@@ -139,7 +139,7 @@ u8 sio_normal_inner_master() {
     return 1;
 }
 
-void init_sio_normal(int is_master, int is_32) {
+IWRAM_CODE void init_sio_normal(int is_master, int is_32) {
     u16 sio_cnt_val = 0;
     
     if(is_32)
@@ -157,7 +157,7 @@ void init_sio_normal(int is_master, int is_32) {
     REG_SIOCNT = sio_cnt_val;
 }
 
-int sio_normal(int data, int is_master, int is_32, u8* success) {
+IWRAM_CODE int sio_normal(int data, int is_master, int is_32, u8* success) {
     // - Initialize data which is to be sent to master.
     if(is_32)
         REG_SIODATA32 = data;

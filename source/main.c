@@ -32,7 +32,8 @@
 #define HW_SET_REG_MEMORY_CONTROLLER_VALUE 0x0D000020
 #define REG_MEMORY_CONTROLLER *((u32*)(REG_MEMORY_CONTROLLER_ADDR))
 
-#define WORST_CASE_EWRAM 1
+#define WORST_CASE_EWRAM 0
+#define TEST_LAG_EWRAM 0
 #define MIN_WAITCYCLE 1
 
 #define WAITING_TIME_MOVE_MESSAGES (2*FPS)
@@ -157,6 +158,9 @@ IWRAM_CODE void find_optimal_ewram_settings() {
     // Check for unsupported (DS)
     if(REG_MEMORY_CONTROLLER != HW_SET_REG_MEMORY_CONTROLLER_VALUE)
         return;
+    
+    if(TEST_LAG_EWRAM)
+        REG_MEMORY_CONTROLLER &= ~(0xF<<24);
     
     // Check for worst case testing (Not for final release)
     if(WORST_CASE_EWRAM)

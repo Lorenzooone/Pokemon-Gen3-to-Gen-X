@@ -45,7 +45,7 @@ void prepare_number_of_sizes() {
             return;
 }
 
-u8 get_number_of_buffers() {
+IWRAM_CODE u8 get_number_of_buffers() {
     return number_of_sizes;
 }
 

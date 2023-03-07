@@ -16,7 +16,7 @@
 #define FLASH_EXIT_MAN_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
 #define FLASH_ERASE_SECTOR_BASE_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0x80; BASE_FLASH_CMD
 #define FLASH_TERM_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
-#define TIMEOUT (20000*((CLOCK_SPEED/GBA_CLOCK_SPEED) + ((CLOCK_SPEED%GBA_CLOCK_SPEED) == 0 ? 0 : 1)))
+#define TIMEOUT (50000*((CLOCK_SPEED/GBA_CLOCK_SPEED) + ((CLOCK_SPEED%GBA_CLOCK_SPEED) == 0 ? 0 : 1)))
 #define ERASE_TIMEOUT (TIMEOUT)
 #define ERASED_BYTE 0xFF
 #define BANK_SIZE 0x10000
@@ -38,7 +38,7 @@ static void write_direct_single_byte_save(uintptr_t, u8);
 u8 current_bank;
 u8 is_macronix;
 
-void init_bank(){
+IWRAM_CODE void init_bank(){
     REG_WAITCNT |= 3;
     current_bank = NUM_BANKS;
     is_macronix = 0;
@@ -53,7 +53,7 @@ void init_bank(){
     #endif
 }
 
-uintptr_t bank_check(uintptr_t address){
+IWRAM_CODE uintptr_t bank_check(uintptr_t address){
     address %= (NUM_BANKS * BANK_SIZE);
     #if IS_FLASH
     u8 bank = address / BANK_SIZE;
@@ -68,7 +68,7 @@ uintptr_t bank_check(uintptr_t address){
     return address;
 }
 
-void erase_sector(uintptr_t address) {
+IWRAM_CODE void erase_sector(uintptr_t address) {
     address = bank_check(address);
     address >>= SECTOR_SIZE_BITS;
     address <<= SECTOR_SIZE_BITS;
@@ -96,11 +96,11 @@ void erase_sector(uintptr_t address) {
     }
 }
 
-ALWAYS_INLINE u8 read_direct_single_byte_save(uintptr_t address) {
+IWRAM_CODE u8 read_direct_single_byte_save(uintptr_t address) {
     return *(vu8*)(SAVE_POS+address);
 }
 
-ALWAYS_INLINE void write_direct_single_byte_save(uintptr_t address, u8 data) {
+IWRAM_CODE void write_direct_single_byte_save(uintptr_t address, u8 data) {
     vu8* save_data = (vu8*)SAVE_POS;
     for(int i = 0; (i < 3) && save_data[address] != data; i++) {
         #if IS_FLASH
@@ -113,17 +113,17 @@ ALWAYS_INLINE void write_direct_single_byte_save(uintptr_t address, u8 data) {
     }
 }
 
-u8 read_byte_save(uintptr_t address){
+IWRAM_CODE u8 read_byte_save(uintptr_t address){
     address = bank_check(address);
     return read_direct_single_byte_save(address);
 }
 
-void write_byte_save(uintptr_t address, u8 data){
+IWRAM_CODE void write_byte_save(uintptr_t address, u8 data){
     address = bank_check(address);
     write_direct_single_byte_save(address, data);
 }
 
-u32 read_int_save(uintptr_t address){
+IWRAM_CODE u32 read_int_save(uintptr_t address){
     address = bank_check(address);
     u32 data_out = 0;
     if((address + sizeof(u32)) > BANK_LIMIT) {
@@ -137,7 +137,7 @@ u32 read_int_save(uintptr_t address){
     return data_out;
 }
 
-u16 read_short_save(uintptr_t address){
+IWRAM_CODE u16 read_short_save(uintptr_t address){
     address = bank_check(address);
     u16 data_out = 0;
     if((address + sizeof(u16)) > BANK_LIMIT) {
@@ -151,7 +151,7 @@ u16 read_short_save(uintptr_t address){
     return data_out;
 }
 
-void write_int_save(uintptr_t address, u32 data){
+IWRAM_CODE void write_int_save(uintptr_t address, u32 data){
     address = bank_check(address);
     if((address + sizeof(u32)) > BANK_LIMIT) {
         for(size_t i = 0; i < sizeof(u32); i++)
@@ -163,7 +163,7 @@ void write_int_save(uintptr_t address, u32 data){
     }
 }
 
-void write_short_save(uintptr_t address, u16 data){
+IWRAM_CODE void write_short_save(uintptr_t address, u16 data){
     address = bank_check(address);
     if((address + sizeof(u16)) > BANK_LIMIT) {
         for(size_t i = 0; i < sizeof(u16); i++)
@@ -175,7 +175,7 @@ void write_short_save(uintptr_t address, u16 data){
     }
 }
 
-void copy_save_to_ram(uintptr_t base_address, u8* new_address, size_t size){
+IWRAM_CODE void copy_save_to_ram(uintptr_t base_address, u8* new_address, size_t size){
     base_address = bank_check(base_address);
     if((base_address + size) > BANK_LIMIT) {
         for(size_t i = 0; i < size; i++)
@@ -187,7 +187,7 @@ void copy_save_to_ram(uintptr_t base_address, u8* new_address, size_t size){
     }
 }
 
-void copy_ram_to_save(u8* base_address, uintptr_t save_address, size_t size){
+IWRAM_CODE void copy_ram_to_save(u8* base_address, uintptr_t save_address, size_t size){
     save_address = bank_check(save_address);
     if((save_address + size) > BANK_LIMIT) {
         for(size_t i = 0; i < size; i++)
@@ -199,7 +199,7 @@ void copy_ram_to_save(u8* base_address, uintptr_t save_address, size_t size){
     }
 }
 
-u8 is_save_correct(u8* base_address, uintptr_t save_address, size_t size) {
+IWRAM_CODE u8 is_save_correct(u8* base_address, uintptr_t save_address, size_t size) {
     save_address = bank_check(save_address);
     if((save_address + size) > BANK_LIMIT) {
         for(size_t i = 0; i < size; i++)

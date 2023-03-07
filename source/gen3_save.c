@@ -5,9 +5,12 @@
 #include "party_handler.h"
 #include "gen_converter.h"
 #include "text_handler.h"
+#include "timing_basic.h"
 #include <stddef.h>
 
 #include "default_gift_ribbons_bin.h"
+
+#define FRAMES_BETWEEN_CHECKS ((1*FPS)/12)
 
 #define MAGIC_NUMBER 0x08012025
 #define NUM_SLOTS 2
@@ -106,7 +109,8 @@ struct game_data_t* own_game_data_ptr;
 u8 in_use_slot;
 u8 is_cartridge_loaded;
 u16 loaded_checksum[SECTION_TOTAL];
-u8 currently_reading_section;
+u8 currently_checking_section;
+u8 time_since_last_check;
 
 struct game_data_t* get_own_game_data() {
     return own_game_data_ptr;
@@ -730,7 +734,8 @@ void unload_cartridge(){
 void load_cartridge(){
     for(size_t i = 0; i < SECTION_TOTAL; i++)
         loaded_checksum[i] = read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS + (i * SECTION_SIZE));
-    currently_reading_section = 0;
+    currently_checking_section = 0;
+    time_since_last_check = 0;
     is_cartridge_loaded = 1;
 }
 
@@ -740,20 +745,25 @@ u8 loaded_data_has_warnings(struct game_data_t* game_data, struct game_data_priv
     return (!is_in_pokemon_center(game_data_priv, game_data->game_identifier.game_main_version)) || (can_trade(game_data_priv, game_data->game_identifier.game_main_version) == PARTIAL_TRADE_POSSIBLE) || (get_party_usable_num(game_data) < MIN_ACTIVE_MON_TRADING);
 }
 
-u8 get_is_cartridge_loaded(){
+IWRAM_CODE u8 get_is_cartridge_loaded(){
     return is_cartridge_loaded;
 }
 
-u8 has_cartridge_been_removed(){
+IWRAM_CODE u8 has_cartridge_been_removed(){
     u8 retval = 0;
     if(get_is_cartridge_loaded()) {
-        if(currently_reading_section >= SECTION_TOTAL)
-            currently_reading_section = 0;
-        if(read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS + (currently_reading_section * SECTION_SIZE)) != loaded_checksum[currently_reading_section])
-            retval = 1;
-        if(read_int_save((in_use_slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS + (currently_reading_section * SECTION_SIZE)) != MAGIC_NUMBER)
-            retval = 1;
-        currently_reading_section++;
+        if(time_since_last_check < FRAMES_BETWEEN_CHECKS)
+            time_since_last_check++;
+        else {
+            if(currently_checking_section >= SECTION_TOTAL)
+                currently_checking_section = 0;
+            if(read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS + (currently_checking_section * SECTION_SIZE)) != loaded_checksum[currently_checking_section])
+                retval = 1;
+            if(read_int_save((in_use_slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS + (currently_checking_section * SECTION_SIZE)) != MAGIC_NUMBER)
+                retval = 1;
+            currently_checking_section++;
+            time_since_last_check = 0;
+        }
     }
     return retval;
 }

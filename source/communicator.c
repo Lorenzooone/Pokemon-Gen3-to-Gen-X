@@ -183,7 +183,7 @@ int has_accepted_offer() {
     return 1;
 }
 
-void set_start_state(enum START_TRADE_STATE new_val) {
+IWRAM_CODE void set_start_state(enum START_TRADE_STATE new_val) {
     start_state = new_val;
     start_state_updated = 1;
 }
@@ -198,7 +198,7 @@ u16 get_transferred(u8 index) {
     return buffer_counter;
 }
 
-void init_received_gen3() {
+IWRAM_CODE void init_received_gen3() {
     for(size_t i = 0; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++)
         received_gen3[i] = 0;
     buffer_counter = 0;
@@ -207,7 +207,7 @@ void init_received_gen3() {
     since_last_recv_gen3 = 0;
 }
 
-u16 get_pos_bytes_from_index(u16 index) {
+IWRAM_CODE u16 get_pos_bytes_from_index(u16 index) {
     int pos_byte = START_SENDING_DATA;
     while(index >= DATA_CHUNK_SIZE) {
         pos_byte++;
@@ -216,14 +216,14 @@ u16 get_pos_bytes_from_index(u16 index) {
     return index | (pos_byte << 8);
 }
 
-u16 get_index_from_pos_bytes(u8 position, u8 control_byte) {
+IWRAM_CODE u16 get_index_from_pos_bytes(u8 position, u8 control_byte) {
     u16 final_pos = position;
     if(final_pos >= DATA_CHUNK_SIZE)
         final_pos = 0;
     return final_pos + (DATA_CHUNK_SIZE * ((control_byte&0xF) - START_SENDING_DATA));
 }
 
-u8 set_received_gen3(u16 index) {
+IWRAM_CODE u8 set_received_gen3(u16 index) {
     if(index >= (sizeof(struct gen3_trade_data)>>1))
         return 1;
     int i = index >> 3;
@@ -234,7 +234,7 @@ u8 set_received_gen3(u16 index) {
     return 0;
 }
 
-u16 get_first_not_received_gen3() {
+IWRAM_CODE u16 get_first_not_received_gen3() {
     for(size_t i = 0; i < ((sizeof(struct gen3_trade_data) >> 4)+1); i++)
         for(int j = 0; j < 8; j++) {
             if(((i<<3) + j) >= (sizeof(struct gen3_trade_data)>>1))
@@ -245,7 +245,7 @@ u16 get_first_not_received_gen3() {
     return sizeof(struct gen3_trade_data)>>1;
 }
 
-u16 get_not_received_length_gen3(u16 index) {
+IWRAM_CODE u16 get_not_received_length_gen3(u16 index) {
     if(index >= (sizeof(struct gen3_trade_data)>>1))
         return 0;
     int i_pos = index >> 3;
@@ -266,7 +266,7 @@ u16 get_not_received_length_gen3(u16 index) {
     return total;
 }
 
-int increment_last_tranfer() {
+IWRAM_CODE int increment_last_tranfer() {
     return last_transfer_counter++;
 }
 
@@ -281,7 +281,7 @@ enum START_TRADE_STATE get_start_state() {
     return start_state;
 }
 
-void reset_transfer_data_between_sync() {
+IWRAM_CODE void reset_transfer_data_between_sync() {
     has_transmitted_syn = 0;
     syn_transmitted = 0;
     increment_out = 0;
@@ -290,14 +290,14 @@ void reset_transfer_data_between_sync() {
     last_transfer_counter = 0;
 }
 
-void init_transfer_data() {
+IWRAM_CODE void init_transfer_data() {
     base_pos = 0;
     reset_transfer_data_between_sync();
     sizes_index = 0;
     set_start_state(START_TRADE_PAR);
 }
 
-enum START_TRADE_STATE get_start_state_raw() {
+IWRAM_CODE enum START_TRADE_STATE get_start_state_raw() {
     return start_state;
 }
 
@@ -305,7 +305,7 @@ void init_start_state() {
     set_start_state(START_TRADE_UNK);
 }
 
-u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
+IWRAM_CODE u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
     next_long_pause = 1;
     u8 limit_trade_offer = trade_offer_start + PARTY_SIZE;
     if(((data >= trade_offer_start) && (data < limit_trade_offer)) || (data == end_trade_value)) {
@@ -319,7 +319,7 @@ u8 get_offer(u8 data, u8 trade_offer_start, u8 end_trade_value) {
     return trade_offer_start + trade_offer_out;
 }
 
-u8 get_accept(u8 data, u8 trade_offer_start) {
+IWRAM_CODE u8 get_accept(u8 data, u8 trade_offer_start) {
     next_long_pause = 1;
     if((data == (trade_offer_start + DECLINE_VALUE)) || (data == (trade_offer_start + ACCEPT_VALUE))) {
         if(received_once) {
@@ -332,7 +332,7 @@ u8 get_accept(u8 data, u8 trade_offer_start) {
     return trade_offer_start + trade_offer_out;
 }
 
-u8 get_success(u8 data, u8 trade_offer_start) {
+IWRAM_CODE u8 get_success(u8 data, u8 trade_offer_start) {
     next_long_pause = 1;
     if(((data & 0xF0) == (trade_offer_start & 0xF0))) {
         if(received_once)
@@ -350,7 +350,7 @@ MAX_OPTIMIZE void set_next_vcount_interrupt(void){
     REG_DISPSTAT  = (REG_DISPSTAT &0xFF) | (next_stop<<8);
 }
 
-int communicate_buffer(u8 data, u8 is_master) {
+IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
     u8 ignore_data = 0;
     if(!has_transmitted_syn) {
         if((syn_transmitted > MAX_WAIT_FOR_SYN) && (!is_master)) {
@@ -419,7 +419,7 @@ IWRAM_CODE int check_if_continue(u8 data, const u8* sends, const u8* recvs, size
     return sends[buffer_counter];
 }
 
-int process_data_arrived_gen1(u8 data, u8 is_master) {
+IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
     if(start_state != START_TRADE_DON) {
@@ -514,7 +514,7 @@ int process_data_arrived_gen1(u8 data, u8 is_master) {
     }
 }
 
-int process_data_arrived_gen2(u8 data, u8 is_master) {
+IWRAM_CODE int process_data_arrived_gen2(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
     if(start_state != START_TRADE_DON)
@@ -581,7 +581,7 @@ int process_data_arrived_gen2(u8 data, u8 is_master) {
     }
 }
 
-enum TRADING_STATE prepare_out_data_and_update_gen3(u8* out_command_id, u8 new_command_id, u16* out_data, u16 new_data, u8 do_update, enum TRADING_STATE base_trading_state, enum TRADING_STATE success_new_trading_state) {
+IWRAM_CODE enum TRADING_STATE prepare_out_data_and_update_gen3(u8* out_command_id, u8 new_command_id, u16* out_data, u16 new_data, u8 do_update, enum TRADING_STATE base_trading_state, enum TRADING_STATE success_new_trading_state) {
     *out_data = new_data;
     *out_command_id = new_command_id;
     if(do_update)
@@ -589,7 +589,7 @@ enum TRADING_STATE prepare_out_data_and_update_gen3(u8* out_command_id, u8 new_c
     return base_trading_state;
 }
 
-u32 prepare_out_data_gen3() {
+IWRAM_CODE u32 prepare_out_data_gen3() {
     u16* out_buffer_gen3 = (u16*)out_buffer;
     u8 out_control_byte = 0;
     u8 out_position = 0;
@@ -677,7 +677,7 @@ u32 prepare_out_data_gen3() {
     }
 }
 
-enum TRADING_STATE check_in_success_data_gen3(u8 command_id, u8 cmp_command, u16 recv_data, u16 cmp_data, enum TRADING_STATE base_trading_state, enum TRADING_STATE success_new_trading_state, enum TRADING_STATE failure_new_trading_state, u8 bad_command) {
+IWRAM_CODE enum TRADING_STATE check_in_success_data_gen3(u8 command_id, u8 cmp_command, u16 recv_data, u16 cmp_data, enum TRADING_STATE base_trading_state, enum TRADING_STATE success_new_trading_state, enum TRADING_STATE failure_new_trading_state, u8 bad_command) {
     if(command_id == cmp_command) {
         if(recv_data == cmp_data)
             base_trading_state = success_new_trading_state;
@@ -689,7 +689,7 @@ enum TRADING_STATE check_in_success_data_gen3(u8 command_id, u8 cmp_command, u16
     return base_trading_state;
 }
 
-void process_in_data_gen3(u32 data) {
+IWRAM_CODE void process_in_data_gen3(u32 data) {
     last_transfer_counter = 0;
     u16* in_buffer_gen3 = (u16*)in_buffer;
     u16 recv_data = data & 0xFFFF;

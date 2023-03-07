@@ -65,13 +65,13 @@ u8 updated_screen[TOTAL_BG];
 u8 buffer_screen[TOTAL_BG];
 u8 screen_positions[TOTAL_BG][2];
 
-void set_arrangements(u8 bg_num){
+IWRAM_CODE void set_arrangements(u8 bg_num){
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((uintptr_t)get_screen(bg_num))-VRAM)>>3);
 }
 
-void process_arrangements() {
+IWRAM_CODE void process_arrangements() {
     for(int i = 0; i < TOTAL_BG; i++)
         if(updated_screen[i]) {
             set_arrangements(i);
@@ -80,7 +80,7 @@ void process_arrangements() {
         }
 }
 
-void swap_buffer_screen_internal(u8 bg_num) {
+IWRAM_CODE void swap_buffer_screen_internal(u8 bg_num) {
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     buffer_screen[bg_num] ^= 1;
@@ -88,7 +88,7 @@ void swap_buffer_screen_internal(u8 bg_num) {
         screen = get_screen(bg_num);
 }
 
-void enable_screens() {
+IWRAM_CODE void enable_screens() {
     for(int i = 0; i < TOTAL_BG; i++)
         if(enabled_screen[i])
             REG_DISPCNT |= (0x100)<<i;
@@ -104,7 +104,7 @@ u8 is_screen_disabled(u8 bg_num) {
     return 1;
 }
 
-void set_screens_positions() {
+IWRAM_CODE void set_screens_positions() {
     for(int i = 0; i < TOTAL_BG; i++) {
         BG_OFFSET[i].x = screen_positions[i][X_OFFSET_POS];
         BG_OFFSET[i].y = screen_positions[i][Y_OFFSET_POS];
@@ -201,7 +201,7 @@ void swap_buffer_screen(u8 bg_num, u8 effective_swap) {
     updated_screen[bg_num] = 1;
 }
 
-void prepare_flush() {
+IWRAM_CODE void prepare_flush() {
     screens_flush = 1;
 }
 
@@ -211,21 +211,21 @@ void wait_for_vblank_if_needed() {
         VBlankIntrWait();
 }
 
-void swap_screen_enabled_state(u8 bg_num){
+IWRAM_CODE void swap_screen_enabled_state(u8 bg_num){
     wait_for_vblank_if_needed();
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     enabled_screen[bg_num] ^= 1;
 }
 
-void enable_screen(u8 bg_num){
+IWRAM_CODE void enable_screen(u8 bg_num){
     wait_for_vblank_if_needed();
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     enabled_screen[bg_num] = 1;
 }
 
-void disable_screen(u8 bg_num){
+IWRAM_CODE void disable_screen(u8 bg_num){
     wait_for_vblank_if_needed();
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;

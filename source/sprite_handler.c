@@ -250,12 +250,12 @@ void update_cursor_y(u16 cursor_y){
     shadow_oam[inner_cursor_sprite-get_curr_priority()].attr0 = cursor_y;
 }
 
-void raw_update_cursor_x(u16 cursor_x){
+IWRAM_CODE void raw_update_cursor_x(u16 cursor_x){
     OAM[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
     shadow_oam[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
 }
 
-void raw_update_sprite_y(u8 index, u8 new_y){
+IWRAM_CODE void raw_update_sprite_y(u8 index, u8 new_y){
     if(index >= OAM_ENTITIES)
         index = OAM_ENTITIES-1;
     OAM[index].attr0 &= ~0xFF;
@@ -264,13 +264,13 @@ void raw_update_sprite_y(u8 index, u8 new_y){
     shadow_oam[index].attr0 |= new_y;
 }
 
-void fade_all_sprites_to_white(u16 fading_fraction){
+IWRAM_CODE void fade_all_sprites_to_white(u16 fading_fraction){
     REG_BLDCNT &= ~(3<<6);
     REG_BLDCNT |= (1<<4) | (2<<6);
     REG_BLDY = fading_fraction;
 }
 
-void remove_fade_all_sprites(){
+IWRAM_CODE void remove_fade_all_sprites(){
     REG_BLDCNT &= ~((1<<4) | (2<<6));
     REG_BLDY = 0;
 }
@@ -336,7 +336,7 @@ void reset_sprites_to_party(){
     reset_sprites(__party_inner_sprite_counter);
 }
 
-void move_sprites(u8 counter){
+IWRAM_CODE void move_sprites(u8 counter){
     u8 counter_kind = counter & 8;
     u8 limit = loaded_inner_sprite_counter;
     if(loaded_inner_sprite_counter > OAM_ENTITIES)
@@ -349,7 +349,7 @@ void move_sprites(u8 counter){
     }
 }
 
-void move_cursor_x(u8 counter){
+IWRAM_CODE void move_cursor_x(u8 counter){
     counter = counter & 0x3F;
     u8 pos = counter >> 3;
     if(pos > 4)
