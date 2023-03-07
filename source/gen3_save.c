@@ -105,7 +105,8 @@ const u16 rs_valid_maps[VALID_MAPS] = {0x0202, 0x0203, 0x0301, 0x0302, 0x0405, 0
 struct game_data_t* own_game_data_ptr;
 u8 in_use_slot;
 u8 is_cartridge_loaded;
-u16 loaded_checksum;
+u16 loaded_checksum[SECTION_TOTAL];
+u8 currently_reading_section;
 
 struct game_data_t* get_own_game_data() {
     return own_game_data_ptr;
@@ -727,7 +728,9 @@ void unload_cartridge(){
 }
 
 void load_cartridge(){
-    loaded_checksum = read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS);
+    for(size_t i = 0; i < SECTION_TOTAL; i++)
+        loaded_checksum[i] = read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS + (i * SECTION_SIZE));
+    currently_reading_section = 0;
     is_cartridge_loaded = 1;
 }
 
@@ -744,10 +747,13 @@ u8 get_is_cartridge_loaded(){
 u8 has_cartridge_been_removed(){
     u8 retval = 0;
     if(get_is_cartridge_loaded()) {
-        if(read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS) != loaded_checksum)
+        if(currently_reading_section >= SECTION_TOTAL)
+            currently_reading_section = 0;
+        if(read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS + (currently_reading_section * SECTION_SIZE)) != loaded_checksum[currently_reading_section])
             retval = 1;
-        if(read_int_save((in_use_slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS) != MAGIC_NUMBER)
+        if(read_int_save((in_use_slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS + (currently_reading_section * SECTION_SIZE)) != MAGIC_NUMBER)
             retval = 1;
+        currently_reading_section++;
     }
     return retval;
 }
