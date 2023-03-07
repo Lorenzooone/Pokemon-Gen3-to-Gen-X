@@ -108,7 +108,7 @@ u16 get_mon_index_gen2(int index, u8 is_egg) {
     if(index > LAST_VALID_GEN_2_MON)
         return 0;
     if(is_egg)
-        return GEN2_EGG;
+        return EGG_SPECIES;
     return index;
 }
 
