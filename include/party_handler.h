@@ -213,7 +213,8 @@ struct mail_gen3 {
 
 struct special_met_data_gen2 {
     u8 location;
-    u8 level;
+    u8 level : 7;
+    u8 force_crystal : 1;
 } PACKED ALIGNED(1);
 
 struct special_met_data_gen3 {

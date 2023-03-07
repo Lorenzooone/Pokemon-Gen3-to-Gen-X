@@ -1107,6 +1107,7 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     // Handle met location data
     dst->time = 1;
     dst->ot_gender = (misc->origins_info>>15)&1;
+    u8 force_crystal = 0;
     
     // Handle special mons which cannot breed
     const struct special_met_data_gen2* met_data = NULL;
@@ -1119,11 +1120,20 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
                 dst->time = 0;
                 dst->ot_gender = 0;
             }
+            force_crystal |= met_data->force_crystal;
         }
     }
     if(met_data == NULL) {
         dst->met_level = 1;
         dst->location = 1;
+    }
+    // For male OT conversions, remove the data, since it means more freedom...
+    force_crystal |= dst->ot_gender;
+    if(!force_crystal) {
+        dst->time = 0;
+        dst->ot_gender = 0;
+        dst->location = 0;
+        dst->met_level = 0;
     }
     
     // Extra byte for egg data
