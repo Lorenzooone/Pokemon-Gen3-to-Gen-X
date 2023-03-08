@@ -281,6 +281,12 @@ u8 get_party_usable_num(struct game_data_t* game_data) {
 }
 
 u8 is_invalid_offer(struct game_data_t* game_data, u8 own_mon, u8 other_mon, u8 curr_gen, u16 received_species) {
+    // Prevent OOB checks
+    if(game_data[1].party_3.total > PARTY_SIZE)
+        game_data[1].party_3.total = PARTY_SIZE;
+    if(other_mon >= game_data[1].party_3.total)
+        return 1 + 0;
+
     // Check for validity
     if(!game_data[1].party_3_undec[other_mon].is_valid_gen3)
         return 1 + 0;
