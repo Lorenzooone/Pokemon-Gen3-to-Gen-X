@@ -1119,6 +1119,8 @@ void print_multiboot(enum MULTIBOOT_RESULTS result) {
     else
         PRINT_FUNCTION("\nThere was an error.\n\nTry again!");
     
-    set_text_y(5);
-    PRINT_FUNCTION("A: To the previous menu");
+    set_text_y(7);
+    PRINT_FUNCTION("A: To the previous menu\n\n");
+    PRINT_FUNCTION("The cartridge will be\n");
+    PRINT_FUNCTION("read once more.");
 }

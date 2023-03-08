@@ -958,6 +958,7 @@ int main(void)
                     sio_stop_irq_slave();
                     irqDisable(IRQ_SERIAL);
                     disable_cursor();
+                    init_save_data();
                     print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + MULTIBOOT_MAX_SIZE)));
                 }
                 else if(returned_val == START_SWAP_CARTRIDGE) {
@@ -1025,8 +1026,10 @@ int main(void)
                     print_pokemon_pages(returned_val, submenu_cursor_y_pos != prev_val, &game_data[submenu_cursor_y_pos].party_3_undec[*party_selected_mons[submenu_cursor_y_pos]], curr_page);
                 break;
             case MULTIBOOT:
-                if(handle_input_multiboot_menu(keys))
-                    main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                if(handle_input_multiboot_menu(keys)) {
+                    loading_print_screen();
+                    complete_cartridge_loading(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                }
                 break;
             case START_TRADE:
                 if(handle_input_trade_setup(keys, curr_gen))
