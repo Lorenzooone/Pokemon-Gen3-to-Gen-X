@@ -58,7 +58,7 @@ void convert_evs_to_gen3(struct gen3_mon_evs*, u16*);
 u8 get_encounter_type_gen3(u16);
 u8 are_roamer_ivs(struct gen3_mon_misc*);
 u8 is_roamer_frlg(u16, u8, u8, u8);
-u8 is_roamer_rse(u16, u8, u8, u8);
+u8 is_roamer_rs(u16, u8, u8, u8);
 u8 is_roamer_gen3(struct gen3_mon_misc*, u16);
 u8 is_static_in_xd(u16);
 u8 has_prev_check_tsv_in_xd(u16);
@@ -365,10 +365,10 @@ u8 is_roamer_frlg(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
     return ((species == RAIKOU_SPECIES) || (species == ENTEI_SPECIES) || (species == SUICUNE_SPECIES)) && ((origin_game == FR_VERSION_ID) || (origin_game == LG_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_FRLG) && (met_location <= ROAMER_ROUTES_END_FRLG)) && (met_level == ROAMER_LEVEL_FRLG);
 }
 
-u8 is_roamer_rse(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
-    if((species == LATIAS_SPECIES) && ((origin_game == S_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)) && (met_level == ROAMER_LEVEL_RSE))
+u8 is_roamer_rs(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
+    if((species == LATIAS_SPECIES) && (origin_game == S_VERSION_ID) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)) && (met_level == ROAMER_LEVEL_RSE))
         return 1;
-    if((species == LATIOS_SPECIES) && ((origin_game == R_VERSION_ID) || (origin_game == E_VERSION_ID)) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)) && (met_level == ROAMER_LEVEL_RSE))
+    if((species == LATIOS_SPECIES) && (origin_game == R_VERSION_ID) && ((met_location >= ROAMER_ROUTES_START_RSE) && (met_location <= ROAMER_ROUTES_END_RSE)) && (met_level == ROAMER_LEVEL_RSE))
         return 1;
     return 0;
 }
@@ -376,7 +376,7 @@ u8 is_roamer_rse(u16 species, u8 origin_game, u8 met_location, u8 met_level) {
 u8 is_roamer_gen3(struct gen3_mon_misc* misc, u16 species) {
     u8 origin_game = (misc->origins_info>>7)&0xF;
     u8 met_level = (misc->origins_info)&0x7F;
-    return (get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location, met_level) || is_roamer_rse(species, origin_game, misc->met_location, met_level));
+    return (get_encounter_type_gen3(species) == ROAMER_ENCOUNTER) && are_roamer_ivs(misc) && (is_roamer_frlg(species, origin_game, misc->met_location, met_level) || is_roamer_rs(species, origin_game, misc->met_location, met_level));
 }
 
 u8 is_static_in_xd(u16 species) {
@@ -529,17 +529,9 @@ void preload_if_fixable(struct gen3_mon_data_unenc* data_src) {
             
             if((species == LATIOS_SPECIES) || (species == LATIAS_SPECIES)) {
                 data_src->fixed_ivs.ivs = real_ivs;
-                data_src->fixed_ivs.met_location = SOUTHERN_ISLAND;
                 data_src->fixed_ivs.origins_info &= ~(0xF<<7);
-                // This is the default. But making them from E with the obedience flag is also a possibility
-                if(species == LATIOS_SPECIES)
-                    data_src->fixed_ivs.origins_info |= SAPPHIRE_CODE<<7;
-                else
-                    data_src->fixed_ivs.origins_info |= RUBY_CODE<<7;
-                //data_src->fixed_ivs.origins_info |= EMERALD_CODE<<7;
-                //data_src->fixed_ivs.obedience = 1;
-                data_src->fixed_ivs.origins_info &= ~(0x7F);
-                data_src->fixed_ivs.origins_info |= SOUTHERN_ISLAND_LEVEL_RSE;
+                // Emerald does not have the bug
+                data_src->fixed_ivs.origins_info |= EMERALD_CODE<<7;
             }
             else if((species == RAIKOU_SPECIES) || (species == ENTEI_SPECIES) || (species == SUICUNE_SPECIES)) {
                 if(!are_colo_valid_tid_sid(data_src->src->ot_id & 0xFFFF, data_src->src->ot_id >> 0x10)) {
