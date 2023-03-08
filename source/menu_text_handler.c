@@ -683,19 +683,21 @@ void print_iv_fix(struct gen3_mon_data_unenc* mon) {
 
     print_basic_alter_conf_data(mon, &mon->fixed_ivs);
 
-    PRINT_FUNCTION("\nOld Met in: \x01", get_met_location_name_gen3_raw(mon));
     if((species == LATIAS_SPECIES) || (species == LATIOS_SPECIES))
-        PRINT_FUNCTION("\nNew Met in: Southern Island");
+        PRINT_FUNCTION("\nMet in: \x01", get_met_location_name_gen3_raw(mon));
+    else
+        PRINT_FUNCTION("\nOld Met in: \x01", get_met_location_name_gen3_raw(mon));
     if((species == RAIKOU_SPECIES) || (species == ENTEI_SPECIES) || (species == SUICUNE_SPECIES))
         PRINT_FUNCTION("\nNew Met in: Deep Colosseum");
-    
-    PRINT_FUNCTION("\nCaught Level: from \x03 to \x03", get_met_level_gen3_raw(mon), mon->fixed_ivs.origins_info&0x7F);
-    
+
+    if(get_met_level_gen3_raw(mon) != (mon->fixed_ivs.origins_info&0x7F))
+        PRINT_FUNCTION("\nCaught Level: from \x03 to \x03", get_met_level_gen3_raw(mon), mon->fixed_ivs.origins_info&0x7F);
+
     if(mon->fix_has_altered_ot) {
         PRINT_FUNCTION("\n           WARNING:");
         PRINT_FUNCTION("\n  CHANGED ORIGINAL TRAINER!");
     }
-    
+
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("A: Confirm - B: Go Back");
 }
