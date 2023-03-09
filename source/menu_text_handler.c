@@ -620,18 +620,21 @@ void print_start_trade(){
     enum START_TRADE_STATE raw_state = get_start_state_raw();
     //if((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))
     //    return;
-    if(((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR))||(raw_state == START_TRADE_DON))
+    if((state == START_TRADE_NO_UPDATE) && (raw_state != START_TRADE_PAR) && (raw_state != START_TRADE_DON))
         return;
     //if(state == START_TRADE_NO_UPDATE)
     //    return;
     
     default_reset_screen();
     PRINT_FUNCTION("\nState: \x01\n", trade_start_state_strings[raw_state]);
-    if(raw_state != START_TRADE_PAR)
+    if((raw_state != START_TRADE_PAR) && (raw_state != START_TRADE_DON))
         print_bottom_info();
     else {
         for(int i = 0; i < get_number_of_buffers(); i++) {
-            PRINT_FUNCTION("\nSection \x03: \x09/\x03\n", i+1, get_transferred(i), 3, get_buffer_size(i));
+            if(raw_state != START_TRADE_DON)
+                PRINT_FUNCTION("\nSection \x03: \x09/\x03\n", i+1, get_transferred(i), 3, get_buffer_size(i));
+            else
+                PRINT_FUNCTION("\nSection \x03: \x09/\x03\n", i+1, get_buffer_size(i), 3, get_buffer_size(i));
         }
         if(!get_transferred(0))
             print_bottom_info();

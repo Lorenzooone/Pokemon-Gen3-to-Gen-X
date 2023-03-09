@@ -37,6 +37,7 @@
 #define MIN_WAITCYCLE 1
 
 #define WAITING_TIME_MOVE_MESSAGES (2*FPS)
+#define WAITING_TIME_BEFORE_RESPONSE (1*FPS/2)
 #define WAITING_TIME_REJECTED (2*FPS)
 #define MAX_RANDOM_WAIT_TIME (1*FPS)
 
@@ -819,6 +820,9 @@ int main(void)
                         keys = 0;
                         read_comm_buffer(&game_data[1], curr_gen, region);
                         own_menu = 0;
+                        print_start_trade();
+                        prepare_flush();
+                        wait_frames(WAITING_TIME_BEFORE_RESPONSE);
                         trade_menu_init(game_data, &game_data_priv, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
                     }
                     else
@@ -838,6 +842,7 @@ int main(void)
                             }
                             else {
                                 u8 is_invalid = is_invalid_offer(game_data, curr_mon, result, curr_gen, get_gen3_offer());
+                                wait_frames(WAITING_TIME_BEFORE_RESPONSE);
                                 if(!is_invalid) {
                                     other_mon = result;
                                     offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos, 1);
