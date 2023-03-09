@@ -1224,10 +1224,11 @@ u8 gen3_to_gen1(struct gen1_mon* dst_data, struct gen3_mon_data_unenc* data_src,
 }
 
 void clean_name_gen12(u8* name, u8 is_jp) {
-    if(!is_jp)
-        text_gen2_replace(name, STRING_GEN2_INT_CAP, GEN1_DOT, GEN2_DOT);
-    else
-        text_gen2_replace(name, STRING_GEN2_JP_CAP, GEN1_DOT, GEN2_DOT);
+    u8 gen2_name_cap = STRING_GEN2_INT_CAP;
+    if(is_jp)
+        gen2_name_cap = STRING_GEN2_JP_CAP;
+
+    text_gen2_replace(name, gen2_name_cap, GEN1_DOT, GEN2_DOT);
 }
 
 void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8* nickname, u8 is_jp) {
@@ -1235,7 +1236,6 @@ void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8
     u8 int_language = get_filtered_target_int_language();
 
     if((!is_jp) && (get_target_int_language() == UNKNOWN_LANGUAGE)) {
-        // Fix issue with dots using the wrong symbol in gen 1
         u32 found_languages = 0;
         for(size_t i = FIRST_INTERNATIONAL_VALID_LANGUAGE; i < NUM_LANGUAGES; i++)
             if(text_gen2_is_same(nickname, get_pokemon_name_gen2(species, is_egg, i, gen2_buffer), STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP))
