@@ -82,6 +82,7 @@ u8 search_specific_low_pid(u32, u32*, u32*, u8, u8);
 u8 search_specific_low_pid_colo(u32, u8, u32*, u32*, u8*, u8);
 u8 search_unown_pid_masks(u32, u8, u32*, u32*, u8);
 void _generate_unown_shiny_info(u8, u16, u8, u32*, u32*, u32);
+u16 determine_lower_pid_gendered(u16, u8, u8);
 
 // Nidoran M is special, it has to have 0x8000 set in the lower PID
 u16 gender_values[] = {0x7F, 0, 0x1F, 0x3F, 0xBF, 0xDF, 0, 0, 0x7FFF, 0};
@@ -383,17 +384,8 @@ void _generate_egg_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 gender, u8
                                 do {
                                     inner_seed = get_prev_seed(inner_seed);
                                     lower_pid = inner_seed >> 0x10;
-                                    if(gender_values[gender_kind] != 0) {
-                                        if((gender == M_GENDER) && ((lower_pid & 0xFF) < gender_values[gender_kind]))
-                                            lower_pid = lower_pid | (gender_values[gender_kind]+1);
-                                        else if((gender == F_GENDER) && ((lower_pid & 0xFF) >= gender_values[gender_kind])){
-                                            lower_pid = (lower_pid & 0xFF00) | (lower_pid & gender_values[gender_kind]);
-                                            if((lower_pid & 0xFF) == gender_values[gender_kind])
-                                                lower_pid -= 1;
-                                        }
-                                    }
-                                    else if(gender_kind == NIDORAN_F_GENDER_INDEX)
-                                        lower_pid &= 0x7FFF;
+                                    
+                                    lower_pid = determine_lower_pid_gendered(lower_pid, gender, gender_kind);
                                     
                                     lower_pid &= 0xFFE0;
                                     
@@ -433,13 +425,10 @@ void generate_egg_info(u8 index, u8 wanted_nature, u16 wanted_ivs, u16 tsv, u8 c
     _generate_egg_info(wanted_nature, wanted_ivs, tsv, get_pokemon_gender_gen2(index, (wanted_ivs>>4)&0xF, 0, curr_gen), get_pokemon_gender_kind_gen2(index, 0, curr_gen), dst_pid, dst_ivs, get_rng());
 }
 
-void _generate_egg_shiny_info(u8 wanted_nature, u16 tsv, u8 gender, u8 gender_kind, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
-    // Worst case: ANY
-    u16 lower_pid = start_seed &0xFFFF;
-    
+u16 determine_lower_pid_gendered(u16 lower_pid, u8 gender, u8 gender_kind) {
     if(gender_values[gender_kind] != 0) {
         if((gender == M_GENDER) && ((lower_pid & 0xFF) < gender_values[gender_kind]))
-            lower_pid = lower_pid | (gender_values[gender_kind]+1);
+            lower_pid |= gender_values[gender_kind]+1;
         else if((gender == F_GENDER) && ((lower_pid & 0xFF) >= gender_values[gender_kind])){
             lower_pid = (lower_pid & 0xFF00) | (lower_pid & gender_values[gender_kind]);
             if((lower_pid & 0xFF) == gender_values[gender_kind])
@@ -448,6 +437,14 @@ void _generate_egg_shiny_info(u8 wanted_nature, u16 tsv, u8 gender, u8 gender_ki
     }
     else if(gender_kind == NIDORAN_F_GENDER_INDEX)
         lower_pid &= 0x7FFF;
+    return lower_pid;
+}
+
+void _generate_egg_shiny_info(u8 wanted_nature, u16 tsv, u8 gender, u8 gender_kind, u32* dst_pid, u32* dst_ivs, u32 start_seed) {
+    // Worst case: ANY
+    u16 lower_pid = start_seed &0xFFFF;
+    
+    lower_pid = determine_lower_pid_gendered(lower_pid, gender, gender_kind);
                             
     lower_pid &= 0xFFF8;
     
