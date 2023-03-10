@@ -380,6 +380,7 @@ void prepare_gen3_trade_data(struct game_data_t* game_data, u32* buffer, size_t*
     copy_bytes(game_data->giftRibbons, td->giftRibbons, GIFT_RIBBONS, 0, 0);
     copy_bytes(game_data->trainer_name, td->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, 0, 0);
     td->trainer_gender = game_data->trainer_gender;
+    td->always_zero = 0;
     
     for(int i = 0; i < NUM_EXTRA_PADDING_BYTES_GEN3; i++)
         td->extra_tmp_padding[i] = 0;

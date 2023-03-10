@@ -132,12 +132,13 @@ struct gen1_trade_data_jp {
 } PACKED;
 
 struct gen3_trade_data {
+    u32 always_zero;
+    struct version_t version;
     struct mail_gen3 mails_3[PARTY_SIZE];
     u32 checksum_mail;
     struct gen3_party party_3;
     u32 checksum_party;
     struct game_identity game_identifier;
-    struct version_t version;
     u8 giftRibbons[GIFT_RIBBONS];
     u8 trainer_name[OT_NAME_GEN3_MAX_SIZE+1];
     u8 trainer_gender;
