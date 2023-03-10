@@ -71,6 +71,7 @@ u8 is_invalid_offer(struct game_data_t*, u8, u8, u8, u16);
 u8 pre_write_gen_3_data(struct game_data_t*, struct game_data_priv_t*, u8);
 u8 pre_write_updated_moves_gen_3_data(struct game_data_t*, struct game_data_priv_t*);
 u8 complete_write_gen_3_data(struct game_data_t*);
+u8 get_new_party_entry_index(struct game_data_t*);
 u8 get_party_usable_num(struct game_data_t*);
 u8 get_sys_flag_save(u8, int, u8, u16);
 void set_sys_flag_save(u8*, u8, u16, u8);

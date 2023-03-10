@@ -870,6 +870,7 @@ int main(void)
                                 trading_animation_init(game_data, curr_mon, other_mon, 1);
                                 prepare_gen23_success(&game_data[0].party_3_undec[curr_mon], &game_data[1].party_3_undec[other_mon]);
                                 evolved = trade_mons(game_data, &game_data_priv, curr_mon, other_mon, curr_gen);
+                                curr_mon = get_new_party_entry_index(&game_data[0]);
                                 if(evolved)
                                     evolution_animation_init(game_data, curr_mon);
                                 increase_game_stat(&game_data_priv.num_trades_stat, 1);

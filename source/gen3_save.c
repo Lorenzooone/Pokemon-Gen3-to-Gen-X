@@ -75,6 +75,8 @@ void load_cartridge(void);
 u8 pre_update_save(struct game_data_t*, struct game_data_priv_t*, u8, enum SAVING_KIND);
 u8 complete_save(u8, struct game_data_t*);
 static u8 get_next_slot(u8);
+void replace_party_entry(struct game_data_t*, struct gen3_mon_data_unenc*, u8);
+void trade_reorder_party_entries(struct game_data_t*, struct gen3_mon_data_unenc*, u8);
 u32 calc_checksum_save_buffer(u32*, u16);
 
 const u16 summable_bytes[SECTION_TOTAL] = {3884, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 3848, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 2000};
@@ -247,18 +249,46 @@ void set_default_gift_ribbons(struct game_data_t* game_data) {
     update_gift_ribbons(game_data, default_gift_ribbons_bin);
 }
 
+u8 get_new_party_entry_index(struct game_data_t* game_data) {
+    gen3_party_total_t party_size = game_data->party_3.total;
+    if(party_size > PARTY_SIZE)
+        party_size = PARTY_SIZE;
+    return party_size-1;
+}
+
+void replace_party_entry(struct game_data_t* game_data, struct gen3_mon_data_unenc* src_mon, u8 index_dst) {
+    gen3_party_total_t party_size = game_data->party_3.total;
+    if(party_size > PARTY_SIZE)
+        party_size = PARTY_SIZE;
+    if(index_dst >= party_size)
+        index_dst = party_size-1;
+    u8* dst = (u8*)&game_data->party_3.mons[index_dst];
+    u8* src = (u8*)src_mon->src;
+    for(size_t i = 0; i < sizeof(struct gen3_mon); i++)
+        dst[i] = src[i];
+    dst = (u8*)&game_data->party_3_undec[index_dst];
+    src = (u8*)src_mon;
+    for(size_t i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
+        dst[i] = src[i];
+    game_data->party_3_undec[index_dst].src = &game_data->party_3.mons[index_dst];
+}
+
+void trade_reorder_party_entries(struct game_data_t* game_data, struct gen3_mon_data_unenc* new_mon, u8 old_index) {
+    gen3_party_total_t party_size = game_data->party_3.total;
+    if(party_size > PARTY_SIZE)
+        party_size = PARTY_SIZE;
+    if(old_index >= party_size)
+        old_index = party_size-1;
+    for(gen3_party_total_t i = old_index + 1; i < party_size; i++)
+        replace_party_entry(game_data, &game_data->party_3_undec[i], i-1);
+    replace_party_entry(game_data, new_mon, party_size-1);
+}
+
 u8 trade_mons(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 own_mon, u8 other_mon, u8 curr_gen) {
     handle_mail_trade(game_data, own_mon, other_mon);
 
-    u8* dst = (u8*)&game_data[0].party_3.mons[own_mon];
-    u8* src = (u8*)&game_data[1].party_3.mons[other_mon];
-    for(size_t i = 0; i < sizeof(struct gen3_mon); i++)
-        dst[i] = src[i];
-    dst = (u8*)&game_data[0].party_3_undec[own_mon];
-    src = (u8*)&game_data[1].party_3_undec[other_mon];
-    for(size_t i = 0; i < sizeof(struct gen3_mon_data_unenc); i++)
-        dst[i] = src[i];
-    game_data[0].party_3_undec[own_mon].src = &game_data[0].party_3.mons[own_mon];
+    trade_reorder_party_entries(&game_data[0], &game_data[1].party_3_undec[other_mon], own_mon);
+    own_mon = get_new_party_entry_index(&game_data[0]);
     update_gift_ribbons(&game_data[0], game_data[1].giftRibbons);
     register_dex_entry(game_data_priv, &game_data[0].party_3_undec[own_mon]);
     u8 ret_val = trade_evolve(&game_data[0].party_3.mons[own_mon], &game_data[0].party_3_undec[own_mon], curr_gen);
