@@ -79,18 +79,18 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, size_t sta
     
     u32 base = start_pos;
     for(size_t i = 0; i < size; i++) {
-        if(buffer[start_pos + i] == NO_ACTION_BYTE) {
-            buffer[start_pos + i] = 0xFF;
-            patch_set_buffer[cursor_data++] = start_pos + i + 1 -base;
+        if((start_pos + i - base) == (NO_ACTION_BYTE-2)) {
+            base += NO_ACTION_BYTE-2;
+            patch_set_buffer[cursor_data++] = 0xFF;
             if(cursor_data >= patch_set_size) {
                 cursor_data -= 1;
                 patch_set_buffer[cursor_data] = 0xFF;
                 break;
             }
         }
-        if((start_pos + i - base) == (NO_ACTION_BYTE-2)) {
-            base += NO_ACTION_BYTE-2;
-            patch_set_buffer[cursor_data++] = 0xFF;
+        if(buffer[start_pos + i] == NO_ACTION_BYTE) {
+            buffer[start_pos + i] = 0xFF;
+            patch_set_buffer[cursor_data++] = start_pos + i + 1 -base;
             if(cursor_data >= patch_set_size) {
                 cursor_data -= 1;
                 patch_set_buffer[cursor_data] = 0xFF;
