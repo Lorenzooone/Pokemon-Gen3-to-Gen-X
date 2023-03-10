@@ -89,7 +89,7 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, size_t sta
             }
         }
         if((start_pos + i - base) == (NO_ACTION_BYTE-2)) {
-            base += NO_ACTION_BYTE-1;
+            base += NO_ACTION_BYTE-2;
             patch_set_buffer[cursor_data++] = 0xFF;
             if(cursor_data >= patch_set_size) {
                 cursor_data -= 1;
@@ -108,7 +108,7 @@ void apply_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, size_t start
     for(size_t i = base_pos; i < patch_set_size; i++) {
         if(patch_set_buffer[i]) {
             if(patch_set_buffer[i] == 0xFF) {
-                base += NO_ACTION_BYTE-1;
+                base += NO_ACTION_BYTE-2;
                 if(base >= size)
                     return;
             }
@@ -243,9 +243,9 @@ void prepare_gen2_trade_data(struct game_data_t* game_data, struct gen2_party* p
         safety_bytes[i] = DEFAULT_FILLER;
     
     if(!is_jp)
-        prepare_patch_set((u8*)(&td_int->trainer_info), td_int->patch_set.patch_set, sizeof(struct trainer_data_gen2_int)-(STRING_GEN2_INT_SIZE + MON_INDEX_SIZE), STRING_GEN2_INT_SIZE + MON_INDEX_SIZE, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
+        prepare_patch_set((u8*)(&td_int->trainer_info), td_int->patch_set.patch_set, sizeof(struct trainer_data_gen2_int)-(STRING_GEN2_INT_SIZE + MON_INDEX_SIZE + 1), STRING_GEN2_INT_SIZE + MON_INDEX_SIZE + 1, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
     else
-        prepare_patch_set((u8*)(&td_jp->trainer_info), td_jp->patch_set.patch_set, sizeof(struct trainer_data_gen2_jp)-(STRING_GEN2_JP_SIZE + MON_INDEX_SIZE), STRING_GEN2_JP_SIZE + MON_INDEX_SIZE, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
+        prepare_patch_set((u8*)(&td_jp->trainer_info), td_jp->patch_set.patch_set, sizeof(struct trainer_data_gen2_jp)-(STRING_GEN2_JP_SIZE + MON_INDEX_SIZE + 1), STRING_GEN2_JP_SIZE + MON_INDEX_SIZE + 1, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
     
     u8* useless_sync_bytes = td_int->useless_sync;
     if(is_jp)
@@ -303,9 +303,9 @@ void prepare_gen1_trade_data(struct game_data_t* game_data, struct gen1_party* p
         safety_bytes[i] = DEFAULT_FILLER;
     
     if(!is_jp)
-        prepare_patch_set((u8*)(&td_int->trainer_info), td_int->patch_set.patch_set, sizeof(struct trainer_data_gen1_int)-(STRING_GEN2_INT_SIZE + MON_INDEX_SIZE), STRING_GEN2_INT_SIZE + MON_INDEX_SIZE, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
+        prepare_patch_set((u8*)(&td_int->trainer_info), td_int->patch_set.patch_set, sizeof(struct trainer_data_gen1_int)-(STRING_GEN2_INT_SIZE + MON_INDEX_SIZE + 1), STRING_GEN2_INT_SIZE + MON_INDEX_SIZE + 1, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
     else
-        prepare_patch_set((u8*)(&td_jp->trainer_info), td_jp->patch_set.patch_set, sizeof(struct trainer_data_gen1_jp)-(STRING_GEN2_JP_SIZE + MON_INDEX_SIZE), STRING_GEN2_JP_SIZE + MON_INDEX_SIZE, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
+        prepare_patch_set((u8*)(&td_jp->trainer_info), td_jp->patch_set.patch_set, sizeof(struct trainer_data_gen1_jp)-(STRING_GEN2_JP_SIZE + MON_INDEX_SIZE + 1), STRING_GEN2_JP_SIZE + MON_INDEX_SIZE + 1, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
     
     sizes[0] = sizeof(struct random_data_t);
     if(!is_jp)
@@ -453,7 +453,7 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     copy_bytes(default_gift_ribbons_bin, game_data->giftRibbons, GIFT_RIBBONS, 0, 0);
     game_data->trainer_gender = 0;
     
-    apply_patch_set(patch_target, patch_set, target_size-(names_size + MON_INDEX_SIZE), names_size + MON_INDEX_SIZE, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
+    apply_patch_set(patch_target, patch_set, target_size-(names_size + MON_INDEX_SIZE + 1), names_size + MON_INDEX_SIZE + 1, PATCH_SET_SIZE, PATCH_SET_BASE_POS);
     
     convert_trainer_name_gen12_to_gen3(trainer_name, game_data->trainer_name, is_jp, game_data->game_identifier.language, OT_NAME_GEN3_MAX_SIZE+1);
     
