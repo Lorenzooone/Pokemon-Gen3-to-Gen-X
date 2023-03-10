@@ -791,6 +791,7 @@ int main(void)
     u32 curr_move = 0;
     u8 success = 0;
     u8 other_mon = 0;
+    u8 failed_entered_menu = 0;
     u8 curr_page = 0;
     const u8* party_selected_mons[2] = {&curr_mon, &other_mon};
     
@@ -824,6 +825,7 @@ int main(void)
                         prepare_flush();
                         wait_frames(WAITING_TIME_BEFORE_RESPONSE);
                         trade_menu_init(game_data, &game_data_priv, target, region, master, curr_gen, own_menu, &cursor_y_pos, &cursor_x_pos);
+                        failed_entered_menu = curr_state == WAITING_DATA;
                     }
                     else
                         print_start_trade();
@@ -833,8 +835,15 @@ int main(void)
                         case RECEIVED_OFFER:
                             keys = 0;
                             result = get_received_trade_offer();
-                            if(result == TRADE_CANCELLED)
-                                conclude_trade(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                            if(result == TRADE_CANCELLED) {
+                                if(failed_entered_menu) {
+                                    stop_transfer(master);
+                                    wait_frames(WAITING_TIME_BEFORE_RESPONSE);
+                                    start_trade_init(&game_data[0], &game_data_priv, target, region, master, curr_gen, &cursor_y_pos);
+                                }
+                                else
+                                    conclude_trade(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                            }
                             else if(result == WANTS_TO_CANCEL) {
                                 rejected_print_screen(1);
                                 wait_frames(WAITING_TIME_REJECTED);
