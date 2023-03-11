@@ -74,7 +74,7 @@ void prepare_random_data_gen12(struct random_data_t* random_data) {
 
 size_t check_patch_set_limit(u8* patch_set_buffer, size_t cursor_data, size_t patch_set_size) {
     if(cursor_data >= patch_set_size) {
-        cursor_data -= 1;
+        cursor_data = patch_set_size - 1;
         patch_set_buffer[cursor_data] = 0xFF;
     }
     return cursor_data;
@@ -85,7 +85,10 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, size_t sta
     
     for(size_t i = 0; i < patch_set_size; i++)
         patch_set_buffer[i] = 0;
-    
+
+    if(!patch_set_size)
+        return;
+
     u32 base = start_pos;
     for(size_t i = 0; i < size; i++) {
         if((start_pos + i - base) == (NO_ACTION_BYTE-2)) {
@@ -99,7 +102,7 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, size_t sta
             cursor_data = check_patch_set_limit(patch_set_buffer, cursor_data, patch_set_size);
         }
     }
-    
+
     if((size+start_pos-base) > 0)
         patch_set_buffer[cursor_data] = 0xFF;
 }
