@@ -143,7 +143,7 @@ void init_game_data(struct game_data_t* game_data) {
 enum TRADE_POSSIBILITY can_trade(struct game_data_priv_t* game_data_priv, u8 game_id) {
     if(!game_data_priv->dex_obtained_flag)
         return TRADE_IMPOSSIBLE;
-    if((game_data_priv->nat_dex_var == nat_dex_var_value[game_id]) && game_data_priv->nat_dex_flag && (game_data_priv->nat_dex_magic == nat_dex_magic_value[game_id]) && game_data_priv->game_cleared_flag && game_data_priv->full_link_flag)
+    if((game_data_priv->nat_dex_var == nat_dex_var_value[game_id]) && game_data_priv->nat_dex_flag && (game_data_priv->nat_dex_magic == nat_dex_magic_value[game_id]) && ((game_id == RS_MAIN_GAME_CODE) || (game_data_priv->game_cleared_flag && game_data_priv->full_link_flag)))
         return FULL_TRADE_POSSIBLE;
     return PARTIAL_TRADE_POSSIBLE;
 }
