@@ -14,6 +14,7 @@ void prepare_number_of_sizes(void);
 u8 get_number_of_buffers(void);
 void copy_bytes(const void*, void*, size_t, u8, u8);
 void prepare_random_data_gen12(struct random_data_t*);
+size_t check_patch_set_limit(u8*, size_t, size_t);
 void prepare_patch_set(u8*, u8*, size_t, size_t, size_t, size_t);
 void apply_patch_set(u8*, u8*, size_t, size_t, size_t, size_t);
 void prepare_mail_gen2(u8*, size_t, u8*, size_t, size_t);
@@ -71,6 +72,14 @@ void prepare_random_data_gen12(struct random_data_t* random_data) {
         random_data->data[i] = DEFAULT_FILLER;
 }
 
+size_t check_patch_set_limit(u8* patch_set_buffer, size_t cursor_data, size_t patch_set_size) {
+    if(cursor_data >= patch_set_size) {
+        cursor_data -= 1;
+        patch_set_buffer[cursor_data] = 0xFF;
+    }
+    return cursor_data;
+}
+
 void prepare_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, size_t start_pos, size_t patch_set_size, size_t base_pos) {
     size_t cursor_data = base_pos;
     
@@ -82,20 +91,12 @@ void prepare_patch_set(u8* buffer, u8* patch_set_buffer, size_t size, size_t sta
         if((start_pos + i - base) == (NO_ACTION_BYTE-2)) {
             base += NO_ACTION_BYTE-2;
             patch_set_buffer[cursor_data++] = 0xFF;
-            if(cursor_data >= patch_set_size) {
-                cursor_data -= 1;
-                patch_set_buffer[cursor_data] = 0xFF;
-                break;
-            }
+            cursor_data = check_patch_set_limit(patch_set_buffer, cursor_data, patch_set_size);
         }
         if(buffer[start_pos + i] == NO_ACTION_BYTE) {
             buffer[start_pos + i] = 0xFF;
             patch_set_buffer[cursor_data++] = start_pos + i + 1 -base;
-            if(cursor_data >= patch_set_size) {
-                cursor_data -= 1;
-                patch_set_buffer[cursor_data] = 0xFF;
-                break;
-            }
+            cursor_data = check_patch_set_limit(patch_set_buffer, cursor_data, patch_set_size);
         }
     }
     
