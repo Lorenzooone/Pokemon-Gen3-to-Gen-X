@@ -271,6 +271,9 @@ u8 is_ability_valid(u16 index, u32 pid, u8 ability_bit, u8 met_location, u8 orig
     if(met_location == TRADE_MET)
         return 1;
     
+    if(met_location == EVENT_MET)
+        return 1;
+    
     if(origin_game == COLOSSEUM_CODE)
         return 1;
     
