@@ -48,6 +48,8 @@
 #include "trainer_names_bin.h"
 #include "trainer_names_celebi_bin.h"
 #include "special_evolutions_bin.h"
+#include "invalid_pokemon_bin.h"
+#include "invalid_held_items_bin.h"
 
 #define UNOWN_B_START 415
 #define INITIAL_MAIL_GEN3 121
@@ -135,7 +137,7 @@ u8 get_unown_letter_gen3(u32 pid){
 }
 
 u16 get_mon_index(int index, u32 pid, u8 is_egg, u8 deoxys_form){
-    if(index > LAST_VALID_GEN_3_MON)
+    if(!is_species_valid(index))
         return 0;
     if(is_egg)
         return EGG_SPECIES;
@@ -213,7 +215,7 @@ const u8* get_pokemon_name_language(u16 index, u8 language) {
 const u8* get_item_name(int index, u8 is_egg){
     if(is_egg)
         index = 0;
-    if(index > LAST_VALID_GEN_3_ITEM)
+    if(!is_item_valid(index))
         index = 0;
     return get_table_pointer(item_names_bin, index);
 }
@@ -227,7 +229,7 @@ u8 has_item_raw(struct gen3_mon_data_unenc* data_src){
     
     if(is_egg)
         return 0;
-    if((!index) || (index > LAST_VALID_GEN_3_ITEM))
+    if((!index) || (!is_item_valid(index)))
         return 0;
     
     return 1;
@@ -816,7 +818,7 @@ u8 get_evs_gen3(struct gen3_mon_evs* evs, u8 stat_index) {
 }
 
 u16 calc_stats_gen3(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u8 ev, u8 deoxys_form) {
-    if(species > LAST_VALID_GEN_3_MON)
+    if(!is_species_valid(species))
         species = 0;
     if(stat_index >= GEN2_STATS_TOTAL)
         stat_index = GEN2_STATS_TOTAL-1;
@@ -1039,6 +1041,22 @@ u8 decrypt_to_data_unenc(struct gen3_mon* src, struct gen3_mon_data_unenc* dst) 
     return 1;
 }
 
+u8 is_item_valid(u16 item) {
+    if(item > LAST_VALID_GEN_3_ITEM)
+        return 0;
+    if(invalid_held_items_bin[item>>3] & (1<<(item&7)))
+        return 0;
+    return 1;
+}
+
+u8 is_species_valid(u16 species) {
+    if(species > LAST_VALID_GEN_3_MON)
+        return 0;
+    if(invalid_pokemon_bin[species>>3] & (1<<(species&7)))
+        return 0;
+    return 1;
+}
+
 void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8 main_version, u8 sub_version) {
     dst->src = src;
     
@@ -1074,7 +1092,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     //misc->pokerus = 0;
     
     // Species checks
-    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0) || ((growth->species >= INVALID_GEN_3_MON_FIRST) && (growth->species <= INVALID_GEN_3_MON_LAST))) {
+    if(!is_species_valid(growth->species)) {
         dst->is_valid_gen3 = 0;
         dst->is_valid_gen2 = 0;
         dst->is_valid_gen1 = 0;
@@ -1137,7 +1155,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
             growth->friendship = 0;
     }
     
-    if((growth->item > LAST_VALID_GEN_3_ITEM) || (growth->item == ENIGMA_BERRY_ID))
+    if((!is_item_valid(growth->item)) || (growth->item == ENIGMA_BERRY_ID))
         growth->item = NO_ITEM_ID;
     
     src->level = to_valid_level_gen3(src);
@@ -1242,7 +1260,7 @@ u8 own_menu_evolve(struct gen3_mon_data_unenc* mon_data, u8 index) {
 
     u16 evolved_species = special_evolutions[1+index];
 
-    if((!evolved_species) || (evolved_species > LAST_VALID_GEN_3_MON))
+    if((!evolved_species) || (!is_species_valid(evolved_species)))
         return 0;
 
     mon_data->src->level = to_valid_level_gen3(mon_data->src);
@@ -1279,7 +1297,7 @@ u16 get_own_menu_evolution_species(struct gen3_mon_data_unenc* mon_data, u8 inde
 
     u16 evolved_species = special_evolutions[1+index];
 
-    if((!evolved_species) || (evolved_species > LAST_VALID_GEN_3_MON))
+    if((!evolved_species) || (!is_species_valid(evolved_species)))
         evolved_species = 0;
 
     *is_special = 1;
@@ -1345,7 +1363,7 @@ u8 trade_evolve(struct gen3_mon* mon, struct gen3_mon_data_unenc* mon_data, u8 c
     
     u16 evolved_species = get_trade_evolution(mon_data->growth.species, mon_data->growth.item, curr_gen, &consume_item, &cross_gen_evo);
     
-    if((!evolved_species) || (evolved_species > LAST_VALID_GEN_3_MON))
+    if((!evolved_species) || (!is_species_valid(evolved_species)))
         return 0;
     
     if(cross_gen_evo)

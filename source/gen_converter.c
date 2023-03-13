@@ -246,7 +246,7 @@ u8 convert_moves_to_gen3(struct gen3_mon_attacks* attacks, struct gen3_mon_growt
 }
 
 u8 convert_item_of_gen3(u16 item) {
-    if(item > LAST_VALID_GEN_3_ITEM)
+    if(!is_item_valid(item))
         item = 0;
     item = item_gen3_to_12_bin[item];
     if((item == GEN2_NO_ITEM) || (item == GEN2_MAIL))
@@ -353,7 +353,7 @@ void convert_evs_to_gen3(struct gen3_mon_evs* evs, u16* UNUSED(old_evs)) {
 }
 
 u8 get_encounter_type_gen3(u16 pure_species) {
-    if(pure_species > LAST_VALID_GEN_3_MON)
+    if(!is_species_valid(pure_species))
         pure_species = 0;
     return (encounter_types_bin[pure_species>>2]>>(2*(pure_species&3)))&3;
 }

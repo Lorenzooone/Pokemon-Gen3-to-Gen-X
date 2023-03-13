@@ -8,8 +8,6 @@
 #define FIRST_GEN 1
 
 #define LAST_VALID_GEN_3_MON 411
-#define INVALID_GEN_3_MON_FIRST 252
-#define INVALID_GEN_3_MON_LAST 276
 #define LAST_VALID_GEN_2_MON 251
 #define LAST_VALID_GEN_1_MON 151
 #define LAST_VALID_GEN_3_MOVE 354
@@ -475,6 +473,8 @@ void sanitize_ot_name(u8*, u8, u8, u8);
 void set_deoxys_form(struct gen3_mon_data_unenc*, u8, u8);
 u16 can_own_menu_evolve(struct gen3_mon_data_unenc*);
 u8 own_menu_evolve(struct gen3_mon_data_unenc*, u8);
+u8 is_item_valid(u16);
+u8 is_species_valid(u16);
 u16 get_own_menu_evolution_species(struct gen3_mon_data_unenc*, u8, u8*);
 
 #endif

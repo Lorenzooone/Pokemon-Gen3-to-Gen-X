@@ -770,7 +770,7 @@ void print_evolution_window(struct gen3_mon_data_unenc* mon) {
     for(size_t i = 0; i < num_species; i++) {
         u16 new_species = get_own_menu_evolution_species(mon, i, &useless);
         set_text_x(EVOLUTION_WINDOW_X);
-        if(new_species && (new_species <= LAST_VALID_GEN_3_MON))
+        if(is_species_valid(new_species))
             PRINT_FUNCTION("  \x05\n\n", get_pokemon_name_pure(new_species, 0, SYS_LANGUAGE), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
     }
 }
@@ -791,7 +791,7 @@ void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen,
     u16 new_species = get_own_menu_evolution_species(mon, index, &needs_levelup);
     mon->src->level = to_valid_level_gen3(mon->src);
     u8 old_level = mon->src->level;
-    if((!new_species) || (new_species > LAST_VALID_GEN_3_MON))
+    if((!new_species) || (!is_species_valid(new_species)))
         return;
     
     if(needs_levelup)
