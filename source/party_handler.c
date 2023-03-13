@@ -1074,7 +1074,7 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
     //misc->pokerus = 0;
     
     // Species checks
-    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0)) {
+    if((growth->species > LAST_VALID_GEN_3_MON) || (growth->species == 0) || ((growth->species >= INVALID_GEN_3_MON_FIRST) && (growth->species <= INVALID_GEN_3_MON_LAST))) {
         dst->is_valid_gen3 = 0;
         dst->is_valid_gen2 = 0;
         dst->is_valid_gen1 = 0;
