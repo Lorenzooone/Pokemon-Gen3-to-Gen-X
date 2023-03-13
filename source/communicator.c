@@ -717,9 +717,10 @@ IWRAM_CODE void process_in_data_gen3(u32 data) {
             }
             if(control_byte & SENDING_DATA_GEN3) {
                 in_buffer_gen3[recv_pos] = recv_data;
-                since_last_recv_gen3 = 0;
-                if(!set_received_gen3(recv_pos))
+                if(!set_received_gen3(recv_pos)) {
+                    since_last_recv_gen3 = 0;
                     buffer_counter++;
+                }
                 if(buffer_counter >= (sizeof(struct gen3_trade_data)>>1)) {
                     if(are_checksum_same_gen3((struct gen3_trade_data*)in_buffer))
                         is_done_gen3 = 1;
