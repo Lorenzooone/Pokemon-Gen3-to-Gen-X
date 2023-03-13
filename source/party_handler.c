@@ -1134,6 +1134,9 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         return;
     }
     
+    // Sanitize has species
+        src->has_species = 1;
+    
     // Sanitize language data too...
     if((src->language < FIRST_VALID_LANGUAGE) || (src->language >= NUM_LANGUAGES) || (src->language == KOREAN_LANGUAGE))
         src->language = DEFAULT_NAME_BAD_LANGUAGE;
