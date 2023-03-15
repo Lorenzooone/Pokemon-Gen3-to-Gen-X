@@ -40,7 +40,7 @@ Within the Clock Settings, you will be able to change various aspects of the gam
 - The Time of Day option allows the user to change what Eevee will evolve into.
 - The Tide option influences the tide inside of Shoal Cave, which can be useful to catch Snorunt.
 - By increasing the number of days, the user can make it so certain time-based events are properly run (like berries growing or the lottery).
-- By enabling the RTC Reset Menu, the user can use the in-game secret RTC Reset Menu useful to reset the clock in the event that the battery was changed.
+- By enabling the RTC Reset Menu, the user can use the in-game secret RTC Reset Menu, which can be used to reset the clock in the event that the battery was changed.
 
 All times reported within this menu assume a Dry Battery. If your battery is not dry, you may experience weird graphical behaviour, but the menu will still work fine.
 
