@@ -26,17 +26,12 @@ By adjusting the settings available in the Main Menu, you can choose which gener
 - Gen 3 is for trading with other GBA consoles running this homebrew.
 
 #### Trading to Gen 1 or Gen 2
-If you want to trade to the Japanese versions of Gen 1 or Gen 2 games, you must set the Region option in the Main Menu to Jap.
-
-The Pokémon received will be totally legitimate, barring their level and movesets.
-
-You will be able to freely change the nature of the received Pokémon during the trade.
-
-Trading across Generations is a lossy operation. As such, some information (like ribbons) will be lost!!!
-
-You will not be able to trade Pokémon which did not exist in the target games.
-
-These include: Unown ? and !, all Shiny Unown but I and V, certain Female Shiny Pokémon, Pokémon holding Mail.
+- If you want to trade to the Japanese versions of Gen 1 or Gen 2 games, you must set the Region option in the Main Menu to Jap.
+- The Pokémon received will be totally legitimate, barring their level and movesets.
+- You will be able to freely change the nature of the received Pokémon during the trade.
+- Trading across Generations is a lossy operation. As such, some information (like ribbons) will be lost!!!
+- You will not be able to trade Pokémon which did not exist in the target games.
+- These include: Unown ? and !, all Shiny Unown but I and V, certain Female Shiny Pokémon, Pokémon holding Mail.
 
 ### Clock Settings
 In the Settings inside of the Main Menu, the Clock Settings will be available if you're playing Pokémon Ruby/Sapphire/Emerald.
