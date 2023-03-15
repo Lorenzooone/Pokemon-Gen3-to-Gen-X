@@ -66,6 +66,6 @@ The following projects were useful while making this homebrew:
 - [pret](https://github.com/pret) - Understanding the innermost workings of the games.
 
 ## License
-All Pokémon names, sprites and names of related resources © Nintendo/Creatures Inc./GAME FREAK Inc.
+All Pokémon names, sprites and names of related resources are © Nintendo/Creatures Inc./GAME FREAK Inc.
 
 Everything else, and the programming code, is governed by the MIT license.
