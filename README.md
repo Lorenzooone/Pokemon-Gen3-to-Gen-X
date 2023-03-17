@@ -61,11 +61,11 @@ These range from "Tradeless Evo.", to giving Pokérus to your entire Party, whic
 ## Credits
 The following projects were useful while making this homebrew:
 
-- [PKHeX](https://github.com/kwsch/PKHeX) - Understanding legitimacy checks
-- [PokeFinder](https://github.com/Admiral-Fish/PokeFinder) - Understanding RNG and calculations
+- [PKHeX](https://github.com/kwsch/PKHeX) - Understanding legitimacy checks.
+- [PokeFinder](https://github.com/Admiral-Fish/PokeFinder) - Understanding RNG and calculations.
 - [pret](https://github.com/pret) - Understanding the innermost workings of the games.
 
 ## License
-All Pokémon names, sprites and names of related resources are © Nintendo/Creatures Inc./GAME FREAK Inc.
+All Pokémon names, sprites, names of related resources and the Japanese font are © Nintendo/Creatures Inc./GAME FREAK Inc.
 
 Everything else, and the programming code, is governed by the MIT license.
