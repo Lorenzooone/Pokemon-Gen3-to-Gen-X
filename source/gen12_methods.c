@@ -11,6 +11,7 @@
 #include "pokemon_stats_bin.h"
 
 const u8* set_buffer_with_gen2(const u8*, u8, u8*);
+u16 get_stat_exp_contribution(u16);
 
 u8 stat_index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
 u8 gender_thresholds_gen12[TOTAL_GENDER_KINDS] = {8, 0, 2, 4, 12, 14, 16, 17, 0, 16};
@@ -116,6 +117,15 @@ u16 get_mon_index_gen1_to_3(u8 index){
     return gen1_to_3_conv_table_bin[index];
 }
 
+u16 get_stat_exp_contribution(u16 stat_exp){
+    u16 stat_exp_contribution = Sqrt(stat_exp);
+    if((stat_exp_contribution * stat_exp_contribution) < stat_exp)
+        stat_exp_contribution += 1;
+    if(stat_exp_contribution >= 0x100)
+        stat_exp_contribution = 0xFF;
+    return stat_exp_contribution & 0xFF;
+}
+
 u16 calc_stats_gen1(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     if(species > LAST_VALID_GEN_1_MON)
         species = 0;
@@ -125,11 +135,7 @@ u16 calc_stats_gen1(u16 species, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
-    u16 stat_exp_contribution = Sqrt(stat_exp);
-    // Bulbapedia error...
-    //if((stat_exp_contribution * stat_exp_contribution) < stat_exp)
-    //    stat_exp_contribution += 1;
-    return base + Div((((stats_table_gen1[species].stats[stat_index] + iv)*2) + (stat_exp_contribution >> 2)) * level, 100);
+    return base + Div((((stats_table_gen1[species].stats[stat_index] + iv)*2) + (get_stat_exp_contribution(stat_exp) >> 2)) * level, 100);
 }
 
 u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 stat_exp) {
@@ -144,11 +150,7 @@ u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 st
     u16 base = 5;
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
-    u16 stat_exp_contribution = Sqrt(stat_exp);
-    // Bulbapedia error...
-    //if((stat_exp_contribution * stat_exp_contribution) < stat_exp)
-    //    stat_exp_contribution += 1;
-    return base + Div((((stats_table_gen2[mon_index].stats[stat_index] + iv)*2) + (stat_exp_contribution >> 2)) * level, 100);
+    return base + Div((((stats_table_gen2[mon_index].stats[stat_index] + iv)*2) + (get_stat_exp_contribution(stat_exp) >> 2)) * level, 100);
 }
 
 u8 get_gender_thresholds_gen12(u8 gender_kind) {
