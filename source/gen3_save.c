@@ -64,7 +64,6 @@ enum SAVING_KIND {FULL_SAVE, NON_PARTY_SAVE, PARTY_ONLY_SAVE};
 u16 read_section_id(int, int);
 u32 read_slot_index(int);
 void read_game_data_trainer_info(int, struct game_data_t*, struct game_data_priv_t*);
-void register_dex_entry(struct game_data_priv_t*, struct gen3_mon_data_unenc*);
 void handle_mail_trade(struct game_data_t*, u8, u8);
 void read_party(int, struct game_data_t*, struct game_data_priv_t*);
 void update_gift_ribbons(struct game_data_t*, const u8*);

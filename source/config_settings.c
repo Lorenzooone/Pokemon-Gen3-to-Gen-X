@@ -27,7 +27,7 @@ static u8 evolve_without_trade;
 static u8 allow_undistributed_events;
 static u8 fast_hatch_eggs;
 
-const struct version_t version = { .main_version = 1, .sub_version = 0, .revision_version = 0, .revision_letter = ' '};
+const struct version_t version = { .main_version = 1, .sub_version = 0, .revision_version = 1, .revision_letter = ' '};
 
 void set_default_settings() {
     set_sys_language(DEFAULT_SYS_LANGUAGE);

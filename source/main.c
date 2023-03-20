@@ -1096,6 +1096,7 @@ int main(void)
                         increase_game_stat(&game_data_priv.num_saves_stat, -1);
                         curr_state = TRADING_ANIMATION;
                         learnable_moves = game_data[0].party_3_undec[curr_mon].learnable_moves != NULL;
+                        register_dex_entry(&game_data_priv, &game_data[0].party_3_undec[curr_mon]);
                         success = pre_write_gen_3_data(&game_data[0], &game_data_priv, !learnable_moves);
                         if(!success)
                             crash_on_bad_save(0, master);

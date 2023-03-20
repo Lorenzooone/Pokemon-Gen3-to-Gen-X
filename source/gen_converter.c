@@ -340,7 +340,7 @@ void convert_evs_of_gen3(struct gen3_mon_evs* evs, u16* old_evs) {
         evs_total += evs->evs[i];
     if(evs_total >= MAX_USABLE_EVS)
         evs_total = MAX_EVS;
-    u16 new_evs = ((evs_total+1)>>1) * ((evs_total+1)>>1);
+    u32 new_evs = (evs_total * evs_total)>>2;
     for(int i = 0; i < EVS_TOTAL_GEN12; i++)
         old_evs[i] = swap_endian_short(new_evs & 0xFFFF);
 }

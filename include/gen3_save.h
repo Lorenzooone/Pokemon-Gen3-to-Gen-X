@@ -83,5 +83,6 @@ u8 get_sys_flag_byte_save(u8, int, u8, u16);
 void set_sys_flag_byte_save(u8*, u8, u16, u8);
 u8 give_pokerus_to_party(struct game_data_t*);
 u8 loaded_data_has_warnings(struct game_data_t*, struct game_data_priv_t*);
+void register_dex_entry(struct game_data_priv_t*, struct gen3_mon_data_unenc*);
 
 #endif
