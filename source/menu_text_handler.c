@@ -168,6 +168,7 @@ void print_game_info(struct game_data_t* game_data, int index) {
     PRINT_FUNCTION("\n0x\x04\n", crc32b((u8*)EWRAM, EWRAM_SIZE));
     PRINT_FUNCTION("\n0x\x04\n", read_magic_number(0, 0));
     PRINT_FUNCTION("\n0x\x04\n", read_magic_number(1, 0));
+    PRINT_FUNCTION("\n0x\x04\n", read_magic_number(1, 6));
     
     PRINT_FUNCTION("\nPress A to go back!");
 }
