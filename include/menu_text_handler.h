@@ -4,15 +4,12 @@
 #include "party_handler.h"
 #include "gen3_save.h"
 #include "multiboot_handler.h"
-
-#define ENABLE_PRINT_GAME_INFO 0
+#include "config_settings.h"
 
 enum MOVES_PRINTING_TYPE{LEARNT_P, DID_NOT_LEARN_P, LEARNABLE_P};
 enum CRASH_REASONS{BAD_SAVE, BAD_TRADE, CARTRIDGE_REMOVED};
 
-#if ENABLE_PRINT_GAME_INFO
 void print_game_info(struct game_data_t*, int);
-#endif
 void print_learnable_move(struct gen3_mon_data_unenc*, u16, enum MOVES_PRINTING_TYPE);
 void print_crash(enum CRASH_REASONS);
 void print_trade_menu(struct game_data_t*, u8, u8, u8, u8);

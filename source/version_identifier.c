@@ -86,7 +86,7 @@ void get_game_id(struct game_identity* identifier) {
 
 u8 id_to_version(struct game_identity* identifier) {
     u8 base_game = S_VERSION_ID;
-    if(identifier->game_main_version == FRLG_GAME_CODE)
+    if(identifier->game_main_version == FRLG_MAIN_GAME_CODE)
         base_game = FR_VERSION_ID;
     if(identifier->game_main_version == E_MAIN_GAME_CODE)
         base_game = E_VERSION_ID;

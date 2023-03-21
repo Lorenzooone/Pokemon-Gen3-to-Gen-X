@@ -784,6 +784,10 @@ IWRAM_CODE u8 get_is_cartridge_loaded(){
     return is_cartridge_loaded;
 }
 
+IWRAM_CODE u32 read_magic_number(u8 slot, u8 section){
+    return read_int_save((slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS + (section * SECTION_SIZE));
+}
+
 IWRAM_CODE u8 has_cartridge_been_removed(){
     u8 retval = 0;
     if(get_is_cartridge_loaded()) {
@@ -794,7 +798,7 @@ IWRAM_CODE u8 has_cartridge_been_removed(){
                 currently_checking_section = 0;
             if(read_short_save((in_use_slot * SAVE_SLOT_SIZE) + CHECKSUM_POS + (currently_checking_section * SECTION_SIZE)) != loaded_checksum[currently_checking_section])
                 retval = 1;
-            if(read_int_save((in_use_slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS + (currently_checking_section * SECTION_SIZE)) != MAGIC_NUMBER)
+            if(read_magic_number(in_use_slot, currently_checking_section) != MAGIC_NUMBER)
                 retval = 1;
             currently_checking_section++;
             time_since_last_check = 0;

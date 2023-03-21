@@ -322,12 +322,22 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
         case 4:
             if(keys & KEY_A)
                 return START_MULTIBOOT;
+            else if((keys & KEY_DOWN) && (PRINT_INFO_ALWAYS || (!get_is_cartridge_loaded())) && ENABLED_PRINT_INFO)
+                (*cursor_y_pos) = 6;
             else if(keys & KEY_DOWN)
                 (*cursor_y_pos) = 7;
             else if((keys & KEY_UP) && get_valid_options_main())
                 (*cursor_y_pos) -= 1;
             else if(keys & KEY_UP)
                 (*cursor_y_pos) = 9;
+            break;
+        case 6:
+            if(keys & KEY_A)
+                return START_PRINT_READ_INFO;
+            else if(keys & KEY_DOWN)
+                (*cursor_y_pos) += 1;
+            else if(keys & KEY_UP)
+                (*cursor_y_pos) = 4;
             break;
         case 7:
             if(keys & KEY_A)
@@ -336,6 +346,8 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
                 (*cursor_y_pos) += 1;
             else if(keys & KEY_DOWN)
                 (*cursor_y_pos) = 9;
+            else if((keys & KEY_UP) && (PRINT_INFO_ALWAYS || (!get_is_cartridge_loaded())) && ENABLED_PRINT_INFO)
+                (*cursor_y_pos) -= 1;
             else if(keys & KEY_UP)
                 (*cursor_y_pos) = 4;
             break;
@@ -362,6 +374,14 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
         default:
             break;
     }
+    return 0;
+}
+
+u8 handle_input_print_read_info(u16 keys) {
+    
+    if(keys & KEY_A)
+        return 1;
+    
     return 0;
 }
 

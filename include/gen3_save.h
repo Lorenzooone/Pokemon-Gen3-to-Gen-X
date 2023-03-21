@@ -74,6 +74,7 @@ u8 complete_write_gen_3_data(struct game_data_t*);
 u8 get_new_party_entry_index(struct game_data_t*);
 u8 get_party_usable_num(struct game_data_t*);
 u8 get_sys_flag_save(u8, int, u8, u16);
+u32 read_magic_number(u8, u8);
 void set_sys_flag_save(u8*, u8, u16, u8);
 u16 get_var_save(u8, int, u8, u16);
 void set_var_save(u8*, u8, u16, u16);

@@ -28,6 +28,7 @@
 #define CANCEL_TRADE_OPTIONS 0xFF
 #define OFFER_INFO_DISPLAY 0x12
 #define START_MULTIBOOT 0x49
+#define START_PRINT_READ_INFO 0x57
 #define START_SWAP_CARTRIDGE 0xA3
 #define START_SETTINGS_MENU 0x84
 #define VIEW_OWN_PARTY 0x65
@@ -54,5 +55,6 @@ u8 handle_input_evolution_menu(u16, u8*, u8*, u16);
 u8 handle_input_cheats_menu(u16, u8*, u8*);
 u8 handle_input_clock_menu(u16, struct clock_events_t*, struct saved_time_t*, u8*, u8*);
 u8 handle_input_clock_warning_menu(u16, u8*);
+u8 handle_input_print_read_info(u16);
 
 #endif

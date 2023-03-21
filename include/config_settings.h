@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include "useful_qualifiers.h"
 
+#define ENABLED_PRINT_INFO 0
+#define PRINT_INFO_ALWAYS 0
+
 #define NUM_COLOURS 5
 #define NUM_SUB_COLOURS 3
 #define BACKGROUND_COLOUR_POS 0

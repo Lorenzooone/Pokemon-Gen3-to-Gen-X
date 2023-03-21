@@ -107,7 +107,7 @@ void complete_save_menu(struct game_data_t*, struct game_data_priv_t*, u8, u8);
 void complete_cartridge_loading(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK, PRINT_READ_INFO};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -976,6 +976,11 @@ int main(void)
                     init_save_data();
                     print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + MULTIBOOT_MAX_SIZE)));
                 }
+                if(returned_val == START_PRINT_READ_INFO) {
+                    curr_state = PRINT_READ_INFO;
+                    disable_cursor();
+                    print_game_info(game_data, 0);
+                }
                 else if(returned_val == START_SWAP_CARTRIDGE) {
                     curr_state = SWAP_CARTRIDGE_MENU;
                     disable_cursor();
@@ -1273,6 +1278,10 @@ int main(void)
             case TRADING_ANIMATION:
                 break;
             case LEARNABLE_MOVES_MESSAGE:
+                break;
+            case PRINT_READ_INFO:
+                if(handle_input_print_read_info(keys))
+                    main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                 break;
             case LEARNABLE_MOVES_MESSAGE_MENU:
                 returned_val = handle_input_learnable_message_moves_menu(keys, &cursor_x_pos);
