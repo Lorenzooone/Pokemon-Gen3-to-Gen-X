@@ -12,10 +12,10 @@
 #define BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xAA; *((vu8*)(SAVE_POS+0x2AAA)) = 0x55;
 #define FLASH_WRITE_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xA0;
 #define FLASH_BANK_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xB0;
-#define FLASH_ENTER_MAN_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0x90;
-#define FLASH_EXIT_MAN_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
 #define FLASH_ERASE_SECTOR_BASE_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0x80; BASE_FLASH_CMD
 #define FLASH_TERM_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
+#define FLASH_ENTER_MAN_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0x90;
+#define FLASH_EXIT_MAN_CMD BASE_FLASH_CMD FLASH_TERM_CMD FLASH_TERM_CMD
 #define TIMEOUT (50000*((CLOCK_SPEED/GBA_CLOCK_SPEED) + ((CLOCK_SPEED%GBA_CLOCK_SPEED) == 0 ? 0 : 1)))
 #define ERASE_TIMEOUT (TIMEOUT)
 #define ERASED_BYTE 0xFF
@@ -23,6 +23,8 @@
 #define NUM_BANKS 2
 
 #define MACRONIX_MAN_ID 0xC2
+#define SANYO_MAN_ID 0x62
+#define DEFAULT_MAN_ID 0
 #define ERASE_SECTOR_FINAL_CMD 0x30
 
 #if IS_FLASH
@@ -46,7 +48,7 @@ IWRAM_CODE void init_bank(){
     FLASH_ENTER_MAN_CMD
     for(vu32 j = 0; j < TIMEOUT; j++);
     u8 man_id = *((vu8*)SAVE_POS);
-    if(man_id == MACRONIX_MAN_ID)
+    if((man_id == MACRONIX_MAN_ID) || (man_id == SANYO_MAN_ID) || (man_id == DEFAULT_MAN_ID))
         is_macronix = 1;
     FLASH_EXIT_MAN_CMD
     for(vu32 j = 0; j < TIMEOUT; j++);
