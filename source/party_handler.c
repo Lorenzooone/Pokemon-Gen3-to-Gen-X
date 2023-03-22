@@ -17,7 +17,7 @@
 #include "pokemon_names_bin.h"
 #include "egg_names_bin.h"
 #include "language_names_index_bin.h"
-#include "gen3_spanish_special_valid_chars_bin.h"
+#include "gen3_spanish_valid_chars_bin.h"
 #include "gen3_german_valid_chars_bin.h"
 #include "gen3_int_valid_chars_bin.h"
 #include "gen3_jap_valid_chars_bin.h"
@@ -78,9 +78,9 @@ u8 get_hidden_power_type_gen3_pure(u32);
 u8 get_hidden_power_type_gen3(struct gen3_mon_misc*);
 void make_evs_legal_gen3(struct gen3_mon_evs*);
 u8 to_valid_level_gen3(struct gen3_mon*);
-const u8* get_validity_keyboard(u8, u8);
-u8 use_special_keyboard(struct gen3_mon_misc*, u8);
-void sanitize_nickname(u8*, u8, u8, u16, u8);
+const u8* get_validity_keyboard(u8);
+//u8 use_special_keyboard(struct gen3_mon_misc*, u8);
+void sanitize_nickname(u8*, u8, u8, u16);
 void set_deoxys_form_inner(struct gen3_mon_data_unenc*, u8, u8);
 u8 decrypt_to_data_unenc(struct gen3_mon*, struct gen3_mon_data_unenc*);
 const struct learnset_data_mon_moves* extract_learnable_moves(const u16*, u16, u8);
@@ -97,7 +97,7 @@ u8 enc_positions[PID_POSITIONS];
 
 const u8 gender_thresholds_gen3[TOTAL_GENDER_KINDS] = {127, 0, 31, 63, 191, 225, 254, 255, 0, 254};
 const u8 stat_index_conversion_gen3[GEN2_STATS_TOTAL] = {0, 1, 2, 4, 5, 3};
-const u8 language_keyboard_kind[NUM_LANGUAGES] = {1,0,1,1,1,2,1,1};
+const u8 language_keyboard_kind[NUM_LANGUAGES] = {1,0,1,1,1,2,1,3};
 
 const u16* pokemon_abilities_bin_16 = (const u16*)pokemon_abilities_bin;
 const struct exp_level* exp_table = (const struct exp_level*)exp_table_bin;
@@ -942,7 +942,7 @@ const u8* get_celebi_trainer_name(u8 language) {
     return get_table_pointer(trainer_names_celebi_bin, get_valid_language(language));
 }
 
-const u8* get_validity_keyboard(u8 language, u8 load_special_keyboard) {
+const u8* get_validity_keyboard(u8 language) {
     language = get_valid_language(language);
     u8 kind = language_keyboard_kind[language];
     const u8* validity_keyboard = gen3_int_valid_chars_bin;
@@ -952,11 +952,12 @@ const u8* get_validity_keyboard(u8 language, u8 load_special_keyboard) {
         validity_keyboard = gen3_int_valid_chars_bin;
     else if(kind == 2)
         validity_keyboard = gen3_german_valid_chars_bin;
-    if(load_special_keyboard)
-        validity_keyboard = gen3_spanish_special_valid_chars_bin;
+    else if(kind == 3)
+        validity_keyboard = gen3_spanish_valid_chars_bin;
     return validity_keyboard;
 }
 
+/*
 u8 use_special_keyboard(struct gen3_mon_misc* misc, u8 language) {
     if(language != SPANISH_LANGUAGE)
         return 0;
@@ -968,10 +969,11 @@ u8 use_special_keyboard(struct gen3_mon_misc* misc, u8 language) {
         return 1;
     return 0;
 }
+*/
 
-void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species, u8 load_special_keyboard) {
+void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species) {
     language = get_valid_language(language);
-    const u8* validity_keyboard = get_validity_keyboard(language, load_special_keyboard);
+    const u8* validity_keyboard = get_validity_keyboard(language);
     size_t name_limit = NICKNAME_GEN3_SIZE;
     if(GET_LANGUAGE_IS_JAPANESE(language))
         name_limit = NICKNAME_JP_GEN3_SIZE;
@@ -984,9 +986,9 @@ void sanitize_nickname(u8* nickname, u8 language, u8 is_egg, u16 species, u8 loa
     limit_name_gen3(nickname, NICKNAME_GEN3_MAX_SIZE, name_limit);
 }
 
-void sanitize_ot_name(u8* ot_name, u8 max_size, u8 language, u8 load_special_keyboard) {
+void sanitize_ot_name(u8* ot_name, u8 max_size, u8 language) {
     language = get_valid_language(language);
-    const u8* validity_keyboard = get_validity_keyboard(language, load_special_keyboard);
+    const u8* validity_keyboard = get_validity_keyboard(language);
     size_t name_limit = OT_NAME_GEN3_SIZE;
     if(GET_LANGUAGE_IS_JAPANESE(language))
         name_limit = OT_NAME_JP_GEN3_SIZE;
@@ -1173,10 +1175,10 @@ void process_gen3_data(struct gen3_mon* src, struct gen3_mon_data_unenc* dst, u8
         if((src->language != JAPANESE_LANGUAGE) && text_gen3_is_same(src->nickname, get_pokemon_name_pure(SHEDINJA_SPECIES, 0, JAPANESE_LANGUAGE), NICKNAME_GEN3_MAX_SIZE, NICKNAME_GEN3_MAX_SIZE))
             text_gen3_copy(get_pokemon_name_pure(SHEDINJA_SPECIES, 0, src->language), src->nickname, NICKNAME_GEN3_SIZE, NICKNAME_GEN3_SIZE);
 
-    u8 special_keyboard = use_special_keyboard(misc, src->language);
+    //u8 special_keyboard = use_special_keyboard(misc, src->language);
     // Sanitize text to avoid crashes in-game
-    sanitize_nickname(src->nickname, src->language, dst->is_egg, growth->species, special_keyboard);
-    sanitize_ot_name(src->ot_name, OT_NAME_GEN3_MAX_SIZE, src->language, special_keyboard);
+    sanitize_nickname(src->nickname, src->language, dst->is_egg, growth->species);
+    sanitize_ot_name(src->ot_name, OT_NAME_GEN3_MAX_SIZE, src->language);
 
     // Set the new "cleaned" data
     place_and_encrypt_gen3_data(dst, src);

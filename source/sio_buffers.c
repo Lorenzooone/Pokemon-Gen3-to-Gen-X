@@ -555,5 +555,5 @@ void read_comm_buffer(struct game_data_t* game_data, int curr_gen, u8 is_jp) {
             read_gen3_trade_data(game_data, communication_buffers[OTHER_BUFFER]);
             break;
     }
-    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language, 0);
+    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language);
 }

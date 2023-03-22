@@ -439,7 +439,7 @@ void alter_game_data_language(struct game_data_t* game_data, struct game_data_pr
     if(game_data->game_identifier.language_is_sys) {
         game_data->game_identifier.language = SYS_LANGUAGE;
         text_gen3_copy(game_data_priv->trainer_name_raw, game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, OT_NAME_GEN3_MAX_SIZE+1);
-        sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language, 0);
+        sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language);
     }
 }
 
@@ -473,7 +473,7 @@ void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t
             game_data->game_identifier.language_is_sys = 1;
         }
     }
-    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language, 0);
+    sanitize_ot_name(game_data->trainer_name, OT_NAME_GEN3_MAX_SIZE+1, game_data->game_identifier.language);
 
     u8 game_id = game_data->game_identifier.game_main_version;
 

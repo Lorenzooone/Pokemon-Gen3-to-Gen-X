@@ -69,3 +69,6 @@ The following projects were useful while making this homebrew:
 All Pokémon names, sprites, names of related resources and the Japanese font are © Nintendo/Creatures Inc./GAME FREAK Inc.
 
 Everything else, and the programming code, is governed by the MIT license.
+
+## Example
+[This is a Video showing how to use the homebrew](https://youtu.be/3-EKe_lQREY).
