@@ -185,8 +185,8 @@ IWRAM_CODE void find_optimal_ewram_settings() {
 }
 
 void disable_all_irqs() {
-    REG_IE = 0;
     REG_IME = 0;
+    REG_IE = 0;
 }
 
 u8 init_cursor_y_pos_main_menu() {
@@ -740,6 +740,8 @@ void complete_cartridge_loading(struct game_data_t* game_data, struct game_data_
 
 int main(void)
 {
+    RegisterRamReset(RESET_SIO|RESET_SOUND|RESET_OTHER);
+    disable_all_irqs();
     curr_state = MAIN_MENU;
     counter = 0;
     input_counter = 0;
@@ -765,7 +767,6 @@ int main(void)
     irqInit();
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
-    irqDisable(IRQ_SERIAL);
     
     init_item_icon();
     init_cursor();
