@@ -63,9 +63,9 @@ Customize how the homebrew behaves.
 
 #### Cheats
 Inside the Cheats menu, you will find Special options which can be useful for various purposes.
-- "Cross-Gen Evo." can be used to allow evolution of Pokémon which would not evolve in the target generation (A Scyther holding Metal Coat from Gen 1 will evolve with this option).
+- "Cross-Gen Evo." can be used to allow evolution of Pokémon which would not evolve in the target generation (A Scyther holding Metal Coat from Gen 1 will evolve with this option enabled).
 - "Tradeless Evo." can be used to execute trade evolutions without a link cable.
-- "Undistr. Events" can be used to make it so Celebi and Mew from Gen 1 or Gen 2 games will not be Japanese (but they will be illegal).
+- "Undistr. Events" can be used to make it so Celebi and Mew from Gen 1 and Gen 2 games will not be Japanese (but they will be illegal).
 - "Fast Hatch Eggs" when enabled reduces the steps incoming eggs will need in order to hatch.
 - "Give Pokérus to Party", can be used to fix the fact that it's impossible to get Pokérus in Pokémon Fire Red/Leaf Green.
 
