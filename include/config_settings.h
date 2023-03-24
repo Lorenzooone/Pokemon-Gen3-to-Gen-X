@@ -36,6 +36,9 @@ void set_single_colour(u8, u8, u8);
 void set_evolve_without_trade(u8);
 void set_allow_undistributed_events(u8);
 void set_fast_hatch_eggs(u8);
+void increase_egg_met_location(void);
+void decrease_egg_met_location(void);
+void set_applied_ball(u16);
 u8 get_sys_language(void);
 u8 get_target_int_language(void);
 u8 get_filtered_target_int_language(void);
@@ -48,6 +51,8 @@ u8 get_allow_cross_gen_evos(void);
 u8 get_evolve_without_trade(void);
 u8 get_allow_undistributed_events(void);
 u8 get_fast_hatch_eggs(void);
+u8 get_egg_met_location(void);
+u16 get_applied_ball(void);
 const struct version_t* get_version(void);
 
 #endif

@@ -702,13 +702,16 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
     u32 ivs = 0;
     u8 ability = 0;
     u8 is_ability_set = 0;
+    u32 valid_balls = 0;
     const u8* searchable_table = egg_locations_bin;
     u8 find_in_table = 0;
     
     // Get PID and IVs
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
+            valid_balls = VALID_POKEBALL_NO_EGG;
             if(species == CELEBI_SPECIES) {
+                valid_balls = VALID_POKEBALL_CELEBI;
                 chosen_version = R_VERSION_ID;
                 generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                 is_ability_set = 1;
@@ -732,6 +735,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
             find_in_table = 1;
             break;
         case ROAMER_ENCOUNTER:
+            valid_balls = VALID_POKEBALL_NO_EGG;
             // Prefer Colosseum/XD encounter, if possible
             if(get_conversion_colo_xd() && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
                 chosen_version = COLOSSEUM_CODE;
@@ -754,6 +758,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
             find_in_table = 1;
             break;
         case UNOWN_ENCOUNTER:
+            valid_balls = VALID_POKEBALL_NO_EGG;
             if(!is_shiny)
                 generate_unown_info(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs);
             else
@@ -762,6 +767,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
             find_in_table = 1;
             break;
         default:
+            valid_balls = VALID_POKEBALL_EGG;
             if(!is_shiny)
                 generate_egg_info(species, wanted_nature, wanted_ivs, tsv, 2, &dst->pid, &ivs);
             else
@@ -771,6 +777,8 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
     
     // Set met location and origins info
     u8 met_location = egg_locations_bin[chosen_version];
+    if(!is_egg)
+        met_location = get_egg_met_location();
     u8 met_level = 0;
     u8 obedience = 0;
     
@@ -790,9 +798,14 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
         }
     }
     
+    // Get the used ball
+    u16 chosen_ball = get_applied_ball() & 0x1F;
+    if(!(valid_balls & (1 << chosen_ball)))
+        chosen_ball = POKEBALL_ID;
+    
     misc->met_location = met_location;
     misc->obedience = obedience;
-    misc->origins_info = ((ot_gender&1)<<15) | ((POKEBALL_ID&0xF)<<11) | ((chosen_version&0xF)<<7) | ((met_level&0x7F)<<0);
+    misc->origins_info = ((ot_gender&1)<<15) | ((chosen_ball&0xF)<<11) | ((chosen_version&0xF)<<7) | ((met_level&0x7F)<<0);
     
     // Set IVs
     set_ivs(misc, ivs);
