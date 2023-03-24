@@ -481,6 +481,115 @@ u8 handle_input_evolution_menu(u16 keys, u8* cursor_y_pos, u8* update, u16 num_e
     return 0;
 }
 
+u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
+    if(keys & KEY_B)
+        return EXIT_GEN12_SETTINGS;
+    
+    switch(*cursor_y_pos) {
+        case 0:
+            if(keys & KEY_UP)
+                *cursor_y_pos = 6;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                set_target_int_language(get_target_int_language() + 1);
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                set_target_int_language(get_target_int_language() - 1);
+                *update = 1;
+            }
+            break;
+        case 1:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                set_default_conversion_game(get_default_conversion_game() + 1);
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                set_default_conversion_game(get_default_conversion_game() - 1);
+                *update = 1;
+            }
+            break;
+        case 2:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_conversion_colo_xd(!get_conversion_colo_xd());
+                *update = 1;
+            }
+            break;
+        case 3:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_gen1_everstone(!get_gen1_everstone());
+                *update = 1;
+            }
+            break;
+        case 4:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                for(size_t i = 0; i < MAX_BALL_RETRIES; i++)
+                    if(set_applied_ball(get_applied_ball() + (i + 1)))
+                        break;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                for(size_t i = 0; i < MAX_BALL_RETRIES; i++)
+                    if(set_applied_ball(get_applied_ball() - (i + 1)))
+                        break;
+                *update = 1;
+            }
+            break;
+        case 5:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                increase_egg_met_location();
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                decrease_egg_met_location();
+                *update = 1;
+            }
+            break;
+        case 6:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos = 0;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                for(size_t i = 0; i < 10; i++)
+                    increase_egg_met_location();
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                for(size_t i = 0; i < 10; i++)
+                    decrease_egg_met_location();
+                *update = 1;
+            }
+            break;
+        default:
+            *cursor_y_pos = 0;
+            break;
+    }
+
+    return 0;
+}
+
 u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struct game_identity* game_identifier, u8 is_loaded) {
     if(keys & KEY_B)
         return EXIT_BASE_SETTINGS;
@@ -501,45 +610,9 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
             }
             break;
         case 1:
-            if(keys & KEY_UP)
-                *cursor_y_pos -= 1;
-            else if(keys & KEY_DOWN)
-                *cursor_y_pos += 1;
-            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
-                set_target_int_language(get_target_int_language() + 1);
-                *update = 1;
-            }
-            else if(keys & KEY_LEFT) {
-                set_target_int_language(get_target_int_language() - 1);
-                *update = 1;
-            }
-            break;
-        case 2:
-            if(keys & KEY_UP)
-                *cursor_y_pos -= 1;
-            else if(keys & KEY_DOWN)
-                *cursor_y_pos += 1;
-            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
-                set_default_conversion_game(get_default_conversion_game() + 1);
-                *update = 1;
-            }
-            else if(keys & KEY_LEFT) {
-                set_default_conversion_game(get_default_conversion_game() - 1);
-                *update = 1;
-            }
-            break;
-        case 3:
-            if(keys & KEY_UP)
-                *cursor_y_pos -= 1;
-            else if(keys & KEY_DOWN)
-                *cursor_y_pos += 1;
-            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
-                set_conversion_colo_xd(!get_conversion_colo_xd());
-                *update = 1;
-            }
-            break;
-        case 4:
-            if(keys & KEY_UP)
+            if(keys & KEY_A)
+                return ENTER_GEN12_MENU;
+            else if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN) {
                 if(is_loaded && has_rtc_events(game_identifier))
@@ -549,12 +622,8 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 else
                     *cursor_y_pos += 3;
             }
-            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
-                set_gen1_everstone(!get_gen1_everstone());
-                *update = 1;
-            }
             break;
-        case 5:
+        case 2:
             if(keys & KEY_A)
                 return ENTER_CLOCK_MENU;
             else if(keys & KEY_UP)
@@ -566,7 +635,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                     *cursor_y_pos += 2;
             }
             break;
-        case 6:
+        case 3:
             if(keys & KEY_UP) {
                 if(is_loaded && has_rtc_events(game_identifier))
                     *cursor_y_pos -= 1;
@@ -580,7 +649,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                 *update = 1;
             }
             break;
-        case 7:
+        case 4:
             if(keys & KEY_A)
                 return ENTER_COLOUR_MENU;
             else if(keys & KEY_UP) {
@@ -592,13 +661,13 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                     *cursor_y_pos -= 3;
             }
             else if(keys & KEY_DOWN)
-                *cursor_y_pos += 1;
+                *cursor_y_pos = 8;
             break;
         case 8:
             if(keys & KEY_A)
                 return ENTER_CHEATS_MENU;
             else if(keys & KEY_UP)
-                *cursor_y_pos -= 1;
+                *cursor_y_pos = 4;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos = 0;
             break;

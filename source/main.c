@@ -61,6 +61,7 @@ void cursor_update_cheats_menu(u8);
 void cursor_update_trade_options(u8);
 void cursor_update_offer_options(u8, u8);
 void cursor_update_base_settings_menu(u8);
+void cursor_update_gen12_settings_menu(u8);
 void cursor_update_clock_settings_menu(u8);
 void cursor_update_clock_warning(u8);
 void cursor_update_colours_settings_menu(u8, u8);
@@ -87,6 +88,7 @@ void main_menu_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u
 void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
+void gen12_settings_menu_init(u8*);
 void base_settings_menu_init(struct game_data_t*, u8*);
 void load_warnings_menu_init(struct game_data_t*, struct game_data_priv_t*);
 void colours_settings_menu_init(u8*, u8*);
@@ -107,7 +109,7 @@ void complete_save_menu(struct game_data_t*, struct game_data_priv_t*, u8, u8);
 void complete_cartridge_loading(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK, PRINT_READ_INFO};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK, PRINT_READ_INFO, GEN12_SETTINGS_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -242,6 +244,10 @@ void cursor_update_clock_warning(u8 cursor_x_pos) {
 
 void cursor_update_base_settings_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_BASE_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_BASE_SETTINGS_MENU * cursor_y_pos));
+}
+
+void cursor_update_gen12_settings_menu(u8 cursor_y_pos) {
+    update_cursor_y(BASE_Y_CURSOR_GEN12_SETTINGS_MENU + (BASE_Y_CURSOR_INCREMENT_GEN12_SETTINGS_MENU * cursor_y_pos));
 }
 
 void cursor_update_clock_settings_menu(u8 cursor_y_pos) {
@@ -598,6 +604,19 @@ void base_settings_menu_init(struct game_data_t* game_data, u8* cursor_y_pos) {
     *cursor_y_pos = 0;
     update_cursor_base_x(BASE_X_CURSOR_BASE_SETTINGS_MENU);
     cursor_update_base_settings_menu(*cursor_y_pos);
+    prepare_flush();
+}
+
+void gen12_settings_menu_init(u8* cursor_y_pos) {
+    curr_state = GEN12_SETTINGS_MENU;
+    set_screen(BASE_SCREEN);
+    disable_all_screens_but_current();
+    disable_all_cursors();
+    print_gen12_settings_menu(1);
+    enable_screen(BASE_SCREEN);
+    *cursor_y_pos = 0;
+    update_cursor_base_x(BASE_X_CURSOR_GEN12_SETTINGS_MENU);
+    cursor_update_gen12_settings_menu(*cursor_y_pos);
     prepare_flush();
 }
 
@@ -1157,6 +1176,8 @@ int main(void)
                 if(returned_val) {
                     if(returned_val == ENTER_COLOUR_MENU)
                         colours_settings_menu_init(&cursor_y_pos, &cursor_x_pos);
+                    else if(returned_val == ENTER_GEN12_MENU)
+                        gen12_settings_menu_init(&cursor_y_pos);
                     else if(returned_val == ENTER_CLOCK_MENU)
                         clock_settings_menu_init(&game_data_priv, &time_change, &cursor_y_pos, 1);
                     else if(returned_val == ENTER_CHEATS_MENU)
@@ -1173,6 +1194,15 @@ int main(void)
                 else {
                     print_base_settings_menu(&game_data->game_identifier, get_is_cartridge_loaded(), update);
                     cursor_update_base_settings_menu(cursor_y_pos);
+                }
+                break;
+            case GEN12_SETTINGS_MENU:
+                returned_val = handle_input_gen12_settings_menu(keys, &cursor_y_pos, &update);
+                if(returned_val)
+                    base_settings_menu_init(&game_data[0], &cursor_y_pos);
+                else {
+                    print_gen12_settings_menu(update);
+                    cursor_update_gen12_settings_menu(cursor_y_pos);
                 }
                 break;
             case COLOURS_SETTINGS_MENU:

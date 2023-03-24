@@ -6,7 +6,7 @@
 #define VALID_POKEBALL_NO_EGG 0x00001FDE
 #define VALID_POKEBALL_EGG 0x00000010
 #define VALID_POKEBALL_CELEBI 0x00000010
-#define VALID_POKEBALL_POSSIBLE (VALID_POKEBALL_NO_EGG)
+#define VALID_POKEBALL_POSSIBLE (VALID_POKEBALL_NO_EGG|VALID_POKEBALL_CELEBI|VALID_POKEBALL_EGG)
 
 void alter_nature(struct gen3_mon_data_unenc*, u8);
 void set_alter_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);

@@ -25,6 +25,8 @@ By adjusting the settings available in the Main Menu, you can choose which gener
 - Gen 2 is for trading with Pokémon Gold/Silver/Crystal.
 - Gen 3 is for trading with other GBA consoles running this homebrew.
 
+The "Act as" option allows one to choose whether the console will act as the main unit or not. Both options will work fine, but it's suggested not to change this unless you know what you're doing.
+
 #### Trading to Gen 1 or Gen 2
 - If you want to trade to the Japanese versions of Gen 1 or Gen 2 games, you must set the Region option in the Main Menu to Jap.
 - The Pokémon received will be totally legitimate, barring their level and movesets.
@@ -51,12 +53,21 @@ By selecting the option View Party Gen X, you can see what you'll be trading to 
 - As a special option, if the "Tradeless Evo." Cheat option is enabled, you will be able to evolve Pokémon which would need to be traded in order to evolve.
 
 ### Settings
-Customize how the homebrew behaves. From its looks, to what it should do when trading to Gen 1 and Gen 2.
+Customize how the homebrew behaves.
+- System Language handles certain ambiguous cases, as well as the displayed name for Pokémon.
+- Gen 1/2 Settings can be used to personalize the experience when trading with Gen 1 and Gen 2 games.
+- Clock Settings can be used to alter the time of the games.
+- Game Loaded can be used to specify which game is inserted. This option will only be available if the homebrew failed to detect the precise version.
+- Color Settings can be used to customize how the homebrew looks.
+- Cheats are special options which are not enabled by default, but may be useful for certain users.
 
 #### Cheats
 Inside the Cheats menu, you will find Special options which can be useful for various purposes.
-
-These range from "Tradeless Evo.", to giving Pokérus to your entire Party, which can be used to fix the fact that it's impossible to get in Pokémon Fire Red/Leaf Green.
+- "Cross-Gen Evo." can be used to allow evolution of Pokémon which would not evolve in the target generation (A Scyther holding Metal Coat from Gen 1 will evolve with this option).
+- "Tradeless Evo." can be used to execute trade evolutions without a link cable.
+- "Undistr. Events" can be used to make it so Celebi and Mew from Gen 1 or Gen 2 games will not be Japanese (but they will be illegal).
+- "Fast Hatch Eggs" when enabled reduces the steps incoming eggs will need in order to hatch.
+- "Give Pokérus to Party", can be used to fix the fact that it's impossible to get Pokérus in Pokémon Fire Red/Leaf Green.
 
 ## Credits
 The following projects were useful while making this homebrew:

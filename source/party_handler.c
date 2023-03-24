@@ -306,23 +306,25 @@ const u8* get_ribbon_rank_name(struct gen3_mon_misc* misc, u8 ribbon_num){
         return get_table_pointer(contest_rank_names_bin, NO_RANK_ID);
 }
 
+const u8* get_met_location_name_gen3_pure(u8 location, u8 origin_game){
+    u16 final_location = location;
+    if(origin_game == COLOSSEUM_CODE)
+        final_location = COLOSSEUM_ALT;
+    else if((final_location == BATTLE_FACILITY) && (origin_game == EMERALD_CODE))
+        final_location = BATTLE_FACILITY_ALT;
+    else if((final_location == HIDEOUT) && (origin_game == RUBY_CODE))
+        final_location = HIDEOUT_ALT;
+    else if((final_location == DEPT_STORE) && (origin_game == EMERALD_CODE))
+        final_location = DEPT_STORE_ALT;
+
+    return get_table_pointer(location_names_bin, final_location);
+}
+
 const u8* get_met_location_name_gen3_raw(struct gen3_mon_data_unenc* data_src){
     if(!data_src->is_valid_gen3)
-        return get_table_pointer(location_names_bin, EMPTY_LOCATION);
+        return get_met_location_name_gen3_pure(EMPTY_LOCATION, 0);
 
-    u16 location = data_src->misc.met_location;
-    u8 origin_game = (data_src->misc.origins_info>>7)&0xF;
-    
-    if(origin_game == COLOSSEUM_CODE)
-        location = COLOSSEUM_ALT;
-    else if((location == BATTLE_FACILITY) && (origin_game == EMERALD_CODE))
-        location = BATTLE_FACILITY_ALT;
-    else if((location == HIDEOUT) && (origin_game == RUBY_CODE))
-        location = HIDEOUT_ALT;
-    else if((location == DEPT_STORE) && (origin_game == EMERALD_CODE))
-        location = DEPT_STORE_ALT;
-    
-    return get_table_pointer(location_names_bin, location);
+    return get_met_location_name_gen3_pure(data_src->misc.met_location, (data_src->misc.origins_info>>7)&0xF);
 }
 
 u8 get_met_level_gen3_raw(struct gen3_mon_data_unenc* data_src){
@@ -335,11 +337,18 @@ u8 get_met_level_gen3_raw(struct gen3_mon_data_unenc* data_src){
     return level;
 }
 
-const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_unenc* data_src){
-    if(!data_src->is_valid_gen3)
+const u8* get_pokeball_base_name_gen3_pure(u16 ball){
+    if((ball < FIRST_BALL_ID) || (ball > LAST_BALL_ID))
         return get_table_pointer(pokeball_names_bin, 0);
 
-    return get_table_pointer(pokeball_names_bin, (data_src->misc.origins_info>>11)&0xF);
+    return get_table_pointer(pokeball_names_bin, ball);
+}
+
+const u8* get_pokeball_base_name_gen3_raw(struct gen3_mon_data_unenc* data_src){
+    if(!data_src->is_valid_gen3)
+        return get_pokeball_base_name_gen3_pure(0);
+
+    return get_pokeball_base_name_gen3_pure((data_src->misc.origins_info>>11)&0xF);
 }
 
 u8 get_trainer_gender_char_raw(struct gen3_mon_data_unenc* data_src){

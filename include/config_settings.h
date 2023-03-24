@@ -7,6 +7,8 @@
 #define ENABLED_PRINT_INFO 0
 #define PRINT_INFO_ALWAYS 0
 
+#define MAX_BALL_RETRIES 2
+
 #define NUM_COLOURS 5
 #define NUM_SUB_COLOURS 3
 #define BACKGROUND_COLOUR_POS 0
@@ -38,7 +40,7 @@ void set_allow_undistributed_events(u8);
 void set_fast_hatch_eggs(u8);
 void increase_egg_met_location(void);
 void decrease_egg_met_location(void);
-void set_applied_ball(u16);
+u8 set_applied_ball(u16);
 u8 get_sys_language(void);
 u8 get_target_int_language(void);
 u8 get_filtered_target_int_language(void);

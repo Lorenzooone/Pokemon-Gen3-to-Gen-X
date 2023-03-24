@@ -434,22 +434,36 @@ const u8* get_language_string(u8 language) {
     return (const u8*)language_strings[language];
 }
 
+void print_gen12_settings_menu(u8 update) {
+    if(!update)
+        return;
+
+    default_reset_screen();
+    PRINT_FUNCTION("\n  Target Language: <\x01>\n\n", get_language_string(get_target_int_language()));
+    PRINT_FUNCTION("  Convert to: <\x01>\n\n", game_strings[get_default_conversion_game()]);
+    if(get_conversion_colo_xd())
+        PRINT_FUNCTION("  Prioritize Colo/XD: <True>\n\n");
+    else
+        PRINT_FUNCTION("  Prioritize Colo/XD: <False>\n\n");
+    if(get_gen1_everstone())
+        PRINT_FUNCTION("  Gen 1 Everstone: <Enabled>\n\n");
+    else
+        PRINT_FUNCTION("  Gen 1 Everstone: <Disabled>\n\n");
+    PRINT_FUNCTION("  Caught in: <\x01 Ball>\n\n", get_pokeball_base_name_gen3_pure(get_applied_ball()));
+    PRINT_FUNCTION("  Hatched at: <\x0B> +/- 1\n\n", get_egg_met_location(), 3);
+    PRINT_FUNCTION("  Hatched at: <\x0B> +/- 10\n\n\n", get_egg_met_location(), 3);
+    PRINT_FUNCTION("Hatched at: \x01\n\n", get_met_location_name_gen3_pure(get_egg_met_location(), get_default_conversion_game()));
+
+    print_bottom_info();
+}
+
 void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loaded, u8 update) {
     if(!update)
         return;
 
     default_reset_screen();
     PRINT_FUNCTION("\n  System Language: <\x01>\n\n", get_language_string(get_sys_language()));
-    PRINT_FUNCTION("  Gen 1/2 Language: <\x01>\n\n", get_language_string(get_target_int_language()));
-    PRINT_FUNCTION("  Gen 1/2 to: <\x01>\n\n", game_strings[get_default_conversion_game()]);
-    if(get_conversion_colo_xd())
-        PRINT_FUNCTION("  Gen 1/2 to Colo/XD: <True>\n\n");
-    else
-        PRINT_FUNCTION("  Gen 1/2 to Colo/XD: <False>\n\n");
-    if(get_gen1_everstone())
-        PRINT_FUNCTION("  Gen 1 Everstone: <Enabled>\n\n");
-    else
-        PRINT_FUNCTION("  Gen 1 Everstone: <Disabled>\n\n");
+    PRINT_FUNCTION("  Gen 1/2 Settings\n\n");
     u8 curr_y = get_text_y();
     if(is_loaded) {
         if(has_rtc_events(game_identifier))
@@ -1014,12 +1028,15 @@ void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
         PRINT_FUNCTION("\nOT: \x05 - \x02 - \x0B\n", mon->src->ot_name, GET_LANGUAGE_OT_NAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language), get_trainer_gender_char_raw(mon), (mon->src->ot_id)&0xFFFF, 5);
         PRINT_FUNCTION("\nItem: \x01\n", get_item_name_raw(mon));
         
-        PRINT_FUNCTION("\nMet in: \x01\n", get_met_location_name_gen3_raw(mon));
         u8 met_level = get_met_level_gen3_raw(mon);
-        if(met_level > 0)
+        if(met_level > 0) {
+            PRINT_FUNCTION("\nMet in: \x01\n", get_met_location_name_gen3_raw(mon));
             PRINT_FUNCTION("\nCaught at Level \x03\n\nCaught in \x01 Ball", met_level, get_pokeball_base_name_gen3_raw(mon));
-        else
+        }
+        else {
+            PRINT_FUNCTION("\nHatched at: \x01\n", get_met_location_name_gen3_raw(mon));
             PRINT_FUNCTION("\nHatched in \x01 Ball", get_pokeball_base_name_gen3_raw(mon));
+        }
     }
     else
         PRINT_FUNCTION("\nHatches in : \x03 Egg Cycle\x02\n\nHatches in: \x03 Steps", mon->growth.friendship + 1, mon->growth.friendship ? 's' : ' ', (mon->growth.friendship + 1) * 0x100);

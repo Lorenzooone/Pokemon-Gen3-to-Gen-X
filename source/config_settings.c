@@ -39,7 +39,7 @@ static u16 applied_ball;
 static u8 egg_met_location;
 static u8 first_set_egg_met_location;
 
-const struct version_t version = { .main_version = 1, .sub_version = 0, .revision_version = 3, .revision_letter = ' '};
+const struct version_t version = { .main_version = 1, .sub_version = 1, .revision_version = 0, .revision_letter = ' '};
 const u8* egg_valid_met_locations[NUMBER_OF_GAMES+FIRST_VERSION_ID] = {valid_egg_locations_rs_bin, valid_egg_locations_rs_bin, valid_egg_locations_rs_bin, valid_egg_locations_e_bin, valid_egg_locations_frlg_bin, valid_egg_locations_frlg_bin};
 
 void set_default_settings() {
@@ -154,14 +154,17 @@ void decrease_egg_met_location() {
     }
 }
 
-void set_applied_ball(u16 new_val) {
+u8 set_applied_ball(u16 new_val) {
     new_val &= 0x1F;
     if(new_val > LAST_BALL_ID)
         new_val = FIRST_BALL_ID;
     if(new_val < FIRST_BALL_ID)
         new_val = LAST_BALL_ID;
-    if(VALID_POKEBALL_POSSIBLE & (1 << new_val))
+    if(VALID_POKEBALL_POSSIBLE & (1 << new_val)) {
         applied_ball = new_val;
+        return 1;
+    }
+    return 0;
 }
 
 void set_single_colour(u8 index, u8 sub_index, u8 new_colour) {
