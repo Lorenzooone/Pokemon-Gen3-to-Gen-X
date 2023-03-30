@@ -20,7 +20,7 @@
 #include "gen3_spanish_valid_chars_bin.h"
 #include "gen3_german_valid_chars_bin.h"
 #include "gen3_int_valid_chars_bin.h"
-#include "gen3_jap_valid_chars_bin.h"
+#include "gen3_jpn_valid_chars_bin.h"
 #include "item_names_bin.h"
 #include "location_names_bin.h"
 #include "pokeball_names_bin.h"
@@ -956,7 +956,7 @@ const u8* get_validity_keyboard(u8 language) {
     u8 kind = language_keyboard_kind[language];
     const u8* validity_keyboard = gen3_int_valid_chars_bin;
     if(kind == 0)
-        validity_keyboard = gen3_jap_valid_chars_bin;
+        validity_keyboard = gen3_jpn_valid_chars_bin;
     else if(kind == 1)
         validity_keyboard = gen3_int_valid_chars_bin;
     else if(kind == 2)
