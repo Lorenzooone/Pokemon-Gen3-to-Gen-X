@@ -1,6 +1,5 @@
-#include <gba.h>
+#include "base_include.h"
 #include "sio.h"
-#include "vcount_basic.h"
 #include "useful_qualifiers.h"
 
 #define BLANK_LINES_WAIT 13
@@ -8,6 +7,7 @@
 void sio_normal_inner_slave(void);
 u8 sio_normal_inner_master(void);
 
+#ifdef HAS_SIO
 IWRAM_CODE int timed_sio_normal_master(int data, int is_32, int vCountWait) {
     u8 curr_vcount, target_vcount;
     
@@ -175,3 +175,4 @@ IWRAM_CODE int sio_normal(int data, int is_master, int is_32, u8* success) {
     else
         return (REG_SIODATA8 & 0xFF);
 }
+#endif

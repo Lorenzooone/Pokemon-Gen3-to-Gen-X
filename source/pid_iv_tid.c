@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "pid_iv_tid.h"
 #include "rng.h"
 #include "gen12_methods.h"

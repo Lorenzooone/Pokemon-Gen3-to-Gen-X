@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "rng.h"
 #include "useful_qualifiers.h"
 

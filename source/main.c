@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "multiboot_handler.h"
 #include "graphics_handler.h"
 #include "party_handler.h"
@@ -18,7 +18,6 @@
 #include "communicator.h"
 #include "gen_converter.h"
 #include "sio.h"
-#include "vcount_basic.h"
 #include "animations_handler.h"
 #include <stddef.h>
 #include "optimized_swi.h"
@@ -130,6 +129,7 @@ IWRAM_CODE void vblank_update_function() {
     // Handle trading animation
     if(curr_state == TRADING_ANIMATION)
         advance_trade_animation();
+    #ifdef HAS_SIO
     // Handle slave communications
     if((REG_SIOCNT & SIO_IRQ) && (!(REG_SIOCNT & SIO_START)))
         slave_routine();
@@ -140,12 +140,13 @@ IWRAM_CODE void vblank_update_function() {
         REG_IF &= ~IRQ_SERIAL;
         slave_routine();
     }
+    #endif
     // Handle master communications
-    if(REG_DISPSTAT & LCDC_VCNT) {
-        u16 next_vcount_irq = (REG_DISPSTAT >> 8);
+    if(REG_DISPSTAT & SCANLINE_IRQ_BIT) {
+        int next_vcount_irq = __get_next_vcount_interrupt();
         if(next_vcount_irq < VBLANK_SCANLINES)
             next_vcount_irq += SCANLINES;
-        u16 curr_vcount = REG_VCOUNT + 2;
+        int curr_vcount = REG_VCOUNT + 2;
         if(curr_vcount < VBLANK_SCANLINES)
             curr_vcount += SCANLINES;
         if(next_vcount_irq <= curr_vcount)
@@ -154,6 +155,7 @@ IWRAM_CODE void vblank_update_function() {
 }
 
 IWRAM_CODE void find_optimal_ewram_settings() {
+    #ifdef __GBA__
     size_t size = ewram_speed_check_bin_size>>2;
     const u32* ewram_speed_check = (const u32*)ewram_speed_check_bin;
     u32 test_data[size];
@@ -184,6 +186,7 @@ IWRAM_CODE void find_optimal_ewram_settings() {
         if(!failed)
             return;
     }
+    #endif
 }
 
 void disable_all_irqs() {
@@ -709,7 +712,7 @@ void crash_on_cartridge_removed() {
     prepare_crash_screen(CARTRIDGE_REMOVED);
     base_stop_transfer(0);
     base_stop_transfer(1);
-    u8 curr_vcount = REG_VCOUNT + 1 + 1;
+    int curr_vcount = REG_VCOUNT + 1 + 1;
     if(curr_vcount >= SCANLINES)
         curr_vcount -= SCANLINES;
     while(REG_VCOUNT != curr_vcount);
@@ -759,8 +762,10 @@ void complete_cartridge_loading(struct game_data_t* game_data, struct game_data_
 
 int main(void)
 {
+    #ifdef __GBA__
     RegisterRamReset(RESET_SIO|RESET_SOUND|RESET_OTHER);
     disable_all_irqs();
+    #endif
     curr_state = MAIN_MENU;
     counter = 0;
     input_counter = 0;
@@ -770,7 +775,7 @@ int main(void)
     init_enc_positions();
     init_rng(0,0);
     init_save_data();
-    u16 keys;
+    u32 keys;
     struct game_data_t game_data[2];
     struct game_data_priv_t game_data_priv;
     struct saved_time_t time_change;
@@ -782,8 +787,12 @@ int main(void)
     init_numbers();
     
     init_unown_tsv();
+    #ifdef HAS_SIO
     sio_stop_irq_slave();
+    #endif
+    #ifdef __GBA__
     irqInit();
+    #endif
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
     
@@ -990,8 +999,10 @@ int main(void)
                 cursor_update_main_menu(cursor_y_pos);
                 if(returned_val == START_MULTIBOOT) {
                     curr_state = MULTIBOOT;
+                    #ifdef HAS_SIO
                     sio_stop_irq_slave();
                     irqDisable(IRQ_SERIAL);
+                    #endif
                     disable_cursor();
                     init_save_data();
                     print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + MULTIBOOT_MAX_SIZE)));

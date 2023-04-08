@@ -1,7 +1,0 @@
-#ifndef VCOUNT_BASIC__
-#define VCOUNT_BASIC__
-
-#define SCANLINES 0xE4
-#define VBLANK_SCANLINES SCREEN_HEIGHT
-
-#endif

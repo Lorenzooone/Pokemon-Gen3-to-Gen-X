@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "bin_table_handler.h"
 #include <stddef.h>
 

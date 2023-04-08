@@ -1,9 +1,10 @@
-#include <gba.h>
+#include "base_include.h"
 #include "multiboot_handler.h"
 #include "sio.h"
 #include "menu_text_handler.h"
 #include "print_system.h"
 #include "timing_basic.h"
+#include "useful_qualifiers.h"
 
 #define MULTIBOOT_WAIT_TIME_NS 36000
 #define MULTIBOOT_VCOUNTWAIT (((MULTIBOOT_WAIT_TIME_NS/NS_PER_SCANLINE) + ((MULTIBOOT_WAIT_TIME_NS%NS_PER_SCANLINE) == 0 ? 0 : 1))+1)
@@ -16,7 +17,12 @@ int multiboot_normal_send(int data) {
     return timed_sio_normal_master(data, SIO_32, MULTIBOOT_VCOUNTWAIT) >> 0x10;
 }
 
+#ifdef HAS_SIO
 enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end) {
+#else
+enum MULTIBOOT_RESULTS multiboot_normal (u16* UNUSED(data), u16* UNUSED(end)) {
+#endif
+    #ifdef HAS_SIO
     int response;
     u8 clientMask = 0;
     int attempts, sends, halves;
@@ -94,5 +100,6 @@ enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end) {
     if(MultiBoot(&mp, MODE32_NORMAL))
         return MB_SWI_FAILURE;
     
+    #endif
     return MB_SUCCESS;
 }

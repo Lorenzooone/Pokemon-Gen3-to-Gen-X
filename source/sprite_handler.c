@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "sprite_handler.h"
 #include "graphics_handler.h"
 #include "print_system.h"
@@ -22,18 +22,27 @@
 
 #define CURSOR_SPRITE_PALETTE_INDEX 9
 #define SPRITE_SIZE (SPRITE_BASE_SIZE_MULTIPLIER*SPRITE_ALT_DISTANCE)
-#define OVRAM_START ((uintptr_t)OBJ_BASE_ADR)
 #define OVRAM_SIZE 0x8000
 #define OVRAM_END (OVRAM_START+OVRAM_SIZE)
+#ifdef __NDS__
+#define OVRAM_END_SUB (OVRAM_START_SUB+OVRAM_SIZE)
+#endif
 #define POSSIBLE_SPRITES (OVRAM_SIZE/SPRITE_SIZE)
 
 #define OAM_ENTITIES 0x80
+#define OAM_DATA ((OBJATTR *)OAM)
+#ifdef __NDS__
+#define OAM_DATA_SUB ((OBJATTR *)OAM_SUB)
+#endif
 
 #define DISABLE_SPRITE (1<<9)
 #define OFF_SCREEN_SPRITE SCREEN_HEIGHT
 
 u8 check_for_same_address(const u8*);
 uintptr_t get_vram_pos(void);
+#ifdef __NDS__
+uintptr_t get_vram_pos_sub(void);
+#endif
 void set_updated_shadow_oam(void);
 void inc_inner_sprite_counter(void);
 u8 get_sprite_counter(void);
@@ -81,10 +90,17 @@ void set_updated_shadow_oam() {
 
 IWRAM_CODE void update_normal_oam() {
     if(updated_shadow_oam) {
-        u32* oam_ptr = (u32*)OAM;
+        u32* oam_ptr = (u32*)OAM_DATA;
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        u32* oam_ptr_sub = (u32*)OAM_DATA_SUB;
+        #endif
         u32* shadow_oam_ptr = (u32*)shadow_oam;
-        for(size_t i = 0; i < ((sizeof(OBJATTR)*OAM_ENTITIES)>>2); i++)
+        for(size_t i = 0; i < ((sizeof(OBJATTR)*OAM_ENTITIES)>>2); i++) {
             oam_ptr[i] = shadow_oam_ptr[i];
+            #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+            oam_ptr_sub[i] = shadow_oam_ptr[i];
+            #endif
+        }
         updated_shadow_oam = 0;
     }
     loaded_inner_sprite_counter = __inner_sprite_counter;
@@ -98,10 +114,16 @@ void set_party_sprite_counter(){
 
 void enable_sprites_rendering(){
     REG_DISPCNT |= OBJ_ON | OBJ_1D_MAP;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    REG_DISPCNT_SUB |= OBJ_ON | OBJ_1D_MAP;
+    #endif
 }
 
 void disable_sprites_rendering(){
     REG_DISPCNT &= ~(OBJ_ON);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    REG_DISPCNT_SUB &= ~(OBJ_ON);
+    #endif
 }
 
 void init_sprites(){
@@ -137,6 +159,15 @@ uintptr_t get_vram_pos(){
     return vram_pos;
 }
 
+#ifdef __NDS__
+uintptr_t get_vram_pos_sub(){
+    uintptr_t vram_pos = OVRAM_START_SUB+(__sprite_counter*SPRITE_SIZE);
+    if(vram_pos >= OVRAM_END_SUB)
+        vram_pos = OVRAM_END_SUB - SPRITE_SIZE;
+    return vram_pos;
+}
+#endif
+
 u8 get_3bpp_palette(int index) {
     return (index>>1) + get_first_variable_palette();
 }
@@ -151,6 +182,12 @@ void set_palette_3bpp(u8* colors, int index, int palette) {
             SPRITE_PALETTE[base+i+(new_palette<<4)] = SPRITE_PALETTE[colors[i]+(palette<<4)];
         else
             SPRITE_PALETTE[i+(new_palette<<4)] = SPRITE_PALETTE[colors[i]+(palette<<4)];
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        if(i)
+            SPRITE_PALETTE_SUB[base+i+(new_palette<<4)] = SPRITE_PALETTE_SUB[colors[i]+(palette<<4)];
+        else
+            SPRITE_PALETTE_SUB[i+(new_palette<<4)] = SPRITE_PALETTE_SUB[colors[i]+(palette<<4)];
+        #endif
     }
 }
 
@@ -160,6 +197,11 @@ void init_cursor(){
         u16* vram_pos = (u16*)(get_vram_pos() + (SPRITE_ALT_DISTANCE*i));
         for(size_t j = 0; j < (sprite_cursor_bin_size>>1); j++)
             vram_pos[j] = sprite_cursor_gfx[j];
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        vram_pos = (u16*)(get_vram_pos_sub() + (SPRITE_ALT_DISTANCE*i));
+        for(size_t j = 0; j < (sprite_cursor_bin_size>>1); j++)
+            vram_pos[j] = sprite_cursor_gfx[j];
+        #endif
     }
     for(int i = 0; i < TOTAL_BG; i++) {
         set_attributes(OFF_SCREEN_SPRITE, 0, (SPRITE_TILE_SIZE*__sprite_counter) | ((3-i)<<10) | ((sprite_palettes_bin_size>>5)<<12));
@@ -174,6 +216,9 @@ void init_cursor(){
 
 void set_cursor_palette() {
     SPRITE_PALETTE[(sprite_palettes_bin_size>>1)+CURSOR_SPRITE_PALETTE_INDEX] = get_full_colour(SPRITE_COLOUR_POS);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    SPRITE_PALETTE_SUB[(sprite_palettes_bin_size>>1)+CURSOR_SPRITE_PALETTE_INDEX] = get_full_colour(SPRITE_COLOUR_POS);
+    #endif
 }
 
 void init_oam_palette(){
@@ -181,6 +226,12 @@ void init_oam_palette(){
         SPRITE_PALETTE[i] = sprite_palettes_bin_16[i];
     for(size_t i = 0; i < (item_icon_palette_bin_size>>1); i++)
         SPRITE_PALETTE[i+(sprite_palettes_bin_size>>1)] = item_icon_palette_bin_16[i];
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    for(size_t i = 0; i < (sprite_palettes_bin_size>>1); i++)
+        SPRITE_PALETTE_SUB[i] = sprite_palettes_bin_16[i];
+    for(size_t i = 0; i < (item_icon_palette_bin_size>>1); i++)
+        SPRITE_PALETTE_SUB[i+(sprite_palettes_bin_size>>1)] = item_icon_palette_bin_16[i];
+    #endif
     set_cursor_palette();
 }
 
@@ -189,6 +240,11 @@ void init_item_icon(){
         u16* vram_pos = (u16*)(get_vram_pos() + sprite_cursor_bin_size + (SPRITE_ALT_DISTANCE*i));
         for(size_t j = 0; j < (item_icon_bin_size>>1); j++)
             vram_pos[j] = item_icon_gfx[j];
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        vram_pos = (u16*)(get_vram_pos_sub() + sprite_cursor_bin_size + (SPRITE_ALT_DISTANCE*i));
+        for(size_t j = 0; j < (item_icon_bin_size>>1); j++)
+            vram_pos[j] = item_icon_gfx[j];
+        #endif
     }
 }
 
@@ -232,6 +288,9 @@ void set_pokemon_sprite(const u8* address, u8 palette, u8 info, u8 display_item,
     if(position == POSSIBLE_SPRITES) {
         u8 colors[8];
         load_pokemon_sprite_gfx((const u32*)address, (u32*)get_vram_pos(), is_3bpp, zero_fill, __sprite_counter-(cursor_sprite+1), colors);
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        load_pokemon_sprite_gfx((const u32*)address, (u32*)get_vram_pos_sub(), is_3bpp, zero_fill, __sprite_counter-(cursor_sprite+1), colors);
+        #endif
         if(is_3bpp)
             set_palette_3bpp(colors, __sprite_counter-(cursor_sprite+1), palette);
         position = __sprite_counter;
@@ -251,15 +310,22 @@ void update_cursor_y(u16 cursor_y){
 }
 
 IWRAM_CODE void raw_update_cursor_x(u16 cursor_x){
-    OAM[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
+    OAM_DATA[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    OAM_DATA_SUB[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
+    #endif
     shadow_oam[inner_cursor_sprite-get_loaded_priority()].attr1 = cursor_x;
 }
 
 IWRAM_CODE void raw_update_sprite_y(u8 index, u8 new_y){
     if(index >= OAM_ENTITIES)
         index = OAM_ENTITIES-1;
-    OAM[index].attr0 &= ~0xFF;
-    OAM[index].attr0 |= new_y;
+    OAM_DATA[index].attr0 &= ~0xFF;
+    OAM_DATA[index].attr0 |= new_y;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    OAM_DATA_SUB[index].attr0 &= ~0xFF;
+    OAM_DATA_SUB[index].attr0 |= new_y;
+    #endif
     shadow_oam[index].attr0 &= ~0xFF;
     shadow_oam[index].attr0 |= new_y;
 }
@@ -268,11 +334,20 @@ IWRAM_CODE void fade_all_sprites_to_white(u16 fading_fraction){
     REG_BLDCNT &= ~(3<<6);
     REG_BLDCNT |= (1<<4) | (2<<6);
     REG_BLDY = fading_fraction;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    REG_BLDCNT_SUB &= ~(3<<6);
+    REG_BLDCNT_SUB |= (1<<4) | (2<<6);
+    REG_BLDY_SUB = fading_fraction;
+    #endif
 }
 
 IWRAM_CODE void remove_fade_all_sprites(){
     REG_BLDCNT &= ~((1<<4) | (2<<6));
     REG_BLDY = 0;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    REG_BLDCNT_SUB &= ~((1<<4) | (2<<6));
+    REG_BLDY_SUB = 0;
+    #endif
 }
 
 void update_cursor_base_x(u16 cursor_x){
@@ -342,10 +417,16 @@ IWRAM_CODE void move_sprites(u8 counter){
     if(loaded_inner_sprite_counter > OAM_ENTITIES)
         limit = OAM_ENTITIES;
     for(int i = inner_cursor_sprite+1; i < limit; i++) {
-        u16 obj_attr_2 = OAM[i].attr2 & ~SPRITE_BASE_TILE_SIZE;
+        u16 obj_attr_2 = OAM_DATA[i].attr2 & ~SPRITE_BASE_TILE_SIZE;
         if(counter_kind)
             obj_attr_2 |= SPRITE_BASE_TILE_SIZE;
-        OAM[i].attr2 = obj_attr_2;
+        OAM_DATA[i].attr2 = obj_attr_2;
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        obj_attr_2 = OAM_DATA_SUB[i].attr2 & ~SPRITE_BASE_TILE_SIZE;
+        if(counter_kind)
+            obj_attr_2 |= SPRITE_BASE_TILE_SIZE;
+        OAM_DATA_SUB[i].attr2 = obj_attr_2;
+        #endif
     }
 }
 

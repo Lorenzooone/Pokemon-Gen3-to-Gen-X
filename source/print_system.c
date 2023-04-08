@@ -1,5 +1,5 @@
+#include "base_include.h"
 #include <stdarg.h>
-#include <gba.h>
 #include "optimized_swi.h"
 #include "print_system.h"
 #include "text_handler.h"
@@ -15,17 +15,22 @@
 #include "window_graphics_bin.h"
 
 #define VRAM_SIZE 0x10000
-#define VRAM_END (VRAM+VRAM_SIZE)
+#define VRAM_END (((uintptr_t)VRAM_0)+VRAM_SIZE)
 #define PALETTE 0xF
 #define PALETTE_SIZE 0x10
 #define PALETTE_BASE 0x5000000
 #define FONT_TILES 0x100
 #define FONT_SIZE (FONT_TILES*TILE_SIZE)
 #define FONT_1BPP_SIZE (FONT_SIZE>>2)
-#define FONT_POS (VRAM + 0)
+#define FONT_POS (((uintptr_t)VRAM_0) + 0)
 #define JP_FONT_POS (FONT_POS + FONT_SIZE)
 #define NUMBERS_POS (VRAM_END - (10000*2))
 #define ARRANGEMENT_POS (JP_FONT_POS+FONT_SIZE)
+#ifdef __NDS__
+#define FONT_POS_SUB (((uintptr_t)VRAM_0_SUB) + 0)
+#define JP_FONT_POS_SUB (FONT_POS_SUB + FONT_SIZE)
+#define ARRANGEMENT_POS_SUB (JP_FONT_POS_SUB+FONT_SIZE)
+#endif
 #define X_OFFSET_POS 0
 #define Y_OFFSET_POS 1
 
@@ -56,6 +61,9 @@ u8 is_screen_disabled(u8);
 u8 x_pos;
 u8 y_pos;
 screen_t* screen;
+#ifdef __NDS__
+screen_t* screen_sub;
+#endif
 u8 screen_num;
 u8 loaded_screen_num;
 
@@ -68,7 +76,10 @@ u8 screen_positions[TOTAL_BG][2];
 IWRAM_CODE void set_arrangements(u8 bg_num){
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
-    BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((uintptr_t)get_screen(bg_num))-VRAM)>>3);
+    BGCTRL[bg_num] = get_bg_priority(bg_num) | ((((uintptr_t)get_screen(bg_num))-((uintptr_t)VRAM_0))>>3);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    BGCTRL_SUB[bg_num] = get_bg_priority(bg_num) | ((((uintptr_t)get_screen(bg_num))-((uintptr_t)VRAM_0))>>3);
+    #endif
 }
 
 IWRAM_CODE void process_arrangements() {
@@ -84,16 +95,28 @@ IWRAM_CODE void swap_buffer_screen_internal(u8 bg_num) {
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     buffer_screen[bg_num] ^= 1;
-    if(bg_num == screen_num)
+    if(bg_num == screen_num) {
         screen = get_screen(bg_num);
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        screen_sub = get_screen_sub(bg_num);
+        #endif
+    }
 }
 
 IWRAM_CODE void enable_screens() {
     for(int i = 0; i < TOTAL_BG; i++)
-        if(enabled_screen[i])
+        if(enabled_screen[i]) {
             REG_DISPCNT |= (0x100)<<i;
-        else
+            #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+            REG_DISPCNT_SUB |= (0x100)<<i;
+            #endif
+        }
+        else {
             REG_DISPCNT &= ~((0x100)<<i);
+            #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+            REG_DISPCNT_SUB &= ~((0x100)<<i);
+            #endif
+        }
 }
 
 u8 is_screen_disabled(u8 bg_num) {
@@ -108,6 +131,10 @@ IWRAM_CODE void set_screens_positions() {
     for(int i = 0; i < TOTAL_BG; i++) {
         BG_OFFSET[i].x = screen_positions[i][X_OFFSET_POS];
         BG_OFFSET[i].y = screen_positions[i][Y_OFFSET_POS];
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        BG_OFFSET_SUB[i].x = screen_positions[i][X_OFFSET_POS];
+        BG_OFFSET_SUB[i].y = screen_positions[i][Y_OFFSET_POS];
+        #endif
     }
 }
 
@@ -137,16 +164,27 @@ void init_numbers() {
 }
 
 void set_text_palettes() {
-    BG_COLORS[0]=get_full_colour(BACKGROUND_COLOUR_POS);
-	BG_COLORS[(PALETTE*PALETTE_SIZE)]=get_full_colour(BACKGROUND_COLOUR_POS);
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+1]=get_full_colour(FONT_COLOUR_POS);
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+2]=get_full_colour(BACKGROUND_COLOUR_POS);
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+3]=get_full_colour(WINDOW_COLOUR_1_POS);
-	BG_COLORS[(PALETTE*PALETTE_SIZE)+4]=get_full_colour(WINDOW_COLOUR_2_POS);
+    BG_PALETTE[0]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_PALETTE[(PALETTE*PALETTE_SIZE)]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_PALETTE[(PALETTE*PALETTE_SIZE)+1]=get_full_colour(FONT_COLOUR_POS);
+	BG_PALETTE[(PALETTE*PALETTE_SIZE)+2]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_PALETTE[(PALETTE*PALETTE_SIZE)+3]=get_full_colour(WINDOW_COLOUR_1_POS);
+	BG_PALETTE[(PALETTE*PALETTE_SIZE)+4]=get_full_colour(WINDOW_COLOUR_2_POS);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    BG_PALETTE_SUB[0]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+1]=get_full_colour(FONT_COLOUR_POS);
+	BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+2]=get_full_colour(BACKGROUND_COLOUR_POS);
+	BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+3]=get_full_colour(WINDOW_COLOUR_1_POS);
+	BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+4]=get_full_colour(WINDOW_COLOUR_2_POS);
+    #endif
 }
 
 void init_text_system() {
-    REG_DISPCNT = 0;
+    REG_DISPCNT = 0 | TILE_1D_MAP | ACTIVATE_SCREEN_HW;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    REG_DISPCNT_SUB = 0 | TILE_1D_MAP | ACTIVATE_SCREEN_HW;
+    #endif
     screens_flush = 0;
     for(int i = 0; i < TOTAL_BG; i++) {
         enabled_screen[i] = 0;
@@ -161,6 +199,10 @@ void init_text_system() {
     // This is for the first frame
     for(size_t i = 0; i < (TILE_SIZE>>2); i++)
         *((u32*)(FONT_POS+(i<<2))) = 0x22222222;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    for(size_t i = 0; i < (TILE_SIZE>>2); i++)
+        *((u32*)(FONT_POS_SUB+(i<<2))) = 0x22222222;
+    #endif
     
     default_reset_screen();
     enable_screen(0);
@@ -170,6 +212,9 @@ void init_text_system() {
     u8 colors[] = {2, 1};
     LZ77UnCompWram(amiga_font_c_bin, buffer);
     convert_1bpp((u8*)buffer, (u32*)FONT_POS, FONT_1BPP_SIZE, colors, 1);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    convert_1bpp((u8*)buffer, (u32*)FONT_POS_SUB, FONT_1BPP_SIZE, colors, 1);
+    #endif
     
     PRINT_FUNCTION("\n  Loading...");
     base_flush();
@@ -177,14 +222,25 @@ void init_text_system() {
     // Set empty tile
     for(size_t i = 0; i < (TILE_SIZE>>2); i++)
         *((u32*)(FONT_POS+TILE_SIZE+(i<<2))) = 0;
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    for(size_t i = 0; i < (TILE_SIZE>>2); i++)
+        *((u32*)(FONT_POS_SUB+TILE_SIZE+(i<<2))) = 0;
+    #endif
 
     // Load japanese font
     LZ77UnCompWram(jp_font_c_bin, buffer);
     convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS_SUB, FONT_1BPP_SIZE, colors, 0);
+    #endif
     
     // Set window tiles
     for(size_t i = 0; i < (window_graphics_bin_size>>2); i++)
         *((u32*)(FONT_POS+(2*TILE_SIZE)+(i<<2))) = ((const u32*)window_graphics_bin)[i];
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    for(size_t i = 0; i < (window_graphics_bin_size>>2); i++)
+        *((u32*)(FONT_POS_SUB+(2*TILE_SIZE)+(i<<2))) = ((const u32*)window_graphics_bin)[i];
+    #endif
 }
 
 void set_updated_screen() {
@@ -266,28 +322,45 @@ void set_bg_pos(u8 bg_num, int x, int y){
 }
 
 u8 get_screen_num(){
-	return screen_num;
+    return screen_num;
 }
 
 screen_t* get_screen(u8 bg_num){
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
-	return (screen_t*)(ARRANGEMENT_POS+(SCREEN_SIZE*(bg_num+(TOTAL_BG*buffer_screen[bg_num]))));
+    return (screen_t*)(ARRANGEMENT_POS+(SCREEN_SIZE*(bg_num+(TOTAL_BG*buffer_screen[bg_num]))));
 }
+
+#ifdef __NDS__
+screen_t* get_screen_sub(u8 bg_num){
+    if(bg_num >= TOTAL_BG)
+        bg_num = TOTAL_BG-1;
+    return (screen_t*)(ARRANGEMENT_POS_SUB+(SCREEN_SIZE*(bg_num+(TOTAL_BG*buffer_screen[bg_num]))));
+}
+#endif
 
 void set_screen(u8 bg_num){
     if(bg_num >= TOTAL_BG)
         bg_num = TOTAL_BG-1;
     screen_num = bg_num;
     screen = get_screen(bg_num);
+    #ifdef __NDS__
+    screen_sub = get_screen_sub(bg_num);
+    #endif
 }
 
 void reset_screen(u8 blank_fill){
     set_updated_screen();
     *((u32*)screen) = (PALETTE<<28) | (PALETTE<<12) | 0;
     if(blank_fill)
-        *((u32*)screen) =(PALETTE<<28) | (PALETTE<<12) | 0x00010001;
+        *((u32*)screen) = (PALETTE<<28) | (PALETTE<<12) | 0x00010001;
     CpuFastSet(screen, screen, CPUFASTSET_FILL | (SCREEN_SIZE>>2));
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    *((u32*)screen_sub) = (PALETTE<<28) | (PALETTE<<12) | 0;
+    if(blank_fill)
+        *((u32*)screen_sub) = (PALETTE<<28) | (PALETTE<<12) | 0x00010001;
+    CpuFastSet(screen_sub, screen_sub, CPUFASTSET_FILL | (SCREEN_SIZE>>2));
+    #endif
     x_pos = 0;
     y_pos = 0;
 }
@@ -327,6 +400,9 @@ void new_line(){
 
 u8 write_char(u16 character) {
     screen[x_pos+(y_pos*X_SIZE)] = character | (PALETTE << 12);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    screen_sub[x_pos+(y_pos*X_SIZE)] = character | (PALETTE << 12);
+    #endif
     x_pos++;
     if(x_pos >= X_LIMIT) {
         new_line();
@@ -340,6 +416,9 @@ void write_above_char(u16 character) {
     if(!y_pos)
         y_pos_altered = Y_SIZE-1;
     screen[x_pos+(y_pos_altered*X_SIZE)] = character | (PALETTE << 12);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    screen_sub[x_pos+(y_pos_altered*X_SIZE)] = character | (PALETTE << 12);
+    #endif
 }
 
 int sub_printf(u8* string) {

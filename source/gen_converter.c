@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "party_handler.h"
 #include "gen12_methods.h"
 #include "gen_converter.h"

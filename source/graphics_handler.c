@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "graphics_handler.h"
 #include "useful_qualifiers.h"
 #include "print_system.h"

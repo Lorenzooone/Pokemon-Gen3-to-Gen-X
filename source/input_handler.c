@@ -1,5 +1,6 @@
-#include <gba.h>
+#include "base_include.h"
 #include "input_handler.h"
+#include "sprite_handler.h"
 #include "options_handler.h"
 #include "communicator.h"
 #include "gen3_clock_events.h"
@@ -256,7 +257,7 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
                     (*cursor_y_pos) += 1;
             }
             else if(keys & KEY_UP) {
-                (*cursor_y_pos) = 9;
+                (*cursor_y_pos) = BOTTOM_Y_CURSOR_MAIN_MENU_VALUE;
             }
             break;
         case 1:
@@ -323,15 +324,15 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
             if(keys & KEY_A)
                 return START_MULTIBOOT;
             else if((keys & KEY_DOWN) && (PRINT_INFO_ALWAYS || (!get_is_cartridge_loaded())) && ENABLED_PRINT_INFO)
-                (*cursor_y_pos) = 6;
+                (*cursor_y_pos) = (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 3);
             else if(keys & KEY_DOWN)
-                (*cursor_y_pos) = 7;
+                (*cursor_y_pos) = (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 2);
             else if((keys & KEY_UP) && get_valid_options_main())
                 (*cursor_y_pos) -= 1;
             else if(keys & KEY_UP)
-                (*cursor_y_pos) = 9;
+                (*cursor_y_pos) = BOTTOM_Y_CURSOR_MAIN_MENU_VALUE;
             break;
-        case 6:
+        case (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 3):
             if(keys & KEY_A)
                 return START_PRINT_READ_INFO;
             else if(keys & KEY_DOWN)
@@ -339,19 +340,19 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
             else if(keys & KEY_UP)
                 (*cursor_y_pos) = 4;
             break;
-        case 7:
+        case (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 2):
             if(keys & KEY_A)
                 return START_SWAP_CARTRIDGE;
             else if((keys & KEY_DOWN) && get_valid_options_main())
                 (*cursor_y_pos) += 1;
             else if(keys & KEY_DOWN)
-                (*cursor_y_pos) = 9;
+                (*cursor_y_pos) = BOTTOM_Y_CURSOR_MAIN_MENU_VALUE;
             else if((keys & KEY_UP) && (PRINT_INFO_ALWAYS || (!get_is_cartridge_loaded())) && ENABLED_PRINT_INFO)
                 (*cursor_y_pos) -= 1;
             else if(keys & KEY_UP)
                 (*cursor_y_pos) = 4;
             break;
-        case 8:
+        case (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 1):
             if(keys & KEY_A)
                 return VIEW_OWN_PARTY + curr_gen;
             else if(keys & KEY_DOWN)
@@ -359,7 +360,7 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
             else if(keys & KEY_UP)
                 (*cursor_y_pos) -= 1;
             break;
-        case 9:
+        case BOTTOM_Y_CURSOR_MAIN_MENU_VALUE:
             if(keys & KEY_A)
                 return START_SETTINGS_MENU;
             else if((keys & KEY_DOWN) && get_valid_options_main())
@@ -369,7 +370,7 @@ u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8
             else if((keys & KEY_UP) && get_valid_options_main())
                 (*cursor_y_pos) -= 1;
             else if(keys & KEY_UP)
-                (*cursor_y_pos) = 7;
+                (*cursor_y_pos) = (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 2);
             break;
         default:
             break;
@@ -597,7 +598,7 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
     switch(*cursor_y_pos) {
         case 0:
             if(keys & KEY_UP)
-                *cursor_y_pos = 8;
+                *cursor_y_pos = BOTTOM_Y_CURSOR_BASE_SETTINGS_MENU_VALUE;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
@@ -661,9 +662,9 @@ u8 handle_input_base_settings_menu(u16 keys, u8* cursor_y_pos, u8* update, struc
                     *cursor_y_pos -= 3;
             }
             else if(keys & KEY_DOWN)
-                *cursor_y_pos = 8;
+                *cursor_y_pos = BOTTOM_Y_CURSOR_BASE_SETTINGS_MENU_VALUE;
             break;
-        case 8:
+        case BOTTOM_Y_CURSOR_BASE_SETTINGS_MENU_VALUE:
             if(keys & KEY_A)
                 return ENTER_CHEATS_MENU;
             else if(keys & KEY_UP)
@@ -747,7 +748,7 @@ u8 handle_input_clock_menu(u16 keys, struct clock_events_t* clock_events, struct
     switch(*cursor_y_pos) {
         case 0:
             if(keys & KEY_UP)
-                *cursor_y_pos = 11;
+                *cursor_y_pos = BOTTOM_Y_CURSOR_CLOCK_SETTINGS_MENU_VALUE;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 2;
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
@@ -836,7 +837,7 @@ u8 handle_input_clock_menu(u16 keys, struct clock_events_t* clock_events, struct
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
-                *cursor_y_pos += 2;
+                *cursor_y_pos = BOTTOM_Y_CURSOR_CLOCK_SETTINGS_MENU_VALUE;
             else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
                 if(time_change->s < MAX_SECONDS-1)
                     time_change->s += 1;
@@ -852,11 +853,11 @@ u8 handle_input_clock_menu(u16 keys, struct clock_events_t* clock_events, struct
                 *update = 1;
             }
             break;
-        case 11:
+        case BOTTOM_Y_CURSOR_CLOCK_SETTINGS_MENU_VALUE:
             if(keys & KEY_A)
                 return 1;
             else if(keys & KEY_UP)
-                *cursor_y_pos -= 2;
+                *cursor_y_pos = 9;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos = 0;
             break;

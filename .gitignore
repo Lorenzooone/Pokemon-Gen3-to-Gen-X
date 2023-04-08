@@ -1,5 +1,7 @@
 build/
 *.elf
+*.nds
+*.NDS
 *.gba
 *.GBA
 *.sav

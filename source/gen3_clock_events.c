@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "gen3_clock_events_t.h"
 #include "gen3_save.h"
 #include "party_handler.h"
