@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "gen12_methods.h"
 #include "party_handler.h"
 #include "text_handler.h"

@@ -1,6 +1,7 @@
 #ifndef OPTIMIZED_SWI__
 #define OPTIMIZED_SWI__
 
+#include "base_include.h"
 #include "useful_qualifiers.h"
 
 static s32 SWI_DivMod(const uint32_t, const uint32_t);
@@ -14,7 +15,7 @@ ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_DivMod(const uint32_t dividend, const uint32_
     register uint32_t abs_divis_ asm("r3");
 
     asm volatile(
-        "swi 0x06;" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
+        "swi "DIV_SWI_VAL";" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
         "r"(divid_), "r"(divis_), "r"(abs_divis_) :
     );
     
@@ -28,7 +29,7 @@ ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_Div(const uint32_t dividend, const uint32_t d
     register uint32_t abs_divis_ asm("r3");
 
     asm volatile(
-        "swi 0x06;" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
+        "swi "DIV_SWI_VAL";" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
         "r"(divid_), "r"(divis_), "r"(abs_divis_) :
     );
     
@@ -42,7 +43,7 @@ ALWAYS_INLINE MAX_OPTIMIZE s32 SWI_DivDivMod(const uint32_t dividend, const uint
     register uint32_t abs_divis_ asm("r3");
 
     asm volatile(
-        "swi 0x06;" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
+        "swi "DIV_SWI_VAL";" : "=r"(divid_), "=r"(divis_), "=r"(abs_divis_) :
         "r"(divid_), "r"(divis_), "r"(abs_divis_) :
     );
     

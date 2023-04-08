@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "sio_buffers.h"
 #include "text_handler.h"
 #include "options_handler.h"

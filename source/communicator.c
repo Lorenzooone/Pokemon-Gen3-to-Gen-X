@@ -1,8 +1,7 @@
-#include <gba.h>
+#include "base_include.h"
 #include "communicator.h"
 #include "sio.h"
 #include "sio_buffers.h"
-#include "vcount_basic.h"
 #include "party_handler.h"
 #include "useful_qualifiers.h"
 #include <stddef.h>
@@ -347,7 +346,7 @@ MAX_OPTIMIZE void set_next_vcount_interrupt(void){
     int next_stop = REG_VCOUNT + VCOUNT_WAIT_LINES;
     if(next_stop >= SCANLINES)
         next_stop -= SCANLINES;
-    REG_DISPSTAT  = (REG_DISPSTAT &0xFF) | (next_stop<<8);
+    __set_next_vcount_interrupt(next_stop);
 }
 
 IWRAM_CODE int communicate_buffer(u8 data, u8 is_master) {
@@ -811,6 +810,7 @@ IWRAM_CODE void process_in_data_gen3(u32 data) {
 }
 
 IWRAM_CODE MAX_OPTIMIZE void slave_routine(void) {
+    #ifdef HAS_SIO
     if(!(REG_IF & IRQ_SERIAL)){
         REG_IF |= IRQ_SERIAL;
         int value;
@@ -830,10 +830,12 @@ IWRAM_CODE MAX_OPTIMIZE void slave_routine(void) {
         //PRINT_FUNCTION("0x\x0D - 0x\x0D\n", value, 2, data, 2);
         //sio_handle_irq_slave(process_data_arrived_gen12(sio_read(SIO_8), 0));
     }
+    #endif
 }
 
 IWRAM_CODE MAX_OPTIMIZE void master_routine_gen3(void) {
 	REG_IF |= IRQ_VCOUNT;
+    #ifdef HAS_SIO
     int data;
     u8 success = 0;
     
@@ -845,11 +847,13 @@ IWRAM_CODE MAX_OPTIMIZE void master_routine_gen3(void) {
         prepared_value = prepare_out_data_gen3();
     }
 
+    #endif
     set_next_vcount_interrupt();
 }
 
 IWRAM_CODE MAX_OPTIMIZE void master_routine_gen12(void) {
 	REG_IF |= IRQ_VCOUNT;
+    #ifdef HAS_SIO
     int data;
     
     if(!skip_sends) {
@@ -870,6 +874,7 @@ IWRAM_CODE MAX_OPTIMIZE void master_routine_gen12(void) {
     else
         skip_sends--;
 
+    #endif
     set_next_vcount_interrupt();
 }
 
@@ -891,48 +896,58 @@ void start_transfer(u8 is_master, u8 curr_gen)
     stored_curr_gen = curr_gen;
     if(curr_gen != 3) {
         if(!is_master) {
+            #ifdef HAS_SIO
             init_sio_normal(SIO_SLAVE, SIO_8);
             irqSet(IRQ_SERIAL, slave_routine);
             irqEnable(IRQ_SERIAL);
             sio_normal_prepare_irq_slave(SEND_NO_INFO);
+            #endif
         }
         else{
             set_next_vcount_interrupt();
+            #ifdef HAS_SIO
             init_sio_normal(SIO_MASTER, SIO_8);
+            #endif
             irqSet(IRQ_VCOUNT, master_routine_gen12);
             prepared_value = ENTER_TRADE_MASTER;
             irqEnable(IRQ_VCOUNT);
-            REG_DISPSTAT |= LCDC_VCNT;
+            REG_DISPSTAT |= SCANLINE_IRQ_BIT;
         }
     }
     else {
         init_received_gen3();
         set_start_state(START_TRADE_PAR);
         if(!is_master) {
+            #ifdef HAS_SIO
             init_sio_normal(SIO_SLAVE, SIO_32);
             irqSet(IRQ_SERIAL, slave_routine);
             irqEnable(IRQ_SERIAL);
             sio_normal_prepare_irq_slave(SEND_0_INFO);
+            #endif
         }
         else {
             set_next_vcount_interrupt();
+            #ifdef HAS_SIO
             init_sio_normal(SIO_MASTER, SIO_32);
+            #endif
             irqSet(IRQ_VCOUNT, master_routine_gen3);
             prepared_value = SEND_0_INFO;
             irqEnable(IRQ_VCOUNT);
-            REG_DISPSTAT |= LCDC_VCNT;
+            REG_DISPSTAT |= SCANLINE_IRQ_BIT;
         }
     }
 }
 
 void base_stop_transfer(u8 is_master) {
     if(!is_master) {
+        #ifdef HAS_SIO
         irqDisable(IRQ_SERIAL);
         sio_stop_irq_slave();
+        #endif
     }
     else{
         irqDisable(IRQ_VCOUNT);
-        REG_DISPSTAT &= ~LCDC_VCNT;
+        REG_DISPSTAT &= ~SCANLINE_IRQ_BIT;
     }
 }
 

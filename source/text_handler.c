@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "text_handler.h"
 #include "bin_table_handler.h"
 #include "useful_qualifiers.h"

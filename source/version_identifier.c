@@ -1,17 +1,13 @@
-#include <gba.h>
+#include "base_include.h"
 #include "version_identifier.h"
 #include "save.h"
 #include "text_handler.h"
 #include "party_handler.h"
 #include "gen3_save.h"
 
-#define REG_WAITCNT		*(vu16*)(REG_BASE + 0x204)  // Wait state Control
-
-#define ROM 0x8000000
-
-#define GAME_STRING_POS (ROM+0xA0)
+#define GAME_STRING_POS (((uintptr_t)ROM)+0xA0)
 #define GAME_STRING_SIZE 0xC
-#define LANGUAGE_ID_POS (ROM+0xAF)
+#define LANGUAGE_ID_POS (((uintptr_t)ROM)+0xAF)
 #define JAPANESE_ID 0x4A
 #define ENGLISH_ID_0 0x45
 #define ENGLISH_ID_1 0x50
@@ -48,10 +44,9 @@ u8 is_trainer_name_japanese(u8* buffer) {
 
 void get_game_id(struct game_identity* identifier) {
     u8 tmp_buffer[GAME_STRING_SIZE+1];
-    REG_WAITCNT = 0x4314;
+    REG_WAITCNT = BASE_WAITCNT_VAL;
     text_generic_copy((u8*)GAME_STRING_POS, tmp_buffer, GAME_STRING_SIZE, GAME_STRING_SIZE+1);
     u8 language_char = *((u8*)LANGUAGE_ID_POS);
-    REG_WAITCNT = 0;
     for(int i = 0; i < NUMBER_OF_GAMES; i++)
         if(text_generic_is_same((const u8*)game_identifier_strings[i], tmp_buffer, GAME_STRING_SIZE, GAME_STRING_SIZE)) {
             identifier->game_main_version = main_identifiers[i];

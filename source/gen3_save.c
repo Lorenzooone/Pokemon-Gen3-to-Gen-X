@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "save.h"
 #include "gen3_save.h"
 #include "gen3_clock_events.h"
@@ -77,6 +77,8 @@ static u8 get_next_slot(u8);
 void replace_party_entry(struct game_data_t*, struct gen3_mon_data_unenc*, u8);
 void trade_reorder_party_entries(struct game_data_t*, struct gen3_mon_data_unenc*, u8);
 u32 calc_checksum_save_buffer(u32*, u16);
+static void start_gen3_save_data_transfer(void);
+static void end_gen3_save_data_transfer(void);
 
 const u16 summable_bytes[SECTION_TOTAL] = {3884, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 3848, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 2000};
 const u16 summable_bytes_section0[NUM_MAIN_GAME_ID] = {0x890, 0xF24, 0xF2C};
@@ -807,48 +809,76 @@ IWRAM_CODE u8 has_cartridge_been_removed(){
     return retval;
 }
 
+ALWAYS_INLINE void start_gen3_save_data_transfer() {
+    #ifdef __NDS__
+    disableSleep();
+    #endif
+}
+
+ALWAYS_INLINE void end_gen3_save_data_transfer() {
+    #ifdef __NDS__
+    enableSleep();
+    #endif
+}
+
 u8 read_gen_3_data(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv){
     unload_cartridge();
+    start_gen3_save_data_transfer();
     init_bank();
-    
+
     game_data_priv->game_is_suspended = 0;
-    
+
     u8 slot = get_slot(&game_data->game_identifier);
     in_use_slot = slot;
-    if(slot == INVALID_SLOT)
+    if(slot == INVALID_SLOT) {
+        end_gen3_save_data_transfer();
         return 0;
-    
+    }
+
     read_party(slot, game_data, game_data_priv);
     own_game_data_ptr = game_data;
-    
-    if(game_data_priv->game_is_suspended)
+
+    if(game_data_priv->game_is_suspended) {
+        end_gen3_save_data_transfer();
         return 0;
-    
+    }
+
+    end_gen3_save_data_transfer();
     load_cartridge();
-    
+
     return 1;
 }
 
 u8 pre_write_gen_3_data(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 is_full){
     unload_cartridge();
+    start_gen3_save_data_transfer();
     init_bank();
 
     u8 base_slot = in_use_slot;
-    if(base_slot == INVALID_SLOT)
+    if(base_slot == INVALID_SLOT) {
+        end_gen3_save_data_transfer();
         return 0;
+    }
 
     if(is_full) {
-        if(!pre_update_save(game_data, game_data_priv, base_slot, FULL_SAVE))
+        if(!pre_update_save(game_data, game_data_priv, base_slot, FULL_SAVE)) {
+            end_gen3_save_data_transfer();
             return 0;
+        }
 
-        if(!validate_slot(get_next_slot(base_slot), &game_data->game_identifier))
+        if(!validate_slot(get_next_slot(base_slot), &game_data->game_identifier)) {
+            end_gen3_save_data_transfer();
             return 0;
+        }
     }
     else {
-        if(!pre_update_save(game_data, game_data_priv, base_slot, NON_PARTY_SAVE))
+        if(!pre_update_save(game_data, game_data_priv, base_slot, NON_PARTY_SAVE)) {
+            end_gen3_save_data_transfer();
             return 0;
+        }
     }
 
+    end_gen3_save_data_transfer();
     load_cartridge();
 
     return 1;
@@ -856,18 +886,26 @@ u8 pre_write_gen_3_data(struct game_data_t* game_data, struct game_data_priv_t* 
 
 u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv){
     unload_cartridge();
+    start_gen3_save_data_transfer();
     init_bank();
 
     u8 base_slot = in_use_slot;
-    if(base_slot == INVALID_SLOT)
+    if(base_slot == INVALID_SLOT) {
+        end_gen3_save_data_transfer();
         return 0;
+    }
 
-    if(!pre_update_save(game_data, game_data_priv, base_slot, PARTY_ONLY_SAVE))
+    if(!pre_update_save(game_data, game_data_priv, base_slot, PARTY_ONLY_SAVE)) {
+        end_gen3_save_data_transfer();
         return 0;
+    }
 
-    if(!validate_slot(get_next_slot(base_slot), &game_data->game_identifier))
+    if(!validate_slot(get_next_slot(base_slot), &game_data->game_identifier)) {
+        end_gen3_save_data_transfer();
         return 0;
+    }
 
+    end_gen3_save_data_transfer();
     load_cartridge();
 
     return 1;
@@ -875,17 +913,23 @@ u8 pre_write_updated_moves_gen_3_data(struct game_data_t* game_data, struct game
 
 u8 complete_write_gen_3_data(struct game_data_t* game_data){
     unload_cartridge();
+    start_gen3_save_data_transfer();
     init_bank();
 
     u8 base_slot = in_use_slot;
-    if(base_slot == INVALID_SLOT)
+    if(base_slot == INVALID_SLOT) {
+        end_gen3_save_data_transfer();
         return 0;
+    }
 
-    if(!complete_save(base_slot, game_data))
+    if(!complete_save(base_slot, game_data)) {
+        end_gen3_save_data_transfer();
         return 0;
-    
+    }
+
     in_use_slot = get_next_slot(in_use_slot);
 
+    end_gen3_save_data_transfer();
     load_cartridge();
 
     return 1;

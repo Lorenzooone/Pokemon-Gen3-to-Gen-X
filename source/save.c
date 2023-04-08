@@ -1,10 +1,8 @@
-#include <gba.h>
+#include "base_include.h"
 #include "save.h"
 #include <stddef.h>
 #include "useful_qualifiers.h"
 #include "timing_basic.h"
-
-#define REG_WAITCNT		*(vu16*)(REG_BASE + 0x204)  // Wait state Control
 
 #define IS_FLASH 1
 #define SAVE_POS SRAM
@@ -16,7 +14,7 @@
 #define FLASH_TERM_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
 #define FLASH_ENTER_MAN_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0x90;
 #define FLASH_EXIT_MAN_CMD BASE_FLASH_CMD FLASH_TERM_CMD FLASH_TERM_CMD
-#define TIMEOUT (50000*((CLOCK_SPEED/GBA_CLOCK_SPEED) + ((CLOCK_SPEED%GBA_CLOCK_SPEED) == 0 ? 0 : 1)))
+#define TIMEOUT (50000*(((CLOCK_SPEED + GBA_CLOCK_SPEED - 1)/GBA_CLOCK_SPEED) + TIMEOUT_INCREASE))
 #define ERASE_TIMEOUT (TIMEOUT)
 #define ERASED_BYTE 0xFF
 #define BANK_SIZE 0x10000
@@ -41,7 +39,8 @@ u8 current_bank;
 u8 is_macronix;
 
 IWRAM_CODE void init_bank(){
-    REG_WAITCNT |= 3;
+    REG_WAITCNT &= NON_SRAM_MASK;
+    REG_WAITCNT |= SRAM_READING_VALID_WAITCYCLES;
     current_bank = NUM_BANKS;
     is_macronix = 0;
     #if IS_FLASH
@@ -76,7 +75,7 @@ IWRAM_CODE void erase_sector(uintptr_t address) {
     address <<= SECTOR_SIZE_BITS;
     u8 failed = 1;
     vu8* save_data = (vu8*)SAVE_POS;
-    for(int i = 0; failed && (i < 3); i++) {
+    for(size_t i = 0; failed && (i < 3); i++) {
         #if IS_FLASH
         FLASH_ERASE_SECTOR_BASE_CMD
         save_data[address] = ERASE_SECTOR_FINAL_CMD;

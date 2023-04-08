@@ -46,6 +46,9 @@ void swap_buffer_screen(u8, u8);
 void disable_all_screens_but_current(void);
 void set_bg_pos(u8, int, int);
 screen_t* get_screen(u8 bg_num);
+#ifdef __NDS__
+screen_t* get_screen_sub(u8 bg_num);
+#endif
 u8 get_screen_num(void);
 void set_screen(u8);
 void init_text_system(void);

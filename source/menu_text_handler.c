@@ -1,4 +1,4 @@
-#include <gba.h>
+#include "base_include.h"
 #include "menu_text_handler.h"
 #include "gen3_clock_events.h"
 #include "text_handler.h"
@@ -16,10 +16,7 @@
 #define NUM_LINES 10
 #define MAIN_MENU_DISTANCE_FROM_BORDER 2
 
-#define ROM 0x8000000
 #define ROM_SIZE 0x1000000
-
-#define EWRAM_SIZE 0x3FF40
 
 #define SUMMARY_LINE_MAX_SIZE 18
 #define PRINTABLE_INVALID_STRINGS 3
@@ -150,11 +147,11 @@ void print_game_info(struct game_data_t* game_data, int index) {
     const char* chosen_str = maingame_strings[game_data[index].game_identifier.game_main_version];
     switch(game_data[index].game_identifier.game_main_version) {
         case RS_MAIN_GAME_CODE:
-            if(game_data[index].game_identifier.game_sub_version != UNDETERMINED)
+            if(!game_data[index].game_identifier.game_sub_version_undetermined)
                 chosen_str = subgame_rs_strings[game_data[index].game_identifier.game_sub_version];
             break;
         case FRLG_MAIN_GAME_CODE:
-            if(game_data[index].game_identifier.game_sub_version != UNDETERMINED)
+            if(!game_data[index].game_identifier.game_sub_version_undetermined)
                 chosen_str = subgame_frlg_strings[game_data[index].game_identifier.game_sub_version];
             break;
         case E_MAIN_GAME_CODE:
@@ -838,8 +835,14 @@ void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
         }
     }
     PRINT_FUNCTION("Ability: \x01", get_ability_name_raw(mon));
-    PRINT_FUNCTION("\nHidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
-    PRINT_FUNCTION("\nWhich move will be forgotten?\n");
+    PRINT_FUNCTION("\nHidden Power: \x01 \x03\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    base_y = get_text_y();
+    u8 offset_text_y = 0;
+    if(base_y < (((BASE_Y_CURSOR_LEARN_MOVE_MENU)>>3)-(3)))
+        offset_text_y = 1;
+    set_text_y(((BASE_Y_CURSOR_LEARN_MOVE_MENU)>>3)-(3 + offset_text_y));
+    PRINT_FUNCTION("Which move will be forgotten?");
+    set_text_y(((BASE_Y_CURSOR_LEARN_MOVE_MENU)>>3)-2);
     set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
     PRINT_FUNCTION("MOVES");
     set_text_x(X_LIMIT-11+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
