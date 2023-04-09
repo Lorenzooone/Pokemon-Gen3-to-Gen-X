@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: CC0-1.0
 #
-# SPDX-FileContributor: Antonio NiÃ±o DÃ­az, 2023
+# SPDX-FileContributor: Antonio Niño Díaz, 2023
 
 BLOCKSDS	?= /opt/blocksds/core
 BLOCKSDSEXT	?= /opt/blocksds/external
@@ -10,7 +10,7 @@ BLOCKSDSEXT	?= /opt/blocksds/external
 
 NAME		:= Pokemon_Gen3_to_GenX
 
-GAME_TITLE	:= Pok�mon Gen 3 to Gen X
+GAME_TITLE	:= Pokémon Gen 3 to Gen X
 GAME_SUBTITLE	:= Test NDS Port
 GAME_AUTHOR	:= Lorenzooone
 GAME_ICON	:= icon.bmp
