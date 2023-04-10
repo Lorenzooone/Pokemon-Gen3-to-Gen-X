@@ -36,6 +36,8 @@
 
 #define SCREEN_SIZE 0x800
 
+//#define OVERWRITE_SPACING
+
 #define CPUFASTSET_FILL (0x1000000)
 
 #define NUM_DIGITS 12
@@ -57,6 +59,7 @@ int write_base_10(int, int, u8);
 int write_base_16(u32, int, u8);
 void swap_buffer_screen_internal(u8);
 u8 is_screen_disabled(u8);
+void add_requested_spacing(u8, u8, u8);
 
 u8 x_pos;
 u8 y_pos;
@@ -550,13 +553,28 @@ int write_base_16(u32 number, int max, u8 sub) {
     return digits_print(digits, max, sub, start_pos);
 }
 
+void add_requested_spacing(u8 prev_x_pos, u8 prev_y_pos, u8 space_increase) {
+    if(prev_y_pos != y_pos)
+        return;
+    u16 new_x_pos = prev_x_pos + space_increase;
+    #ifndef OVERWRITE_SPACING
+    if(new_x_pos < x_pos)
+        new_x_pos = x_pos;
+    #endif
+    if(new_x_pos >= X_LIMIT)
+        new_line();
+    else
+        x_pos = new_x_pos;
+}
+
 int fast_printf(const char * format, ... ) {
     set_updated_screen();
     va_list va;
     va_start(va, format);
     int consumed = 0;
-    u8 curr_x_pos = 0;
     while((*format) != '\0') {
+        u8 curr_x_pos = x_pos;
+        u8 curr_y_pos = y_pos;
         u8 character = *format;
         switch(character) {
             case '\x01':
@@ -587,32 +605,20 @@ int fast_printf(const char * format, ... ) {
                 write_base_16(va_arg(va, u32), va_arg(va, int), '0');
                 break;
             case '\x11':
-                curr_x_pos = x_pos;
                 sub_printf(va_arg(va, u8*));
-                x_pos = curr_x_pos + va_arg(va, int);
-                if(x_pos >= X_LIMIT)
-                    new_line();
+                add_requested_spacing(curr_x_pos, curr_y_pos, va_arg(va, int));
                 break;
             case '\x13':
-                curr_x_pos = x_pos;
                 write_base_10(va_arg(va, int), 0, 0);
-                x_pos = curr_x_pos + va_arg(va, int);
-                if(x_pos >= X_LIMIT)
-                    new_line();
+                add_requested_spacing(curr_x_pos, curr_y_pos, va_arg(va, int));
                 break;
             case '\x14':
-                curr_x_pos = x_pos;
                 write_base_16(va_arg(va, u32), 0, 0);
-                x_pos = curr_x_pos + va_arg(va, int);
-                if(x_pos >= X_LIMIT)
-                    new_line();
+                add_requested_spacing(curr_x_pos, curr_y_pos, va_arg(va, int));
                 break;
             case '\x15':
-                curr_x_pos = x_pos;
-                sub_printf(va_arg(va, u8*));
-                x_pos = curr_x_pos + va_arg(va, int);
-                if(x_pos >= X_LIMIT)
-                    new_line();
+                sub_printf_gen3(va_arg(va, u8*), va_arg(va, size_t), va_arg(va, int));
+                add_requested_spacing(curr_x_pos, curr_y_pos, va_arg(va, int));
                 break;
             case '\n':
                 new_line();
