@@ -554,6 +554,9 @@ int write_base_16(u32 number, int max, u8 sub) {
 }
 
 void add_requested_spacing(u8 prev_x_pos, u8 prev_y_pos, u8 space_increase) {
+    #ifdef OVERWRITE_SPACING
+    y_pos = prev_y_pos;
+    #endif
     if(prev_y_pos != y_pos)
         return;
     u16 new_x_pos = prev_x_pos + space_increase;
