@@ -40,7 +40,6 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 // NDS defines and all
 #include <nds.h>
 #include "useful_qualifiers.h"
-#include "nds_functions.h"
 #define ROM GBAROM
 ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
     return (REG_DISPSTAT >> 8) | ((REG_DISPSTAT & 0x80) << 1);
@@ -71,6 +70,14 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 #define SAME_ON_BOTH_SCREENS 1
 #define CONSOLE_LETTER 'D'
 
+// Define OBJATTR struct back
+typedef struct {
+	u16 attr0;
+	u16 attr1;
+	u16 attr2;
+	u16 dummy;
+} ALIGN(4) OBJATTR;
+
 // Define SWIs back
 #define Div(x, y) swiDivide(x, y)
 #define DivMod(x, y) swiRemainder(x, y)
@@ -78,7 +85,7 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 #define LZ77UnCompWram(x, y) swiDecompressLZSSWram(x, y)
 #define CpuFastSet(x, y, z) swiFastCopy(x, y, z)
 #define VBlankIntrWait() swiWaitForVBlank()
-#define Halt() Halt_ARM9()
+#define Halt() CP15_WaitForInterrupt()
 #define DIV_SWI_VAL "0x09"
 
 #endif
