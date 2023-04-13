@@ -63,6 +63,11 @@ void swap_time(struct saved_time_t*);
 void subtract_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
 void add_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
 void wipe_time(struct saved_time_t*);
+#if ACTIVE_RTC_FUNCTIONS
+u8 is_leap_year(u16);
+u32 get_num_days(u16, u8, u8);
+u32 bcd_decode(u32, u8);
+#endif
 #if ACTUALLY_RUN_EVENTS
 static u32 get_next_seed(u32);
 static u32 get_next_seed_time(u32);
@@ -104,6 +109,9 @@ u8 grow_berry_tree(struct berry_tree_t*, struct enigma_berry_data_t*);
 void update_berry_trees(struct clock_events_t*, u16, u8, u8);
 #endif
 
+#if ACTIVE_RTC_FUNCTIONS
+const u8 num_days_per_month[NUM_MONTHS] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+#endif
 struct saved_time_t base_rtc_time = {.d = 1, .h = 0, .m = 0, .s = 0};
 const u16 enable_rtc_flag_num[NUM_MAIN_GAME_ID] = {0x62, 0x37, 0x62};
 const u16 enable_rtc_var_num[NUM_MAIN_GAME_ID] = {0x2C, 0x32, 0x2C};
@@ -184,6 +192,47 @@ void change_tide(struct clock_events_t* clock_events, struct saved_time_t* extra
     if(tmp.d != curr_d)
         increase_clock(extra_time, 0xFFFF, 0, 0, 0, 0);
 }
+
+#if ACTIVE_RTC_FUNCTIONS
+u8 is_leap_year(u16 year) {
+    if((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0))
+        return 1;
+    return 0;
+}
+
+u32 get_num_days(u16 year, u8 month, u8 day) {
+    u32 num_days = 0;
+
+    for(int i = 0; i < year; i++) {
+        num_days += NUM_DAYS_PER_YEAR;
+        if(is_leap_year(i))
+            num_days++;
+    }
+
+    for(int i = 0; i < (month - 1); i++)
+        num_days += num_days_per_month[i];
+
+    if(is_leap_year(year) && (month > LEAP_YEAR_EXTRA_DAY_MONTH))
+        num_days++;
+
+    num_days += day;
+
+    return num_days;
+}
+
+u32 bcd_decode(u32 data, u8 num_bytes) {
+    u32 ret_val = 0;
+    u32 mult = 1;
+    for(int i = 0; i < (num_bytes * 2); i++) {
+        if((data & 0xF) > 9)
+            return 0xFFFFFFFF;
+        ret_val += (data & 0xF) * mult;
+        data >>= 4;
+        mult *= 10;
+    }
+    return ret_val;
+}
+#endif
 
 void subtract_time(struct saved_time_t* base, struct saved_time_t* sub, struct saved_time_t* target) {
     int s = base->s;
