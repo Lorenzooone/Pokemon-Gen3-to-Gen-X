@@ -488,6 +488,8 @@ void wipe_clock(struct clock_events_t* clock_events) {
 }
 
 u8 is_daily_update_safe(struct game_data_t* game_data, struct clock_events_t* clock_events, struct saved_time_t* extra_time) {
+    if(has_rtc_events(&game_data->game_identifier))
+        init_rtc_time();
     swap_time(&clock_events->saved_time);
     struct saved_time_t tmp;
     u16 days_increase = clock_events->saved_time.d;
