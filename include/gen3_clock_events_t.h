@@ -5,8 +5,9 @@
 #include "useful_qualifiers.h"
 
 #define ACTUALLY_RUN_EVENTS 1
-#define ACTIVE_RTC_FUNCTIONS 0
+#define ACTIVE_RTC_FUNCTIONS 1
 
+#define ERROR_OUT_BCD 0xFFFFFFFF
 #define MAX_DAYS 0xFFFF
 #define NUM_DAYS_PER_YEAR 365
 #define LEAP_YEAR_EXTRA_DAY_MONTH 2

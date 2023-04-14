@@ -499,6 +499,7 @@ void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* 
     if(!update)
         return;
 
+    init_rtc_time();
     struct saved_time_t base_time;
     struct saved_time_t new_time;
 

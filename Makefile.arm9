@@ -41,9 +41,10 @@ DEFINES		:=
 # Libraries
 # ---------
 
-LIBS		:= -lmm9 -lnds9 -lc
+LIBS		:= -lmm9 -lnds9 -lc -lagbabi
 LIBDIRS		:= $(BLOCKSDS)/libs/maxmod \
-		   $(BLOCKSDS)/libs/libnds
+		   $(BLOCKSDS)/libs/libnds \
+		   $(LIBAGBABI)
 
 # Build artifacts
 # ---------------

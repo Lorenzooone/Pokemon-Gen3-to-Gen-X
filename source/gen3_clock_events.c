@@ -8,6 +8,9 @@
 #include "text_handler.h"
 #include "useful_qualifiers.h"
 #include <stddef.h>
+#if ACTIVE_RTC_FUNCTIONS
+#include <agbabi.h>
+#endif
 #if ACTUALLY_RUN_EVENTS
 #include "berry_growth_data_bin.h"
 #endif
@@ -193,6 +196,54 @@ void change_tide(struct clock_events_t* clock_events, struct saved_time_t* extra
         increase_clock(extra_time, 0xFFFF, 0, 0, 0, 0);
 }
 
+void init_rtc_time() {
+    base_rtc_time.d = 1;
+    base_rtc_time.h = 0;
+    base_rtc_time.m = 0;
+    base_rtc_time.s = 0;
+    #if ACTIVE_RTC_FUNCTIONS
+    if(!__agbabi_rtc_init()) {
+        __agbabi_datetime_t datetime = __agbabi_rtc_datetime();
+        u16 year = bcd_decode(datetime[0], 1);
+        u8 month = bcd_decode(datetime[0] >> 8, 1);
+        u8 day = bcd_decode(datetime[0] >> 16, 1);
+        u8 hour = bcd_decode(datetime[1], 1);
+        u8 minute = bcd_decode(datetime[1] >> 8, 1);
+        u8 second = bcd_decode(datetime[1] >> 16, 1);
+        u8 error_out = 0;
+        if(year == ((u16)ERROR_OUT_BCD))
+            error_out = 1;
+        if((month == ((u8)ERROR_OUT_BCD)) || (month == 0) || (month > NUM_MONTHS))
+            error_out = 1;
+        // There is no checking for overflows here, normally... :/
+        u8 checking_month = 0;
+        if((month > 0) && (month <= NUM_MONTHS))
+            checking_month = month - 1;
+        u8 max_day = num_days_per_month[checking_month];
+        if((month == LEAP_YEAR_EXTRA_DAY_MONTH) && is_leap_year(year))
+            max_day++;
+        // What if the day is 0? And if it's the max_day?! :/
+        if((day == ((u8)ERROR_OUT_BCD)) || (day > max_day))
+            error_out = 1;
+        // What if the hour is 0? And if it's MAX_HOURS?! :/
+        if((hour == ((u8)ERROR_OUT_BCD)) || (hour > MAX_HOURS))
+            error_out = 1;
+        // What if the minute is 0? And if it's MAX_MINUTES?! :/
+        if((minute == ((u8)ERROR_OUT_BCD)) || (minute > MAX_MINUTES))
+            error_out = 1;
+        // What if the second is 0? And if it's MAX_SECONDS?! :/
+        if((second == ((u8)ERROR_OUT_BCD)) || (second > MAX_SECONDS))
+            error_out = 1;
+        if(!error_out) {
+            base_rtc_time.d = get_num_days(year, month, day);
+            base_rtc_time.h = hour;
+            base_rtc_time.m = minute;
+            base_rtc_time.s = second;
+        }
+    }
+    #endif
+}
+
 #if ACTIVE_RTC_FUNCTIONS
 u8 is_leap_year(u16 year) {
     if((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0))
@@ -209,10 +260,13 @@ u32 get_num_days(u16 year, u8 month, u8 day) {
             num_days++;
     }
 
-    for(int i = 0; i < (month - 1); i++)
+    // Offset by 1
+    month -= 1;
+
+    for(int i = 0; i < month; i++)
         num_days += num_days_per_month[i];
 
-    if(is_leap_year(year) && (month > LEAP_YEAR_EXTRA_DAY_MONTH))
+    if(is_leap_year(year) && (month > (LEAP_YEAR_EXTRA_DAY_MONTH-1)))
         num_days++;
 
     num_days += day;
@@ -225,7 +279,7 @@ u32 bcd_decode(u32 data, u8 num_bytes) {
     u32 mult = 1;
     for(int i = 0; i < (num_bytes * 2); i++) {
         if((data & 0xF) > 9)
-            return 0xFFFFFFFF;
+            return ERROR_OUT_BCD;
         ret_val += (data & 0xF) * mult;
         data >>= 4;
         mult *= 10;
@@ -370,8 +424,10 @@ void normalize_time(struct saved_time_t* saved_time) {
 #if ACTUALLY_RUN_EVENTS
 void run_daily_update(struct game_data_t* game_data, struct clock_events_t* clock_events, struct saved_time_t* extra_time, u8 is_game_cleared) {
 #else
-void run_daily_update(struct game_data_t* UNUSED(game_data), struct clock_events_t* clock_events, struct saved_time_t* extra_time, u8 UNUSED(is_game_cleared)) {
+void run_daily_update(struct game_data_t* game_data, struct clock_events_t* clock_events, struct saved_time_t* extra_time, u8 UNUSED(is_game_cleared)) {
 #endif
+    if(has_rtc_events(&game_data->game_identifier))
+        init_rtc_time();
     swap_time(&clock_events->saved_time);
     u16 d = clock_events->saved_time.d;
     add_time(&clock_events->saved_time, extra_time, &clock_events->saved_time);

@@ -11,6 +11,7 @@ void enable_rtc_reset(struct clock_events_t*);
 void disable_rtc_reset(struct clock_events_t*);
 u8 is_rtc_reset_enabled(struct clock_events_t*);
 u8 is_daily_update_safe(struct game_data_t*, struct clock_events_t*, struct saved_time_t*);
+void init_rtc_time(void);
 void run_daily_update(struct game_data_t*, struct clock_events_t*, struct saved_time_t*, u8);
 u8 is_daytime(struct clock_events_t*, struct saved_time_t*);
 void change_time_of_day(struct clock_events_t*, struct saved_time_t*);
