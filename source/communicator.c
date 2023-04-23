@@ -15,6 +15,7 @@
 #define MAX_WAIT_FOR_SYN 30
 #define MIN_WAIT_FOR_SYN 3
 #define MAX_NO_NEW_INFO 30
+#define GEN1_CHOICE_LOCKOUT_INDEX 3
 
 #define NUMBER_OF_ENTITIES 2
 
@@ -421,10 +422,20 @@ IWRAM_CODE int check_if_continue(u8 data, const u8* sends, const u8* recvs, size
 IWRAM_CODE int process_data_arrived_gen1(u8 data, u8 is_master) {
     if(is_master)
         is_master = 1;
+    int return_value = 0;
+    size_t buffer_counter_old = buffer_counter;
     if(start_state != START_TRADE_DON) {
         switch(start_state) {
             case START_TRADE_ENT:
-                return check_if_continue(data, gen1_start_trade_enter_room[is_master], gen1_start_trade_enter_room_next[is_master], GEN1_ENTER_STATES_NUM, START_TRADE_WAI, START_TRADE_BYTE_GEN1 | 1, 1);
+                return_value = check_if_continue(data, gen1_start_trade_enter_room[is_master], gen1_start_trade_enter_room_next[is_master], GEN1_ENTER_STATES_NUM, START_TRADE_WAI, START_TRADE_BYTE_GEN1 | 1, 1);
+                // Fix this getting stuck for slaves not receiving the end message...
+                if((!is_master) && ((data == SYNCHRONIZE_BYTE) || ((buffer_counter == buffer_counter_old) && (buffer_counter >= GEN1_CHOICE_LOCKOUT_INDEX) && (data == START_TRADE_BYTE_GEN1)))) {
+                    buffer_counter = 0;
+                    last_filtered = 0;
+                    set_start_state(START_TRADE_UNK);
+                    return_value = SEND_NO_INFO;
+                }
+                return return_value;
             case START_TRADE_STA:
                 return check_if_continue(data, gen1_start_trade_start_trade_procedure[is_master], gen1_start_trade_start_trade_procedure_next[is_master], GEN1_START_STATES_NUM, START_TRADE_SYN, SEND_NO_INFO, 1);
             case START_TRADE_PAR:
