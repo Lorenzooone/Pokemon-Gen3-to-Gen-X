@@ -69,7 +69,7 @@ void handle_learnable_moves_message(struct game_data_t*, u8, u8*, u32*, enum MOV
 void change_nature(struct game_data_t*, u8, u8, u8*, u8);
 void check_bad_trade_received(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8, u8*);
 void trade_cancel_print_screen(u8);
-void saving_print_screen(void);
+void saving_print_screen(u8);
 void loading_print_screen(void);
 void rejected_print_screen(u8);
 void trading_animation_init(struct game_data_t*, u8, u8, u8);
@@ -345,12 +345,13 @@ void rejected_print_screen(u8 reason) {
     prepare_flush();
 }
 
-void saving_print_screen() {
+void saving_print_screen(u8 go_back) {
     u8 prev_screen = get_screen_num();
     set_screen(SAVING_WINDOW_SCREEN);
     print_saving();
     enable_screen(SAVING_WINDOW_SCREEN);
-    set_screen(prev_screen);
+    if(go_back)
+        set_screen(prev_screen);
     prepare_flush();
 }
 
@@ -943,7 +944,7 @@ int main(void)
                         else if(!own_menu)
                             waiting_success_init();
                         else {
-                            saving_print_screen();
+                            saving_print_screen(1);
                             complete_save_menu(&game_data[0], &game_data_priv, 0, master);
                             main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                         }   
@@ -975,7 +976,7 @@ int main(void)
                                 if(!own_menu)
                                     waiting_success_init();
                                 else {
-                                    saving_print_screen();
+                                    saving_print_screen(1);
                                     complete_save_menu(&game_data[0], &game_data_priv, 0, master);
                                     main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
                                 }
@@ -1105,7 +1106,10 @@ int main(void)
                         }
                         else if(!cursor_x_pos) {
                             prepare_gen3_offer(&game_data[0].party_3_undec[curr_mon]);
-                            waiting_offer_init(0, cursor_y_pos);
+                            if(curr_gen == 3)
+                                waiting_offer_init(0, curr_mon);
+                            else
+                                waiting_offer_init(0, cursor_y_pos);
                         }
                         else
                             nature_menu_init(game_data, cursor_x_pos, curr_mon, &submenu_cursor_y_pos);
@@ -1171,7 +1175,7 @@ int main(void)
                             game_data[cursor_x_pos].party_3_undec[curr_mon].fix_has_altered_ot = 0;
                             set_default_gift_ribbons(&game_data[cursor_x_pos]);
                             if(!cursor_x_pos) {
-                                saving_print_screen();
+                                saving_print_screen(1);
                                 success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
                                 if(!success)
                                     crash_on_bad_save(0, master);
@@ -1237,7 +1241,7 @@ int main(void)
                         base_settings_menu_init(&game_data[0], &cursor_y_pos);
                     else {
                         if(get_is_cartridge_loaded() && give_pokerus_to_party(&game_data[0])) {
-                            saving_print_screen();
+                            saving_print_screen(0);
                             success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
                             if(!success)
                                 crash_on_bad_save(0, master);
@@ -1261,7 +1265,7 @@ int main(void)
                            clock_warning_menu_init(&cursor_x_pos);
                         else {
                             run_daily_update(&game_data[0], &game_data_priv.clock_events, &time_change, game_data_priv.game_cleared_flag);
-                            saving_print_screen();
+                            saving_print_screen(0);
                             success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
                             if(!success)
                                 crash_on_bad_save(0, master);
@@ -1282,7 +1286,7 @@ int main(void)
                         clock_settings_menu_init(&game_data_priv, &time_change, &cursor_y_pos, 0);
                     else {
                         run_daily_update(&game_data[0], &game_data_priv.clock_events, &time_change, game_data_priv.game_cleared_flag);
-                        saving_print_screen();
+                        saving_print_screen(0);
                         success = pre_write_gen_3_data(&game_data[0], &game_data_priv, 1);
                         if(!success)
                             crash_on_bad_save(0, master);

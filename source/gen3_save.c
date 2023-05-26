@@ -13,7 +13,6 @@
 #define FRAMES_BETWEEN_CHECKS ((1*FPS)/12)
 
 #define MAGIC_NUMBER 0x08012025
-#define INVALID_MAGIC_NUMBER 0xFFFFFFFF
 #define NUM_SLOTS 2
 #define INVALID_SLOT NUM_SLOTS
 #define SAVE_SLOT_INDEX_POS 0xDFFC
@@ -80,7 +79,6 @@ void trade_reorder_party_entries(struct game_data_t*, struct gen3_mon_data_unenc
 u32 calc_checksum_save_buffer(u32*, u16);
 static void start_gen3_save_data_transfer(void);
 static void end_gen3_save_data_transfer(void);
-void write_magic_number(u8, u8, u32);
 
 const u16 summable_bytes[SECTION_TOTAL] = {3884, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 3848, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, MAX_SECTION_SIZE, 2000};
 const u16 summable_bytes_section0[NUM_MAIN_GAME_ID] = {0x890, 0xF24, 0xF2C};
@@ -724,6 +722,7 @@ u8 pre_update_save(struct game_data_t* game_data, struct game_data_priv_t* game_
 
 u8 complete_save(u8 base_slot, struct game_data_t* game_data) {
     u8 target_slot = get_next_slot(base_slot);
+    u32 old_slot_save_index = read_slot_index(target_slot) - 1;
 
     for(int i = 0; i < SECTION_TOTAL; i++) {
         // Clear sector
@@ -731,9 +730,12 @@ u8 complete_save(u8 base_slot, struct game_data_t* game_data) {
 
         // Fix issue with EZ Flash not really deleting the data...
         // Maybe other Flashcarts too... :/
-        if((i == 0) && (read_magic_number(base_slot, i) == MAGIC_NUMBER))
-            // Invalidate the slot
-            write_magic_number(base_slot, i, INVALID_MAGIC_NUMBER);
+        if(read_magic_number(base_slot, i) == MAGIC_NUMBER)
+            // Set index to "value before the new one".
+            // It shadows the old save and allows easy recovering if it fails.
+            // (On the EZ Flash, that can happen if you don't wait enough
+            //  before turning off the console)
+            write_int_save((base_slot * SAVE_SLOT_SIZE) + SAVE_NUMBER_POS + (i * SECTION_SIZE), old_slot_save_index);
     }
 
     if(get_slot(&game_data->game_identifier) != target_slot)
@@ -798,10 +800,6 @@ IWRAM_CODE u8 get_is_cartridge_loaded(){
 
 IWRAM_CODE u32 read_magic_number(u8 slot, u8 section){
     return read_int_save((slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS + (section * SECTION_SIZE));
-}
-
-IWRAM_CODE void write_magic_number(u8 slot, u8 section, u32 value){
-    write_int_save((slot * SAVE_SLOT_SIZE) + MAGIC_NUMBER_POS + (section * SECTION_SIZE), value);
 }
 
 IWRAM_CODE u8 has_cartridge_been_removed(){
