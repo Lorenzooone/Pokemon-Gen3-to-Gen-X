@@ -135,22 +135,22 @@ u32 crc32b(u8* target, size_t size)
 u32 crc32b(u8* UNUSED(target), size_t UNUSED(size))
 #endif
 {
-	u32 crc = 0xffffffff;
+    u32 crc = 0xffffffff;
     #if ENABLED_PRINT_INFO
-	while (size-- !=0) {
+    while (size-- !=0) {
         #if ENABLED_LARGE_CRC_TABLE
-	    crc = poly8_lookup[((u8) crc ^ *(target++))] ^ (crc >> 8);
-	    #else
-	    crc ^= *(target++);
+        crc = poly8_lookup[((u8) crc ^ *(target++))] ^ (crc >> 8);
+        #else
+        crc ^= *(target++);
         for(int i = 0; i < 8; i++)
         {
             u32 t = ~((crc & 1) - 1);
             crc = (crc >> 1) ^ (0xEDB88320 & t);
         }
-	    #endif
+        #endif
     }
-	#endif
-	return (crc ^ 0xffffffff);
+    #endif
+    return (crc ^ 0xffffffff);
 }
 
 void print_game_info(struct game_data_t* game_data, int index) {

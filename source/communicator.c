@@ -845,7 +845,7 @@ IWRAM_CODE MAX_OPTIMIZE void slave_routine(void) {
 }
 
 IWRAM_CODE MAX_OPTIMIZE void master_routine_gen3(void) {
-	REG_IF |= IRQ_VCOUNT;
+    REG_IF |= IRQ_VCOUNT;
     #ifdef HAS_SIO
     int data;
     u8 success = 0;
@@ -863,7 +863,7 @@ IWRAM_CODE MAX_OPTIMIZE void master_routine_gen3(void) {
 }
 
 IWRAM_CODE MAX_OPTIMIZE void master_routine_gen12(void) {
-	REG_IF |= IRQ_VCOUNT;
+    REG_IF |= IRQ_VCOUNT;
     #ifdef HAS_SIO
     int data;
     

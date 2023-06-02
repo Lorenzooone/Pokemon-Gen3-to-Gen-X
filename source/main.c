@@ -114,18 +114,18 @@ u32 counter = 0;
 u32 input_counter = 0;
 
 IWRAM_CODE void vblank_update_function() {
-	REG_IF |= IRQ_VBLANK;
-	
+    REG_IF |= IRQ_VBLANK;
+
     flush_screens();
-    
+
     if(has_cartridge_been_removed())
         crash_on_cartridge_removed();
-    
+
     move_sprites(counter);
     move_cursor_x(counter);
     advance_rng();
     counter++;
-    
+
     // Handle trading animation
     if(curr_state == TRADING_ANIMATION)
         advance_trade_animation();

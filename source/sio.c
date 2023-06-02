@@ -53,11 +53,11 @@ IWRAM_CODE void sio_normal_inner_slave() {
 
 IWRAM_CODE MAX_OPTIMIZE void sio_handle_irq_slave(int next_data) {
     REG_SIOCNT |= SIO_SO_HIGH;
-	
-	REG_SIODATA32 = next_data;
-	REG_SIODATA8 = next_data;
-	
-	REG_SIOCNT &= ~(SIO_START | SIO_SO_HIGH);
+
+    REG_SIODATA32 = next_data;
+    REG_SIODATA8 = next_data;
+
+    REG_SIOCNT &= ~(SIO_START | SIO_SO_HIGH);
     // - Set Start=1 and SO=1 (SO=HIGH indicates not ready, applied after transfer).
     //   (Expl. Old SO=LOW kept output until 1st clock bit received).
     //   (Expl. New SO=HIGH is automatically output at transfer completion).

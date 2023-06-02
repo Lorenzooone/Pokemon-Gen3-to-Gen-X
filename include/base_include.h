@@ -15,7 +15,7 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 }
 #define __set_next_vcount_interrupt(x) __set_next_vcount_interrupt_gba(x)
 #define SCANLINE_IRQ_BIT LCDC_VCNT
-#define REG_WAITCNT	*(vu16*)(REG_BASE + 0x204) // Wait state Control
+#define REG_WAITCNT *(vu16*)(REG_BASE + 0x204) // Wait state Control
 #define SRAM_READING_VALID_WAITCYCLES 3
 #define NON_SRAM_MASK 0xFFFC
 #define BASE_WAITCNT_VAL 0x4314
@@ -46,7 +46,7 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 }
 #define __set_next_vcount_interrupt(x) SetYtrigger(x)
 #define SCANLINE_IRQ_BIT DISP_YTRIGGER_IRQ
-#define REG_WAITCNT	REG_EXMEMCNT // Wait state Control
+#define REG_WAITCNT REG_EXMEMCNT // Wait state Control
 #define SRAM_READING_VALID_WAITCYCLES 3
 #define NON_SRAM_MASK 0xFFFC
 #define EXMEMCNT_MASK_SLOT2_CLOCKRATE (3<<5)
@@ -72,10 +72,10 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 
 // Define OBJATTR struct back
 typedef struct {
-	u16 attr0;
-	u16 attr1;
-	u16 attr2;
-	u16 dummy;
+    u16 attr0;
+    u16 attr1;
+    u16 attr2;
+    u16 dummy;
 } ALIGN(4) OBJATTR;
 
 // Define SWIs back
