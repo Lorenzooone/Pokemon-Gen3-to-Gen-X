@@ -22,6 +22,7 @@
 #define PRINTABLE_INVALID_STRINGS 3
 
 #if ENABLED_PRINT_INFO
+#if ENABLED_LARGE_CRC_TABLE
 const u32 poly8_lookup[256] =
 {
  0, 0x77073096, 0xEE0E612C, 0x990951BA,
@@ -90,6 +91,7 @@ const u32 poly8_lookup[256] =
  0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
 };
 #endif
+#endif
 
 u32 crc32b(u8* target, size_t size);
 void print_basic_alter_conf_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
@@ -135,8 +137,18 @@ u32 crc32b(u8* UNUSED(target), size_t UNUSED(size))
 {
 	u32 crc = 0xffffffff;
     #if ENABLED_PRINT_INFO
-	while (size-- !=0)
+	while (size-- !=0) {
+        #if ENABLED_LARGE_CRC_TABLE
 	    crc = poly8_lookup[((u8) crc ^ *(target++))] ^ (crc >> 8);
+	    #else
+	    crc ^= *(target++);
+        for(int i = 0; i < 8; i++)
+        {
+            u32 t = ~((crc & 1) - 1);
+            crc = (crc >> 1) ^ (0xEDB88320 & t);
+        }
+	    #endif
+    }
 	#endif
 	return (crc ^ 0xffffffff);
 }
@@ -771,10 +783,22 @@ void print_set_nature(u8 load_sprites, struct gen3_mon_data_unenc* mon) {
     print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_NATURE_PAGE, BASE_X_SPRITE_NATURE_PAGE, 1);
 
     print_basic_alter_conf_data(mon, &mon->alter_nature);
-    
-    set_text_y(16);
+
+    u8 ability_text_y = 15;
+    u8 nature_text_y = ability_text_y + 2;
+
+    if(mon->growth.species == DUNSPARCE_SPECIES) {
+        ability_text_y -= 1;
+        set_text_y(ability_text_y + 1);
+        PRINT_FUNCTION("Dudunsparce Segments: \x03", get_dudunsparce_segments(mon->alter_nature.pid));
+    }
+
+    set_text_y(ability_text_y);
+    PRINT_FUNCTION("Ability: \x01 (\x03)", get_ability_name_raw_alternative(mon, &mon->alter_nature), get_ability_num_gen_4_5(mon->alter_nature.pid));
+
+    set_text_y(nature_text_y);
     PRINT_FUNCTION("\x01 Nature to: <\x01>", get_nature_name(mon->src->pid), get_nature_name(mon->alter_nature.pid));
-    
+
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("A: Confirm - B: Go Back");
 }
@@ -835,7 +859,7 @@ void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
             base_x += X_LIMIT>>1;
         }
     }
-    PRINT_FUNCTION("Ability: \x01", get_ability_name_raw(mon));
+    PRINT_FUNCTION("Ability: \x01 (\x03)", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
     PRINT_FUNCTION("\nHidden Power: \x01 \x03\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
     base_y = get_text_y();
     u8 offset_text_y = 0;
@@ -925,7 +949,7 @@ void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen,
             base_x += X_LIMIT>>1;
         }
     }
-    PRINT_FUNCTION("Ability: \x01", get_ability_name_raw(mon));
+    PRINT_FUNCTION("Ability: \x01 (\x03)", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
     PRINT_FUNCTION("\nHidden Power: \x01 \x03\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
     if(needs_levelup)
         PRINT_FUNCTION("Level: from \x03 to \x03\n", old_level, mon->src->level);
@@ -1075,7 +1099,7 @@ void print_pokemon_page3(struct gen3_mon_data_unenc* mon) {
         PRINT_FUNCTION("\n \x11\x03\n", get_move_name_gen3(&mon->attacks, i), 19, (mon->growth.pp_bonuses >> (2*i)) & 3);
     }
     
-    PRINT_FUNCTION("\nAbility: \x01\n", get_ability_name_raw(mon));
+    PRINT_FUNCTION("\nAbility: \x01 (\x03)\n", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
     
     PRINT_FUNCTION("\nExperience: \x03\n", get_proper_exp_raw(mon));
     

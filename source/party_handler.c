@@ -258,6 +258,24 @@ const u8* get_ability_name_raw(struct gen3_mon_data_unenc* data_src){
     return get_table_pointer(ability_names_bin, get_ability_pokemon(data_src->growth.species, data_src->src->pid, data_src->is_egg, data_src->misc.ability, data_src->deoxys_form));
 }
 
+const u8* get_ability_name_raw_alternative(struct gen3_mon_data_unenc* data_src, struct alternative_data_gen3* data_alt){
+    if(!data_src->is_valid_gen3)
+        return get_table_pointer(ability_names_bin, get_ability_pokemon(0,0,0,0,0));
+
+    return get_table_pointer(ability_names_bin, get_ability_pokemon(data_src->growth.species, data_alt->pid, data_src->is_egg, data_alt->ability, data_src->deoxys_form));
+}
+
+u8 get_ability_num_gen_4_5(u32 pid){
+    return (pid & 1) ? 2 : 1;
+}
+
+u8 get_dudunsparce_segments(u32 pid){
+    // Make use of modulo properties to get this to positives
+    while(pid >= 0x80000000)
+        pid -= 0x7FFFFFD0;
+    return SWI_DivMod(pid, DUDUNSPARCE_EVO_DIVIDER) == 0 ? 3 : 2;
+}
+
 u8 is_ability_valid(u16 index, u32 pid, u8 ability_bit, u8 met_location, u8 origin_game, u8 deoxys_form){
     u16 abilities = get_possible_abilities_pokemon(index, pid, 0, deoxys_form);
     u8 abilities_same = (abilities&0xFF) == ((abilities>>8)&0xFF);

@@ -82,6 +82,7 @@
 #define ESPEON_SPECIES 196
 #define UMBREON_SPECIES 197
 #define UNOWN_SPECIES 201
+#define DUNSPARCE_SPECIES 206
 #define RAIKOU_SPECIES 243
 #define ENTEI_SPECIES 244
 #define SUICUNE_SPECIES 245
@@ -102,6 +103,7 @@
 #define DEOXYS_ATK 1
 #define DEOXYS_DEF 2
 #define DEOXYS_SPE 3
+#define DUDUNSPARCE_EVO_DIVIDER 100
 
 #define GEN2_DOT 0xE8
 #define GEN1_DOT 0xF2
@@ -450,6 +452,8 @@ u8 get_ivs_gen3_pure(u32, u8);
 u8 get_ivs_gen3(struct gen3_mon_misc*, u8);
 u8 get_hidden_power_power_gen3_pure(u32);
 u8 get_hidden_power_power_gen3(struct gen3_mon_misc*);
+u8 get_ability_num_gen_4_5(u32);
+u8 get_dudunsparce_segments(u32);
 const u8* get_hidden_power_type_name_gen3_pure(u32);
 const u8* get_hidden_power_type_name_gen3(struct gen3_mon_misc*);
 const u8* get_nature_name(u32);
@@ -459,6 +463,7 @@ char get_nature_symbol(u32, u8);
 const u8* get_move_name_raw(u16);
 const u8* get_move_name_gen3(struct gen3_mon_attacks*, u8);
 const u8* get_ability_name_raw(struct gen3_mon_data_unenc*);
+const u8* get_ability_name_raw_alternative(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
 const u8* get_ribbon_name(struct gen3_mon_misc*, u8);
 const u8* get_ribbon_rank_name(struct gen3_mon_misc*, u8);
 s32 get_proper_exp_raw(struct gen3_mon_data_unenc*);
