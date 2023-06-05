@@ -602,7 +602,7 @@ void update_pokerus_gen3(struct gen3_mon_data_unenc* data_src, u16 days_increase
 
 u8 give_pokerus_gen3(struct gen3_mon_data_unenc* data_src){
     if(data_src->successfully_decrypted)
-        if(!data_src->misc.pokerus) {
+        if((!data_src->misc.pokerus) && (!data_src->is_egg)) {
             // This is for resolving the issue in FRLG, not for cheating,
             // so a non-spreadable Pokérus is given
             data_src->misc.pokerus = 0x10;

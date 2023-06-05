@@ -1065,6 +1065,8 @@ void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
             PRINT_FUNCTION("\nHatched at: \x01\n", get_met_location_name_gen3_raw(mon));
             PRINT_FUNCTION("\nHatched in \x01 Ball", get_pokeball_base_name_gen3_raw(mon));
         }
+        if(mon->growth.species == DUNSPARCE_SPECIES)
+            PRINT_FUNCTION("\n\n   Dudunsparce Segments: \x03", get_dudunsparce_segments(mon->src->pid));
     }
     else
         PRINT_FUNCTION("\nHatches in : \x03 Egg Cycle\x02\n\nHatches in: \x03 Steps", mon->growth.friendship + 1, mon->growth.friendship ? 's' : ' ', (mon->growth.friendship + 1) * 0x100);
