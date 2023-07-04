@@ -55,29 +55,14 @@ u8 get_unown_letter_gen2(u16 ivs){
     return get_unown_letter_gen2_fast(ivs);
 }
 
-s32 get_proper_exp_gen2(u16 mon_index, u8 level, u8 is_egg, u8* given_exp) {
-    s32 exp = (given_exp[0]<<0x10) + (given_exp[1]<<0x8) + (given_exp[2]<<0);
-
-    if(is_egg) {
-        level = EGG_LEVEL_GEN2;
-        exp = get_level_exp_mon_index(mon_index, level);
-    }
-
-    s32 min_exp = get_level_exp_mon_index(mon_index, level);
-    s32 max_exp = min_exp;
-    if(level == MAX_LEVEL)
-        exp = min_exp;
-    else
-        max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
-    if(exp < min_exp)
-        exp = min_exp;
-    if(exp > max_exp)
-        exp = max_exp;
-    if(exp < 0)
-        exp = 0;
-    
-    return exp;
+u8 to_valid_level_gen12(u8 level) {
+    if(level < MIN_LEVEL_GEN12)
+        return MIN_LEVEL_GEN12;
+    if(level > MAX_LEVEL_GEN12)
+        return MAX_LEVEL_GEN12;
+    return level;
 }
+
 u8 is_shiny_gen2(u8 atk_ivs, u8 def_ivs, u8 spa_ivs, u8 spe_ivs) {
     if((atk_ivs & 2) == 2 && def_ivs == 10 && spa_ivs == 10 && spe_ivs == 10)
         return 1;

@@ -6,7 +6,7 @@
 u8 has_legal_moves_gen12(u8*, u8);
 u8 get_ivs_gen2(u16, u8);
 u8 get_unown_letter_gen2(u16);
-s32 get_proper_exp_gen2(u16, u8, u8, u8*);
+u8 to_valid_level_gen12(u8);
 u8 is_shiny_gen2(u8, u8, u8, u8);
 u8 is_shiny_gen2_unfiltered(u16);
 u8 is_shiny_gen2_raw(struct gen2_mon_data*);

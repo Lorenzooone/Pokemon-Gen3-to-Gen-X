@@ -932,8 +932,8 @@ void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen,
     
     if(needs_levelup)
         mon->src->level += 1;
-    if(mon->src->level > MAX_LEVEL)
-        mon->src->level = MAX_LEVEL;
+    if(mon->src->level > MAX_LEVEL_GEN3)
+        mon->src->level = MAX_LEVEL_GEN3;
     mon->growth.species = new_species;
 
     print_pokemon_base_data(1, mon, BASE_Y_SPRITE_EVOLUTION_PAGE, BASE_X_SPRITE_EVOLUTION_PAGE, 0);
@@ -1105,7 +1105,7 @@ void print_pokemon_page3(struct gen3_mon_data_unenc* mon) {
     
     PRINT_FUNCTION("\nExperience: \x03\n", get_proper_exp_raw(mon));
     
-    if(to_valid_level_gen3(mon->src) < MAX_LEVEL)
+    if(to_valid_level_gen3(mon->src) < MAX_LEVEL_GEN3)
         PRINT_FUNCTION("\nNext Lv. in: \x09 > Lv. \x09", get_level_exp_mon_index(get_mon_index_raw(mon), to_valid_level_gen3(mon->src)+1) - get_proper_exp_raw(mon), 5, to_valid_level_gen3(mon->src)+1, 3);
 }
 

@@ -109,7 +109,11 @@
 #define GEN1_DOT 0xF2
 
 #define MAX_LEVEL 100
+#define MAX_LEVEL_GEN3 100
+#define MAX_LEVEL_GEN12 100
 #define MIN_LEVEL 1
+#define MIN_LEVEL_GEN3 2
+#define MIN_LEVEL_GEN12 2
 #define EGG_LEVEL_GEN3 5
 #define EGG_LEVEL_GEN2 5
 #define BASE_FRIENDSHIP 70
@@ -411,8 +415,9 @@ u16 get_mon_index(int, u32, u8, u8);
 u8 get_unown_letter_gen3(u32);
 const u8* get_pokemon_name(int, u32, u8, u8, u8);
 u8 has_mail(struct gen3_mon*, struct gen3_mon_growth*, u8);
+u8 to_valid_level_gen3_pure(u8);
 s32 get_proper_exp(struct gen3_mon*, struct gen3_mon_growth*, u8, u8);
-u8 to_valid_level(u8);
+s32 get_proper_exp_pure(u8, s32, u16, u8);
 u16 get_possible_abilities_pokemon(int, u32, u8, u8);
 u8 get_pokemon_gender_gen3(int, u32, u8, u8);
 u16 calc_stats_gen3(u16, u32, u8, u8, u8, u8, u8);

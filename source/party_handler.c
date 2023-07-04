@@ -59,6 +59,7 @@
 
 #define PID_POSITIONS 24
 
+u8 _to_valid_level(u8);
 const u8* get_item_name(int, u8);
 u8 get_ability_pokemon(int, u32, u8, u8, u8);
 u8 is_ability_valid(u16, u32, u8, u8, u8, u8);
@@ -787,6 +788,10 @@ s32 get_proper_exp(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_e
     s32 exp = growth->exp;
     u16 mon_index = get_mon_index(growth->species, src->pid, 0, deoxys_form);
 
+    return get_proper_exp_pure(level, exp, mon_index, is_egg);
+}
+
+s32 get_proper_exp_pure(u8 level, s32 exp, u16 mon_index, u8 is_egg) {
     if(is_egg) {
         level = EGG_LEVEL_GEN3;
         exp = get_level_exp_mon_index(mon_index, level);
@@ -794,7 +799,7 @@ s32 get_proper_exp(struct gen3_mon* src, struct gen3_mon_growth* growth, u8 is_e
 
     s32 min_exp = get_level_exp_mon_index(mon_index, level);
     s32 max_exp = min_exp;
-    if(level == MAX_LEVEL)
+    if(level == MAX_LEVEL_GEN3)
         exp = min_exp;
     else
         max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
@@ -889,7 +894,7 @@ u16 calc_stats_gen3_raw_alternative(struct gen3_mon_data_unenc* data_src, struct
     return calc_stats_gen3(data_src->growth.species, data_alt->pid, stat_index, to_valid_level_gen3(data_src->src), get_ivs_gen3_pure(data_alt->ivs, stat_index), get_evs_gen3(&data_src->evs, stat_index), data_src->deoxys_form);
 }
 
-u8 to_valid_level(u8 level) {
+u8 _to_valid_level(u8 level) {
     if(level < MIN_LEVEL)
         return MIN_LEVEL;
     if(level > MAX_LEVEL)
@@ -897,8 +902,16 @@ u8 to_valid_level(u8 level) {
     return level;
 }
 
+u8 to_valid_level_gen3_pure(u8 level) {
+    if(level < MIN_LEVEL_GEN3)
+        return MIN_LEVEL_GEN3;
+    if(level > MAX_LEVEL_GEN3)
+        return MAX_LEVEL_GEN3;
+    return level;
+}
+
 u8 to_valid_level_gen3(struct gen3_mon* src) {
-    return to_valid_level(src->level);
+    return to_valid_level_gen3_pure(src->level);
 }
 
 void recalc_stats_gen3(struct gen3_mon_data_unenc* data_dst, struct gen3_mon* dst) {
@@ -1300,8 +1313,8 @@ u8 own_menu_evolve(struct gen3_mon_data_unenc* mon_data, u8 index) {
 
     mon_data->src->level = to_valid_level_gen3(mon_data->src);
     mon_data->src->level += 1;
-    if(mon_data->src->level >= MAX_LEVEL)
-        mon_data->src->level = MAX_LEVEL;
+    if(mon_data->src->level >= MAX_LEVEL_GEN3)
+        mon_data->src->level = MAX_LEVEL_GEN3;
     mon_data->growth.exp = get_proper_exp_raw(mon_data);
     // The actual evolution logic
     evolve_mon(mon_data->src, mon_data, evolved_species, 0, learnsets);

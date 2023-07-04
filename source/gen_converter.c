@@ -52,6 +52,7 @@ u8 convert_moves_to_gen3(struct gen3_mon_attacks*, struct gen3_mon_growth*, u8*,
 u8 convert_item_of_gen3(u16);
 u16 convert_item_to_gen3(u16);
 void convert_exp_nature_of_gen3(struct gen3_mon*, struct gen3_mon_growth*, u8*, u8*, u8, u8);
+s32 get_proper_exp_from_gen12(u16, u8, u8, u8*);
 u8 get_exp_nature(struct gen3_mon*, struct gen3_mon_growth*, u8, u8, u8*);
 void convert_evs_of_gen3(struct gen3_mon_evs*, u16*);
 void convert_evs_to_gen3(struct gen3_mon_evs*, u16*);
@@ -266,7 +267,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         return;
     
     // Level handling
-    u8 level = to_valid_level_gen3(src);
+    u8 level = to_valid_level_gen12(to_valid_level_gen3(src));
     if(is_egg)
         level = EGG_LEVEL_GEN2;
     
@@ -276,7 +277,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
     s32 exp = get_proper_exp(src, growth, is_egg, 0);
     
     s32 max_exp = get_level_exp_mon_index(mon_index, level);
-    if(level < MAX_LEVEL)
+    if(level < MAX_LEVEL_GEN12)
         max_exp = get_level_exp_mon_index(mon_index, level+1)-1;
     
     if(!is_egg) {
@@ -288,9 +289,9 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         if(exp_nature > nature)
             nature += NUM_NATURES;
         exp += nature - exp_nature;
-        if(level == MAX_LEVEL)
+        if(level == MAX_LEVEL_GEN12)
             exp = max_exp;
-        if(level < MAX_LEVEL)
+        if(level < MAX_LEVEL_GEN12)
             while(exp > max_exp) {
                 level++;
                 if(level >= (MIN_LEVEL_25_EXP_DIFF+1)) {
@@ -301,7 +302,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
             }
     }
     /*
-    if ((level == MAX_LEVEL) && (exp != get_level_exp_mon_index(mon_index, MAX_LEVEL))){
+    if ((level == MAX_LEVEL_GEN12) && (exp != get_level_exp_mon_index(mon_index, MAX_LEVEL_GEN12))){
         level--;
         exp -= NUM_NATURES;
     }
@@ -313,16 +314,25 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         exp_ptr[2-i] = (exp >> (8*i))&0xFF;
 }
 
+s32 get_proper_exp_from_gen12(u16 mon_index, u8 level, u8 is_egg, u8* given_exp) {
+    s32 exp = (given_exp[0]<<0x10) + (given_exp[1]<<0x8) + (given_exp[2]<<0);
+
+    if(given_exp[0] >= 0x80)
+        exp = 0;
+
+    return get_proper_exp_pure(level, exp, mon_index, is_egg);
+}
+
 u8 get_exp_nature(struct gen3_mon* dst, struct gen3_mon_growth* growth, u8 level, u8 is_egg, u8* given_exp) {    
     // Level handling
-    level = to_valid_level(level);
+    level = to_valid_level_gen3_pure(level);
     if(is_egg)
-        level = EGG_LEVEL_GEN2;
+        level = EGG_LEVEL_GEN3;
     
     u16 mon_index = get_mon_index_gen2(growth->species, 0);
     
     // Experience handling
-    s32 exp = get_proper_exp_gen2(mon_index, level, is_egg, given_exp);
+    s32 exp = get_proper_exp_from_gen12(mon_index, level, is_egg, given_exp);
     
     // Save nature in experience, like the Gen I-VII conversion
     u8 nature = SWI_DivMod(exp, NUM_NATURES);
@@ -1359,7 +1369,7 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     convert_evs_to_gen3(&data_dst->evs, evs_container);
     
     // Handle cases in which the nature would be forced
-    if((dst->level == MAX_LEVEL) || (is_egg))
+    if((src->level >= MAX_LEVEL_GEN12) || (is_egg))
         wanted_nature = get_nature(get_rng());
     
     // Store egg cycles
@@ -1439,7 +1449,7 @@ u8 gen1_to_gen3(struct gen1_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     convert_evs_to_gen3(&data_dst->evs, evs_container);
     
     // Handle cases in which the nature would be forced
-    if(dst->level == MAX_LEVEL)
+    if(src->level >= MAX_LEVEL_GEN12)
         wanted_nature = get_nature(get_rng());
     
     // Set base friendship
