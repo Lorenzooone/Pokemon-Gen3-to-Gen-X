@@ -406,18 +406,22 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
     struct gen1_trade_data_jp* td_jp1 = (struct gen1_trade_data_jp*) buffer;
     
     size_t names_size = STRING_GEN2_INT_SIZE;
+    size_t num_indexes = 0;
     u8* patch_target = (u8*)(&td_int2->trainer_info);
     u8* patch_set = (u8*)td_int2->patch_set.patch_set;
     size_t target_size = sizeof(struct trainer_data_gen2_int);
     u8* trainer_name = (u8*)td_int2->trainer_info.trainer_name;
     struct gen2_party_info* party_info2 = &td_int2->trainer_info.party_info;
     struct gen1_party_info* party_info1 = &td_int1->trainer_info.party_info;
+    u8* mons_index = (u8*)party_info2->mons_index;
     u8* ot_names = (u8*)td_int2->trainer_info.ot_names;
     u8* nicknames = (u8*)td_int2->trainer_info.nicknames;
-    
-    if(is_jp) {
+
+    if(is_jp)
         names_size = STRING_GEN2_JP_SIZE;
-        if(curr_gen == 2) {
+
+    if(curr_gen == 2) {
+        if(is_jp) {
             patch_target = (u8*)(&td_jp2->trainer_info);
             patch_set = (u8*)td_jp2->patch_set.patch_set;
             target_size = sizeof(struct trainer_data_gen2_jp);
@@ -426,9 +430,9 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
             ot_names = (u8*)td_jp2->trainer_info.ot_names;
             nicknames = (u8*)td_jp2->trainer_info.nicknames;
         }
+        mons_index = (u8*)party_info2->mons_index;
     }
-    
-    if(curr_gen != 2) {
+    else {
         if(is_jp) {
             patch_target = (u8*)(&td_jp1->trainer_info);
             patch_set = (u8*)td_jp1->patch_set.patch_set;
@@ -446,6 +450,7 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
             ot_names = (u8*)td_int1->trainer_info.ot_names;
             nicknames = (u8*)td_int1->trainer_info.nicknames;
         }
+        mons_index = (u8*)party_info1->mons_index;
     }
 
     init_game_data(game_data);
@@ -468,7 +473,16 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
         game_data->party_3.total = party_info2->num_mons;
     else
         game_data->party_3.total = party_info1->num_mons;
-        
+
+    for(num_indexes = 0; num_indexes < PARTY_SIZE; num_indexes++)
+        if(mons_index[num_indexes] == GEN2_NO_MON)
+            break;
+
+    // What am I supposed to do here?!
+    // Let's... Compromise?! The old games mostly ignored the num_mons value.
+    if(game_data->party_3.total > num_indexes)
+        game_data->party_3.total = num_indexes;
+
     if(game_data->party_3.total > PARTY_SIZE)
         game_data->party_3.total = PARTY_SIZE;
     
@@ -477,9 +491,9 @@ void read_gen12_trade_data(struct game_data_t* game_data, u32* buffer, u8 curr_g
         game_data->party_3_undec[i].src = &game_data->party_3.mons[i];
         u8 conversion_success = 0;
         if(curr_gen == 2)
-            conversion_success = gen2_to_gen3(&party_info2->mons_data[i], &game_data->party_3_undec[i], party_info2->mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
+            conversion_success = gen2_to_gen3(&party_info2->mons_data[i], &game_data->party_3_undec[i], mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
         else
-            conversion_success = gen1_to_gen3(&party_info1->mons_data[i], &game_data->party_3_undec[i], party_info1->mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
+            conversion_success = gen1_to_gen3(&party_info1->mons_data[i], &game_data->party_3_undec[i], mons_index[i], ot_names + (i*names_size), nicknames + (i*names_size), is_jp);
         if(conversion_success) {
             const struct learnset_data_mon_moves* learnable_moves = game_data->party_3_undec[i].learnable_moves;
             process_gen3_data(&game_data->party_3.mons[i], &game_data->party_3_undec[i], game_data->game_identifier.game_main_version, game_data->game_identifier.game_sub_version);
