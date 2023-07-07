@@ -79,6 +79,8 @@ void set_language_gen12_to_gen3(struct gen3_mon*, u16, u8, u8*, u8);
 void sanitize_ot_name_gen3_to_gen12(u8*, u8*, u8, u8);
 void sanitize_ot_name_gen12_to_gen3(u8*, u8*, u8);
 void clean_name_gen12(u8*, u8);
+u8 convert_pokerus_gen3_to_gen2(u8);
+u8 convert_pokerus_gen2_to_gen3(u8);
 
 u16 swap_endian_short(u16 shrt) {
     return ((shrt & 0xFF00) >> 8) | ((shrt & 0xFF) << 8);
@@ -1058,6 +1060,14 @@ void convert_strings_of_gen12(struct gen3_mon* dst, u8 species, u8* ot_name, u8*
     convert_trainer_name_gen12_to_gen3(ot_name, dst->ot_name, is_jp_gen2, dst->language, OT_NAME_GEN3_MAX_SIZE);
 }
 
+u8 convert_pokerus_gen3_to_gen2(u8 pokerus) {
+    return sanitize_pokerus_gen2(sanitize_pokerus_gen3(pokerus));
+}
+
+u8 convert_pokerus_gen2_to_gen3(u8 pokerus) {
+    return sanitize_pokerus_gen3(sanitize_pokerus_gen2(pokerus));
+}
+
 u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src, u32 trainer_id) {
     
     struct gen3_mon* src = data_src->src;
@@ -1110,8 +1120,8 @@ u8 gen3_to_gen2(struct gen2_mon* dst_data, struct gen3_mon_data_unenc* data_src,
     // Assign IVs
     dst->ivs = convert_ivs_of_gen3(misc, growth->species, src->pid, is_shiny, gender, gender_kind, 1, 0);
     
-    // Is this really how it works...?
-    dst->pokerus = misc->pokerus;
+    // Convert pokerus
+    dst->pokerus = convert_pokerus_gen3_to_gen2(misc->pokerus);
     
     // Defaults
     dst->friendship = BASE_FRIENDSHIP;
@@ -1384,7 +1394,8 @@ u8 gen2_to_gen3(struct gen2_mon_data* src, struct gen3_mon_data_unenc* data_dst,
     // Set the moves
     convert_moves_to_gen3(&data_dst->attacks, &data_dst->growth, src->moves, src->pps, 1);
     
-    data_dst->misc.pokerus = src->pokerus;
+    // Convert pokerus
+    data_dst->misc.pokerus = convert_pokerus_gen2_to_gen3(src->pokerus);
     
     // Set the PID-Origin-IVs data, they're all connected
     set_origin_pid_iv(dst, data_dst, data_dst->growth.species, src->ivs, wanted_nature, src->ot_gender, is_egg, no_restrictions);

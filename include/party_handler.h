@@ -422,6 +422,7 @@ u16 get_possible_abilities_pokemon(int, u32, u8, u8);
 u8 get_pokemon_gender_gen3(int, u32, u8, u8);
 u16 calc_stats_gen3(u16, u32, u8, u8, u8, u8, u8);
 void place_and_encrypt_gen3_data(struct gen3_mon_data_unenc*, struct gen3_mon*);
+u8 sanitize_pokerus_gen3(u8);
 
 u8 get_valid_language(u8);
 u8 get_pp_of_move(u16, u8, u16);

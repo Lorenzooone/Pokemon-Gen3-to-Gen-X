@@ -993,14 +993,16 @@ void print_pokemon_base_data(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     
         if(is_shiny && has_pokerus)
             PRINT_FUNCTION(" - ");
-    
-        if(has_pokerus == HAS_POKERUS)
-            PRINT_FUNCTION("Has Pok\xE9rus");
-        else if(has_pokerus == HAD_POKERUS)
-            PRINT_FUNCTION("Had Pok\xE9rus");
     }
-    else
+    else {
         PRINT_FUNCTION("\x05\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
+        set_text_x((x>>3) + POKEMON_SPRITE_X_TILES);
+    }
+    
+    if(has_pokerus == HAS_POKERUS)
+        PRINT_FUNCTION("Has Pok\xE9rus");
+    else if(has_pokerus == HAD_POKERUS)
+        PRINT_FUNCTION("Had Pok\xE9rus");
 }
 
 void print_warning_when_clock_changed() {

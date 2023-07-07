@@ -12,6 +12,9 @@
 
 const u8* set_buffer_with_gen2(const u8*, u8, u8*);
 u16 get_stat_exp_contribution(u16);
+u8 is_pokerus_strain_valid_gen2(u8);
+u8 get_pokerus_strain_max_days_gen2(u8);
+u8 are_pokerus_days_valid_gen2(u8);
 
 u8 stat_index_conversion_gen2[] = {0, 1, 2, 5, 3, 4};
 u8 gender_thresholds_gen12[TOTAL_GENDER_KINDS] = {8, 0, 2, 4, 12, 14, 16, 17, 0, 16};
@@ -136,6 +139,47 @@ u16 calc_stats_gen2(u16 species, u32 pid, u8 stat_index, u8 level, u8 iv, u16 st
     if(stat_index == HP_STAT_INDEX)
         base = level + 10;
     return base + Div((((stats_table_gen2[mon_index].stats[stat_index] + iv)*2) + (get_stat_exp_contribution(stat_exp) >> 2)) * level, 100);
+}
+
+u8 is_pokerus_strain_valid_gen2(u8 pokerus_byte) {
+    if(!pokerus_byte)
+        return 1;
+    // Strains 0 <= x <= 8 can generate in gen 2
+    if((pokerus_byte >> 4) > 8)
+        return 0;
+    return 1;
+}
+
+u8 get_pokerus_strain_max_days_gen2(u8 pokerus_byte) {
+    if(!is_pokerus_strain_valid_gen2(pokerus_byte))
+        return 0;
+    if(!(pokerus_byte >> 4))
+        return 1;
+    return (((pokerus_byte >> 4) - 1) & 3) + 1;
+}
+
+u8 are_pokerus_days_valid_gen2(u8 pokerus_byte) {
+    if(!pokerus_byte)
+        return 1;
+    if(!is_pokerus_strain_valid_gen2(pokerus_byte))
+        return 0;
+    if((pokerus_byte & 0xF) > get_pokerus_strain_max_days_gen2(pokerus_byte))
+        return 0;
+    return 1;
+}
+
+u8 sanitize_pokerus_gen2(u8 pokerus_byte) {
+    // Do nothing if there was no infection
+    if(!pokerus_byte)
+        return pokerus_byte;
+    if(!is_pokerus_strain_valid_gen2(pokerus_byte))
+        pokerus_byte = ((pokerus_byte & 0xF0) - 0x80) | (pokerus_byte & 0xF);
+    // Although strain 0 is technically legal, it's buggy, so avoid it
+    if(!(pokerus_byte >> 4))
+        pokerus_byte |= 0x10;
+    if(!are_pokerus_days_valid_gen2(pokerus_byte))
+        pokerus_byte = ((pokerus_byte) & 0xF0) | get_pokerus_strain_max_days_gen2(pokerus_byte);
+    return pokerus_byte;
 }
 
 u8 get_gender_thresholds_gen12(u8 gender_kind) {

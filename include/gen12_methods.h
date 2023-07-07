@@ -16,6 +16,7 @@ u16 get_mon_index_gen2(int, u8);
 u16 get_mon_index_gen1_to_3(u8);
 u16 calc_stats_gen1(u16, u8, u8, u8, u16);
 u16 calc_stats_gen2(u16, u32, u8, u8, u8, u16);
+u8 sanitize_pokerus_gen2(u8);
 u8 get_gender_thresholds_gen12(u8);
 u8 get_gender_useless_atk_ivs_gen12(u8);
 u8 get_pokemon_gender_gen2(u8, u8, u8, u8);
