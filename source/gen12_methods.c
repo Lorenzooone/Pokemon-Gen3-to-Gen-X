@@ -153,9 +153,7 @@ u8 is_pokerus_strain_valid_gen2(u8 pokerus_byte) {
 u8 get_pokerus_strain_max_days_gen2(u8 pokerus_byte) {
     if(!is_pokerus_strain_valid_gen2(pokerus_byte))
         return 0;
-    if(!(pokerus_byte >> 4))
-        return 1;
-    return (((pokerus_byte >> 4) - 1) & 3) + 1;
+    return ((pokerus_byte >> 4) & 3) + 1;
 }
 
 u8 are_pokerus_days_valid_gen2(u8 pokerus_byte) {

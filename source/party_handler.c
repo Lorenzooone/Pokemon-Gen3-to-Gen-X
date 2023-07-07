@@ -926,13 +926,14 @@ void recalc_stats_gen3(struct gen3_mon_data_unenc* data_dst, struct gen3_mon* ds
 u8 is_pokerus_strain_valid_gen3(u8 pokerus_byte) {
     if(!pokerus_byte)
         return 1;
-    if(!((pokerus_byte >> 4) & 7))
-        return 0;
+    // Ruby and Sapphire can have Pokerus strains 0 and 8
+    //if(!((pokerus_byte >> 4) & 7))
+    //    return 0;
     return 1;
 }
 
 u8 get_pokerus_strain_max_days_gen3(u8 pokerus_byte) {
-    if(!((pokerus_byte >> 4) & 7))
+    if(!is_pokerus_strain_valid_gen3(pokerus_byte))
         return 0;
     return ((pokerus_byte >> 4) & 3) + 1;
 }
