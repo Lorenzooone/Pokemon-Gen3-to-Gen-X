@@ -12,7 +12,7 @@
 
 #define DEFAULT_FILLER 0
 
-#define USELESS_SYNC_BYTES 6
+#define USELESS_SYNC_BYTES 5
 #define USELESS_SYNC_VALUE 0x20
 
 #define NUM_SIZES 4
