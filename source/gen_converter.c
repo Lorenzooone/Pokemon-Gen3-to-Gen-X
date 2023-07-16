@@ -205,9 +205,10 @@ u8 convert_moves_of_gen3(struct gen3_mon_attacks* attacks, u8 pp_bonuses, u8* mo
             if(!found) {
                 u8 bonus_pp = (pp_bonuses>>(2*i))&3;
                 u8 base_pp = get_pp_of_move(move, bonus_pp, last_valid_move);
-                // Limit the PP to its maximum of 61
-                if(base_pp > 61)
-                    base_pp = 61;
+                // Limit the PP to the real maximum
+                u8 max_gen12_move_pps = GEN12_MAX_MOVE_PP + (((GEN12_MAX_MOVE_PP / 5) - 1) * bonus_pp);
+                if(base_pp >= max_gen12_move_pps)
+                    base_pp = max_gen12_move_pps;
                 base_pp |= (bonus_pp << 6);
                 pps[used_slots] = base_pp;
                 moves[used_slots++] = move;

@@ -156,6 +156,7 @@
 
 #define GEN2_EGG 253
 #define GEN2_NO_MON 255
+#define GEN12_MAX_MOVE_PP 40
 
 #define CELEBI_AGATE_OT_ID 31121
 
