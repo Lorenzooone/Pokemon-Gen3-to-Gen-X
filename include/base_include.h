@@ -6,12 +6,18 @@
 // GBA defines and all
 #include <gba.h>
 #include "useful_qualifiers.h"
+#define SCANLINES 0xE4
 #define ROM 0x8000000
 ALWAYS_INLINE MAX_OPTIMIZE void __set_next_vcount_interrupt_gba(int scanline) {
-    REG_DISPSTAT  = (REG_DISPSTAT &0xFF) | (scanline<<8);
+    REG_DISPSTAT  = (REG_DISPSTAT & 0xFF) | (scanline<<8);
 }
 ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
-    return REG_DISPSTAT >> 8;
+    u16 reg_val = REG_DISPSTAT;
+    return reg_val >> 8;
+}
+ALWAYS_INLINE MAX_OPTIMIZE void __reset_vcount(void) {
+    // Does not work on GBA
+    return;
 }
 #define __set_next_vcount_interrupt(x) __set_next_vcount_interrupt_gba(x)
 #define SCANLINE_IRQ_BIT LCDC_VCNT
@@ -28,7 +34,6 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 #define VRAM_0 VRAM
 #define HAS_SIO
 #define CLOCK_SPEED 16777216
-#define SCANLINES 0xE4
 #define SAME_ON_BOTH_SCREENS 0
 #ifndef __GBA__
 #define __GBA__
@@ -40,9 +45,14 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 // NDS defines and all
 #include <nds.h>
 #include "useful_qualifiers.h"
+#define SCANLINES 0x107
 #define ROM GBAROM
 ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
-    return (REG_DISPSTAT >> 8) | ((REG_DISPSTAT & 0x80) << 1);
+    u16 reg_val = REG_DISPSTAT;
+    return (reg_val >> 8) | ((reg_val & 0x80) << 1);
+}
+ALWAYS_INLINE MAX_OPTIMIZE void __reset_vcount(void) {
+    REG_VCOUNT = (REG_VCOUNT & 0xFE00) | (SCANLINES - 2);
 }
 #define __set_next_vcount_interrupt(x) SetYtrigger(x)
 #define SCANLINE_IRQ_BIT DISP_YTRIGGER_IRQ
@@ -66,7 +76,6 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 #define ARM7_CLOCK_SPEED 33554432
 #define ARM7_GBA_CLOCK_SPEED 16777216
 #define CLOCK_SPEED ARM9_CLOCK_SPEED
-#define SCANLINES 0x107
 #define SAME_ON_BOTH_SCREENS 1
 #define CONSOLE_LETTER 'D'
 

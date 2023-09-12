@@ -139,7 +139,7 @@ IWRAM_CODE u8 sio_normal_inner_master() {
 
 IWRAM_CODE void init_sio_normal(int is_master, int is_32) {
     u16 sio_cnt_val = 0;
-    
+
     if(is_32)
         sio_cnt_val |= SIO_32BIT;
     else
@@ -149,8 +149,7 @@ IWRAM_CODE void init_sio_normal(int is_master, int is_32) {
         sio_cnt_val |= SIO_CLK_INT;
     else
         sio_cnt_val |= SIO_SO_HIGH;
-        
-    
+
     REG_RCNT = R_NORMAL;
     REG_SIOCNT = sio_cnt_val;
 }

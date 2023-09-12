@@ -129,6 +129,8 @@ IWRAM_CODE void vblank_update_function() {
     // Handle trading animation
     if(curr_state == TRADING_ANIMATION)
         advance_trade_animation();
+    // Increase FPS on NDS
+    //__reset_vcount();
     #ifdef HAS_SIO
     // Handle slave communications
     if((REG_SIOCNT & SIO_IRQ) && (!(REG_SIOCNT & SIO_START)))
