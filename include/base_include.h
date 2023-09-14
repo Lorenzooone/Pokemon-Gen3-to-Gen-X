@@ -1,7 +1,7 @@
 #ifndef BASE_INCLUDE__
 #define BASE_INCLUDE__
 
-#ifndef __NDS__
+#ifdef __GBA__
 
 // GBA defines and all
 #include <gba.h>
@@ -14,10 +14,6 @@ ALWAYS_INLINE MAX_OPTIMIZE void __set_next_vcount_interrupt_gba(int scanline) {
 ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
     u16 reg_val = REG_DISPSTAT;
     return reg_val >> 8;
-}
-ALWAYS_INLINE MAX_OPTIMIZE void __reset_vcount(void) {
-    // Does not work on GBA
-    return;
 }
 #define __set_next_vcount_interrupt(x) __set_next_vcount_interrupt_gba(x)
 #define SCANLINE_IRQ_BIT LCDC_VCNT
@@ -40,7 +36,9 @@ ALWAYS_INLINE MAX_OPTIMIZE void __reset_vcount(void) {
 #endif
 #define CONSOLE_LETTER 'G'
 
-#else
+#endif
+
+#ifdef __NDS__
 
 // NDS defines and all
 #include <nds.h>
