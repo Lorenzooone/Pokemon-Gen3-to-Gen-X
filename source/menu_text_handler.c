@@ -450,18 +450,23 @@ void print_gen12_settings_menu(u8 update) {
     default_reset_screen();
     PRINT_FUNCTION("\n  Target Language: <\x01>\n\n", get_language_string(get_target_int_language()));
     PRINT_FUNCTION("  Convert to: <\x01>\n\n", game_strings[get_default_conversion_game()]);
+    PRINT_FUNCTION("  Prioritize Colo/XD:");
     if(get_conversion_colo_xd())
-        PRINT_FUNCTION("  Prioritize Colo/XD: <True>\n\n");
+        PRINT_FUNCTION(" <True>\n\n");
     else
-        PRINT_FUNCTION("  Prioritize Colo/XD: <False>\n\n");
+        PRINT_FUNCTION(" <False>\n\n");
+    PRINT_FUNCTION("  Gen 1 Everstone: ");
     if(get_gen1_everstone())
-        PRINT_FUNCTION("  Gen 1 Everstone: <Enabled>\n\n");
+        PRINT_FUNCTION("<Enabled>\n\n");
     else
-        PRINT_FUNCTION("  Gen 1 Everstone: <Disabled>\n\n");
+        PRINT_FUNCTION("<Disabled>\n\n");
     PRINT_FUNCTION("  Caught in: <\x01 Ball>\n\n", get_pokeball_base_name_gen3_pure(get_applied_ball()));
-    PRINT_FUNCTION("  Hatched at: <\x0B> +/- 1\n\n", get_egg_met_location(), 3);
-    PRINT_FUNCTION("  Hatched at: <\x0B> +/- 10\n\n\n", get_egg_met_location(), 3);
-    PRINT_FUNCTION("Hatched at: \x01\n\n", get_met_location_name_gen3_pure(get_egg_met_location(), get_default_conversion_game()));
+    PRINT_FUNCTION("  Hatched at: ");
+    PRINT_FUNCTION("<\x0B> +/- 1\n\n", get_egg_met_location(), 3);
+    PRINT_FUNCTION("  Hatched at: ");
+    PRINT_FUNCTION("<\x0B> +/- 10\n\n\n", get_egg_met_location(), 3);
+    PRINT_FUNCTION("Hatched at: ");
+    PRINT_FUNCTION("\x01\n\n", get_met_location_name_gen3_pure(get_egg_met_location(), get_default_conversion_game()));
 
     print_bottom_info();
 }
@@ -520,19 +525,22 @@ void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* 
 
     default_reset_screen();
 
+    PRINT_FUNCTION("\n  Time: ");
     if(is_daytime(clock_events, time_change))
-        PRINT_FUNCTION("\n  Time: <Day>\n\n");
+        PRINT_FUNCTION("<Day>\n\n");
     else
-        PRINT_FUNCTION("\n  Time: <Night>\n\n");
+        PRINT_FUNCTION("<Night>\n\n");
+    PRINT_FUNCTION("  Shoal Cave Tide: ");
     if(is_high_tide(clock_events, time_change))
-        PRINT_FUNCTION("  Shoal Cave Tide: <High>\n\n");
+        PRINT_FUNCTION("<High>\n\n");
     else
-        PRINT_FUNCTION("  Shoal Cave Tide: <Low>\n\n");
+        PRINT_FUNCTION("<Low>\n\n");
     u8 curr_y = get_text_y();
+    PRINT_FUNCTION("  Clock Reset Menu: ");
     if(is_rtc_reset_enabled(clock_events))
-        PRINT_FUNCTION("  Clock Reset Menu: <Enabled>");
+        PRINT_FUNCTION("<Enabled>");
     else
-        PRINT_FUNCTION("  Clock Reset Menu: <Disabled>");
+        PRINT_FUNCTION("<Disabled>");
     set_text_y(curr_y+2);
 
     PRINT_FUNCTION("  Days Increase:    <\x0B>\n", time_change->d, 5);
@@ -557,22 +565,26 @@ void print_cheats_menu(u8 update) {
         return;
 
     default_reset_screen();
+    PRINT_FUNCTION("\n  Cross-Gen Evo.:");
     if(get_allow_cross_gen_evos())
-        PRINT_FUNCTION("\n  Cross-Gen Evo.: <Enabled>\n\n");
+        PRINT_FUNCTION(" <Enabled>\n\n");
     else
-        PRINT_FUNCTION("\n  Cross-Gen Evo.: <Disabled>\n\n");
+        PRINT_FUNCTION(" <Disabled>\n\n");
+    PRINT_FUNCTION("  Tradeless Evo.:");
     if(get_evolve_without_trade())
-        PRINT_FUNCTION("  Tradeless Evo.: <Enabled>\n\n");
+        PRINT_FUNCTION(" <Enabled>\n\n");
     else
-        PRINT_FUNCTION("  Tradeless Evo.: <Disabled>\n\n");
+        PRINT_FUNCTION(" <Disabled>\n\n");
+    PRINT_FUNCTION("  Undistr. Events:");
     if(get_allow_undistributed_events())
-        PRINT_FUNCTION("  Undistr. Events: <Enabled>\n\n");
+        PRINT_FUNCTION(" <Enabled>\n\n");
     else
-        PRINT_FUNCTION("  Undistr. Events: <Disabled>\n\n");
+        PRINT_FUNCTION(" <Disabled>\n\n");
+    PRINT_FUNCTION("  Fast Hatch Eggs:");
     if(get_fast_hatch_eggs())
-        PRINT_FUNCTION("  Fast Hatch Eggs: <Enabled>\n\n");
+        PRINT_FUNCTION(" <Enabled>\n\n");
     else
-        PRINT_FUNCTION("  Fast Hatch Eggs: <Disabled>\n\n");
+        PRINT_FUNCTION(" <Disabled>\n\n");
     PRINT_FUNCTION("  Give Pok\xE9rus to Party\n\n");
 
     print_bottom_info();
@@ -768,8 +780,10 @@ void print_basic_alter_conf_data(struct gen3_mon_data_unenc* mon, struct alterna
         PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw_alternative(mon, altered, i), 4, get_nature_symbol(altered->pid, i));
         PRINT_FUNCTION("  \x09  \x09", get_ivs_gen3(&mon->misc, i), 3, get_ivs_gen3_pure(altered->ivs, i), 3);
     }
-    PRINT_FUNCTION("\n\nOld Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
-    PRINT_FUNCTION("\nNew Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3_pure(altered->ivs), get_hidden_power_power_gen3_pure(altered->ivs));
+    PRINT_FUNCTION("\n\nOld ");
+    PRINT_FUNCTION("Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    PRINT_FUNCTION("\nNew ");
+    PRINT_FUNCTION("Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3_pure(altered->ivs), get_hidden_power_power_gen3_pure(altered->ivs));
 }
 
 void print_set_nature(u8 load_sprites, struct gen3_mon_data_unenc* mon) {
@@ -1211,28 +1225,31 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master, struct game
         set_text_y(1);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         curr_gen = options[curr_gen];
+        PRINT_FUNCTION("Target: ");
         if(get_number_of_higher_ordered_options(options, curr_gen, TOTAL_GENS) > 0 && get_number_of_lower_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            PRINT_FUNCTION("Target: <\x01>", target_strings[curr_gen-1]);
+            PRINT_FUNCTION("<\x01>", target_strings[curr_gen-1]);
         else if(get_number_of_higher_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            PRINT_FUNCTION("Target:  \x01>", target_strings[curr_gen-1]);
+            PRINT_FUNCTION(" \x01>", target_strings[curr_gen-1]);
         else if(get_number_of_lower_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            PRINT_FUNCTION("Target: <\x01", target_strings[curr_gen-1]);
+            PRINT_FUNCTION("<\x01", target_strings[curr_gen-1]);
         else
-            PRINT_FUNCTION("Target:  \x01", target_strings[curr_gen-1]);
+            PRINT_FUNCTION(" \x01", target_strings[curr_gen-1]);
         set_text_y(3);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         if(curr_gen < 3) {
+            PRINT_FUNCTION("Target Region: ");
             if(!is_jp)
-                PRINT_FUNCTION("Target Region:  \x01>", region_strings[0]);
+                PRINT_FUNCTION(" \x01>", region_strings[0]);
             else
-            PRINT_FUNCTION("Target Region: <\x01", region_strings[1]);
+            PRINT_FUNCTION("<\x01", region_strings[1]);
         }
         set_text_y(5);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
+        PRINT_FUNCTION("Act as: ");
         if(!is_master)
-            PRINT_FUNCTION("Act as:  \x01>", actor_strings[1]);
+            PRINT_FUNCTION(" \x01>", actor_strings[1]);
         else
-            PRINT_FUNCTION("Act as: <\x01", actor_strings[0]);
+            PRINT_FUNCTION("<\x01", actor_strings[0]);
         set_text_y(7);
         set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
         PRINT_FUNCTION("Start Trade");
