@@ -34,7 +34,7 @@ CFLAGS	:=	-g -Wall -Wstrict-overflow=5 -Wextra\
 		-Wstrict-prototypes -Wmissing-prototypes\
 		-Wshadow -Wwrite-strings -save-temps -Os -s\
 		-mcpu=arm7tdmi -mtune=arm7tdmi\
- 		-fomit-frame-pointer\
+ 		-fomit-frame-pointer -flto=auto \
 		-ffast-math \
 		-fno-tree-loop-distribute-patterns \
 		$(ARCH)
