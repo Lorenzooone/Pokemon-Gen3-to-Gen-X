@@ -754,8 +754,15 @@ void complete_save_menu(struct game_data_t* game_data, struct game_data_priv_t* 
 
 void complete_cartridge_loading(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
     init_game_data(game_data);
-    get_game_id(&game_data->game_identifier);
-    read_gen_3_data(game_data, game_data_priv);
+    u8 can_check_cart = 1;
+    #ifdef __NDS__
+    if(isDSiMode())
+        can_check_cart = 0;
+    #endif
+    if(can_check_cart) {
+        get_game_id(&game_data->game_identifier);
+        read_gen_3_data(game_data, game_data_priv);
+    }
     prepare_main_options(game_data, game_data_priv);
     if((!get_valid_options_main()) || (!loaded_data_has_warnings(game_data, game_data_priv)))
         main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
