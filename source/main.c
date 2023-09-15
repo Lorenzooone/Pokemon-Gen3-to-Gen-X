@@ -116,25 +116,13 @@ u32 input_counter = 0;
 u32 scanlines_value = SCANLINES - 2;
 u32 scanlines_value_start = VBLANK_SCANLINES;
 u8 enabled_scanlines_editing = 0;
+u8 executed_in_vblank = 0;
 u8 ack_vblank = 0;
-u8 passed_once = 0;
 
 IWRAM_CODE void vblank_update_function() {
     if(REG_IF & IRQ_VBLANK)
         return;
     REG_IF |= IRQ_VBLANK;
-    ack_vblank = 1;
-    passed_once = 0;
-
-    flush_screens();
-
-    if(has_cartridge_been_removed())
-        crash_on_cartridge_removed();
-
-    move_sprites(counter);
-    move_cursor_x(counter);
-    advance_rng();
-    counter++;
     
     // Handle master communications
     if(REG_DISPSTAT & SCANLINE_IRQ_BIT) {
@@ -144,8 +132,11 @@ IWRAM_CODE void vblank_update_function() {
         int curr_vcount = REG_VCOUNT + 1;
         if(curr_vcount < VBLANK_SCANLINES)
             curr_vcount += SCANLINES;
-        if(next_vcount_irq <= curr_vcount)
+        if(next_vcount_irq <= curr_vcount) {
+            executed_in_vblank = 0;
             vcount_interrupt();
+            executed_in_vblank = 1;
+        }
     }
 
     // Handle trading animation
@@ -170,19 +161,30 @@ MAX_OPTIMIZE void set_vcount_interrupt(void){
     if(next_stop >= SCANLINES)
         next_stop -= SCANLINES;
     __set_next_vcount_interrupt(next_stop);
+    executed_in_vblank = 0;
 }
 
 IWRAM_CODE MAX_OPTIMIZE void vcount_interrupt(void) {
     if(REG_IF & IRQ_VCOUNT)
         return;
     REG_IF |= IRQ_VCOUNT;
+
+    if(executed_in_vblank) {
+        executed_in_vblank = 0;
+        return;
+    }
+
+    ack_vblank = 1;
+
+    flush_screens();
+
+    move_sprites(counter);
+    move_cursor_x(counter);
+    advance_rng();
+    counter++;
     #ifdef __NDS__
         if(enabled_scanlines_editing) {
             __reset_vcount(scanlines_value);
-            if(passed_once)
-                vblank_update_function();
-            else
-                passed_once = 1;
         }
     #endif
     set_vcount_interrupt();
@@ -795,7 +797,6 @@ int main(void)
     #endif
     curr_state = MAIN_MENU;
     counter = 0;
-    passed_once = 0;
     input_counter = 0;
     find_optimal_ewram_settings();
     set_default_settings();
@@ -833,7 +834,7 @@ int main(void)
     main_menu_init(scanlines_value, scanlines_value_start, enabled_scanlines_editing, &cursor_y_pos);
     for(int j = 0; j < 3; j++) {
         for(int i = 0; i < 7; i++) {
-            load_pokemon_sprite(144 + i + (j * 100), 0, 0, 0, 0, 0, (0 + (j * 4)) * 8, (1 + (i * 4)) * 8);
+            load_pokemon_sprite(144 + i + (j * 100), 0, 0, 0, 0, 0, ((-1 + (j * 4)) * 8) & 0xFF, (1 + (i * 4)) * 8);
         }
     }
     //load_pokemon_sprite(0, 0, 0, 0, 0, 0, 0, 0);
