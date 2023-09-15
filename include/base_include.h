@@ -31,9 +31,6 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 #define HAS_SIO
 #define CLOCK_SPEED 16777216
 #define SAME_ON_BOTH_SCREENS 0
-#ifndef __GBA__
-#define __GBA__
-#endif
 #define CONSOLE_LETTER 'G'
 
 #endif
