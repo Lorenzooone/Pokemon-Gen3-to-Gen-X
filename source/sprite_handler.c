@@ -412,11 +412,11 @@ void reset_sprites_to_party(){
 }
 
 IWRAM_CODE void move_sprites(u8 counter){
-    u8 counter_kind = counter & 8;
     u8 limit = loaded_inner_sprite_counter;
     if(loaded_inner_sprite_counter > OAM_ENTITIES)
         limit = OAM_ENTITIES;
     for(int i = inner_cursor_sprite+1; i < limit; i++) {
+        u8 counter_kind = (counter + i) & 8;
         u16 obj_attr_2 = OAM_DATA[i].attr2 & ~SPRITE_BASE_TILE_SIZE;
         if(counter_kind)
             obj_attr_2 |= SPRITE_BASE_TILE_SIZE;

@@ -8,9 +8,9 @@ BLOCKSDSEXT	?= /opt/blocksds/external
 # User config
 # ===========
 
-NAME		:= Pokemon_Gen3_to_GenX
+NAME		:= FPS_Editing_Testing
 
-GAME_TITLE	:= Pokémon Gen 3 to Gen X
+GAME_TITLE	:= FPS Editing Testing
 GAME_SUBTITLE	:= Test NDS Port
 GAME_AUTHOR	:= Lorenzooone
 GAME_ICON	:= icon.bmp

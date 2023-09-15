@@ -83,7 +83,7 @@ void waiting_success_init(void);
 void trade_options_init(u8, u8*, u8, u8);
 void trade_menu_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8, u8*, u8*);
 void start_trade_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8, u8*);
-void main_menu_init(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
+void main_menu_init(u32, u32, u8, u8*);
 void info_menu_init(struct game_data_t*, u8, u8, u8*, u8);
 void nature_menu_init(struct game_data_t*, u8, u8, u8*);
 void iv_fix_menu_init(struct game_data_t*, u8, u8);
@@ -113,8 +113,18 @@ enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
 
+u32 scanlines_value = SCANLINES - 2;
+u32 scanlines_value_start = VBLANK_SCANLINES;
+u8 enabled_scanlines_editing = 0;
+u8 ack_vblank = 0;
+u8 passed_once = 0;
+
 IWRAM_CODE void vblank_update_function() {
+    if(REG_IF & IRQ_VBLANK)
+        return;
     REG_IF |= IRQ_VBLANK;
+    ack_vblank = 1;
+    passed_once = 0;
 
     flush_screens();
 
@@ -125,14 +135,22 @@ IWRAM_CODE void vblank_update_function() {
     move_cursor_x(counter);
     advance_rng();
     counter++;
+    
+    // Handle master communications
+    if(REG_DISPSTAT & SCANLINE_IRQ_BIT) {
+        int next_vcount_irq = scanlines_value_start;
+        if(next_vcount_irq < VBLANK_SCANLINES)
+            next_vcount_irq += SCANLINES;
+        int curr_vcount = REG_VCOUNT + 1;
+        if(curr_vcount < VBLANK_SCANLINES)
+            curr_vcount += SCANLINES;
+        if(next_vcount_irq <= curr_vcount)
+            vcount_interrupt();
+    }
 
     // Handle trading animation
     if(curr_state == TRADING_ANIMATION)
         advance_trade_animation();
-    #ifdef __NDS__
-    // Increase FPS on NDS
-    __reset_vcount();
-    #endif
     #ifdef HAS_SIO
     // Handle slave communications
     if((REG_SIOCNT & SIO_IRQ) && (!(REG_SIOCNT & SIO_START)))
@@ -145,17 +163,29 @@ IWRAM_CODE void vblank_update_function() {
         slave_routine();
     }
     #endif
-    // Handle master communications
-    if(REG_DISPSTAT & SCANLINE_IRQ_BIT) {
-        int next_vcount_irq = __get_next_vcount_interrupt();
-        if(next_vcount_irq < VBLANK_SCANLINES)
-            next_vcount_irq += SCANLINES;
-        int curr_vcount = REG_VCOUNT + 2;
-        if(curr_vcount < VBLANK_SCANLINES)
-            curr_vcount += SCANLINES;
-        if(next_vcount_irq <= curr_vcount)
-            set_next_vcount_interrupt();
-    }
+}
+
+MAX_OPTIMIZE void set_vcount_interrupt(void){
+    int next_stop = scanlines_value_start;
+    if(next_stop >= SCANLINES)
+        next_stop -= SCANLINES;
+    __set_next_vcount_interrupt(next_stop);
+}
+
+IWRAM_CODE MAX_OPTIMIZE void vcount_interrupt(void) {
+    if(REG_IF & IRQ_VCOUNT)
+        return;
+    REG_IF |= IRQ_VCOUNT;
+    #ifdef __NDS__
+        if(enabled_scanlines_editing) {
+            __reset_vcount(scanlines_value);
+            if(passed_once)
+                vblank_update_function();
+            else
+                passed_once = 1;
+        }
+    #endif
+    set_vcount_interrupt();
 }
 
 IWRAM_CODE void find_optimal_ewram_settings() {
@@ -199,8 +229,6 @@ void disable_all_irqs() {
 }
 
 u8 init_cursor_y_pos_main_menu() {
-    if(!get_valid_options_main())
-        return 4;
     return 0;
 }
 
@@ -216,7 +244,7 @@ void cursor_update_trading_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
 }
 
 void cursor_update_main_menu(u8 cursor_y_pos) {
-    update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
+    update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (VBLANK_SCANLINES / 2) + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
 }
 
 void cursor_update_cheats_menu(u8 cursor_y_pos) {
@@ -324,12 +352,14 @@ void change_nature(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, 
 void check_bad_trade_received(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos) {
     u8 useless = 0;
     // Handle bad received / No valid mons
+    /*
     if(handle_input_trading_menu(&useless, &useless, 0, curr_gen, own_menu) == CANCEL_TRADING) {
         if(own_menu)
             main_menu_init(&game_data[0], game_data_priv, target, region, master, cursor_y_pos);
         else
             waiting_offer_init(1, 0);
     }
+    */
 }
 
 void trade_cancel_print_screen(u8 update) {
@@ -501,12 +531,11 @@ void start_trade_init(struct game_data_t* game_data, struct game_data_priv_t* ga
         conclude_trade(game_data, game_data_priv, target, region, master, cursor_y_pos);
 }
 
-void main_menu_init(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
+void main_menu_init(u32 scanval, u32 scanval_start, u8 enabled_scan_edit, u8* cursor_y_pos) {
     curr_state = MAIN_MENU;
-    prepare_main_options(game_data, game_data_priv);
     set_screen(BASE_SCREEN);
     set_bg_pos(BASE_SCREEN, 0, 0);
-    print_main_menu(1, target, region, master, game_data, game_data_priv);
+    print_main_menu(1, scanval, scanval_start, enabled_scan_edit);
     disable_all_screens_but_current();
     reset_sprites_to_cursor(1);
     disable_all_cursors();
@@ -683,7 +712,7 @@ void cheats_menu_init(u8* cursor_y_pos) {
 
 void conclude_trade(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
     stop_transfer(master);
-    main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
+    //main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
 }
 
 void return_to_trade_menu(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos, u8* cursor_x_pos) {
@@ -755,8 +784,7 @@ void complete_save_menu(struct game_data_t* game_data, struct game_data_priv_t* 
 }
 
 void complete_cartridge_loading(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8* cursor_y_pos) {
-    init_game_data(game_data);
-    main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
+    //main_menu_init(game_data, game_data_priv, target, region, master, cursor_y_pos);
 }
 
 int main(void)
@@ -767,6 +795,7 @@ int main(void)
     #endif
     curr_state = MAIN_MENU;
     counter = 0;
+    passed_once = 0;
     input_counter = 0;
     find_optimal_ewram_settings();
     set_default_settings();
@@ -774,10 +803,6 @@ int main(void)
     init_enc_positions();
     init_rng(0,0);
     init_save_data();
-    u32 keys;
-    struct game_data_t game_data[2];
-    struct game_data_priv_t game_data_priv;
-    struct saved_time_t time_change;
     
     init_sprites();
     init_oam_palette();
@@ -794,48 +819,36 @@ int main(void)
     #endif
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
+    set_vcount_interrupt();
+    irqSet(IRQ_VCOUNT, vcount_interrupt);
+    irqEnable(IRQ_VCOUNT);
+    REG_DISPSTAT |= SCANLINE_IRQ_BIT;
     
     init_item_icon();
     init_cursor();
-    
-    int result = 0;
-    u8 evolved = 0;
-    u8 learnable_moves = 0;
-    u8 returned_val;
-    u8 move_go_on = 0;
+
     u8 update = 0;
-    u8 target = 1;
-    u8 region = 0;
-    u8 master = 0;
-    u8 curr_gen = 0;
-    u16 num_evolutions = 0;
-    u8 own_menu = 0;
     u8 cursor_y_pos = 0;
-    u8 cursor_x_pos = 0;
-    u8 submenu_cursor_y_pos = 0;
-    u8 submenu_cursor_x_pos = 0;
-    u8 prev_val = 0;
-    u8 curr_mon = 0;
-    u32 curr_move = 0;
-    u8 success = 0;
-    u8 other_mon = 0;
-    u8 failed_entered_menu = 0;
-    u8 curr_page = 0;
-    const u8* party_selected_mons[2] = {&curr_mon, &other_mon};
-    
-    complete_cartridge_loading(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
-    
-    //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 1, 0, 0);
+
+    main_menu_init(scanlines_value, scanlines_value_start, enabled_scanlines_editing, &cursor_y_pos);
+    for(int j = 0; j < 3; j++) {
+        for(int i = 0; i < 7; i++) {
+            load_pokemon_sprite(144 + i + (j * 100), 0, 0, 0, 0, 0, (0 + (j * 4)) * 8, (1 + (i * 4)) * 8);
+        }
+    }
+    //load_pokemon_sprite(0, 0, 0, 0, 0, 0, 0, 0);
     //worst_case_conversion_tester(&counter);
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     scanKeys();
-    keys = keysDown();
+    u32 keys = keysDown();
     
     while(1) {
         
         do {
             prepare_flush();
-            VBlankIntrWait();
+            ack_vblank = 0;
+            while(!ack_vblank)
+                Halt();
             scanKeys();
             keys = keysDown();
         } while ((!(keys & KEY_LEFT)) && (!(keys & KEY_RIGHT)) && (!(keys & KEY_A)) && (!(keys & KEY_B)) && (!(keys & KEY_UP)) && (!(keys & KEY_DOWN)));
@@ -843,11 +856,13 @@ int main(void)
         input_counter++;
         switch(curr_state) {
             case MAIN_MENU:
-                returned_val = handle_input_main_menu(&cursor_y_pos, keys, &update, &target, &region, &master);
-                print_main_menu(update, target, region, master, &game_data[0], &game_data_priv);
+                handle_input_main_menu(&cursor_y_pos, keys, &update, &scanlines_value, &scanlines_value_start, &enabled_scanlines_editing);
+                print_main_menu(update, scanlines_value, scanlines_value_start, enabled_scanlines_editing);
+                cursor_update_main_menu(cursor_y_pos);
+                set_vcount_interrupt();
                 break;
             default:
-                main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                main_menu_init(scanlines_value, scanlines_value_start, enabled_scanlines_editing, &cursor_y_pos);
                 break;
         }
         update = 0;

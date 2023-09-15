@@ -44,7 +44,7 @@ u8 handle_input_learnable_moves_menu(u16, u8*);
 u8 handle_input_info_menu(struct game_data_t*, u8*, u8, u16, u8*, u8, u8*);
 u8 handle_input_offer_info_menu(struct game_data_t*, u8*, const u8**, u16, u8*);
 u8 handle_input_trading_menu(u8*, u8*, u16, u8, u8);
-u8 handle_input_main_menu(u8*, u16, u8*, u8*, u8*, u8*);
+u8 handle_input_main_menu(u8*, u16, u8*, u32*, u32*, u8*);
 u8 handle_input_trade_options(u16, u8*);
 u8 handle_input_nature_menu(u16);
 u8 handle_input_iv_fix_menu(u16);

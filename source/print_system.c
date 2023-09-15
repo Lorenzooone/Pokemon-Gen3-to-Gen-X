@@ -266,8 +266,12 @@ IWRAM_CODE void prepare_flush() {
 
 void wait_for_vblank_if_needed() {
     // Avoid writing where you shouldn't
-    if(screens_flush)
-        VBlankIntrWait();
+    if(screens_flush) {
+        extern u8 ack_vblank;
+        ack_vblank = 0;
+        while(!ack_vblank)
+            Halt();
+    }
 }
 
 IWRAM_CODE void swap_screen_enabled_state(u8 bg_num){

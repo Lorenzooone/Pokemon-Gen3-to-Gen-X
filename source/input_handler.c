@@ -222,157 +222,112 @@ u8 handle_input_trading_menu(u8* cursor_y_pos, u8* cursor_x_pos, u16 keys, u8 UN
     return 0;
 }
 
-u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u8* target, u8* region, u8* master) {
+u8 handle_input_main_menu(u8* cursor_y_pos, u16 keys, u8* update, u32* scanlines_value, u32* scanlines_start_value, u8* enabled_scanlines_editing) {
+    u32 value = *scanlines_value;
 
-    u8* options = get_options_main();
-    
-    u8 curr_gen = *target;
-    if(curr_gen >= TOTAL_GENS)
-        curr_gen = 2;
-    
-    curr_gen = options[curr_gen];
-    
     switch(*cursor_y_pos) {
         case 0:
-            if((keys & KEY_RIGHT) && (get_number_of_higher_ordered_options(options, curr_gen, MAIN_OPTIONS_NUM) > 0)) {
-                (*target) += 1;
-                (*update) = 1;
-            }
-            else if((keys & KEY_LEFT) && (get_number_of_lower_ordered_options(options, curr_gen, MAIN_OPTIONS_NUM) > 0)) {
-                (*target) -= 1;
-                (*update) = 1;
-            }
-            else if((keys & KEY_A) && (get_number_of_higher_ordered_options(options, curr_gen, MAIN_OPTIONS_NUM) > 0)) {
-                (*target) += 1;
-                (*update) = 1;
-            }
-            else if((keys & KEY_A) && (get_number_of_lower_ordered_options(options, curr_gen, MAIN_OPTIONS_NUM) > 0)) {
-                (*target) -= 1;
-                (*update) = 1;
-            }
-            else if(keys & KEY_DOWN) {
-                if(curr_gen == 3)
-                    (*cursor_y_pos) += 2;
-                else
-                    (*cursor_y_pos) += 1;
-            }
-            else if(keys & KEY_UP) {
-                (*cursor_y_pos) = BOTTOM_Y_CURSOR_MAIN_MENU_VALUE;
+            if(keys & KEY_UP)
+                *cursor_y_pos = 4;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                *enabled_scanlines_editing = !(*enabled_scanlines_editing);
+                *update = 1;
             }
             break;
         case 1:
-            if(curr_gen == 3)
-                (*cursor_y_pos) += 1;
-            else if((keys & KEY_RIGHT) && (!(*region))) {
-                (*region) = 1;
-                (*update) = 1;
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                value += 1;
+                if(value >= SCANLINES)
+                    value = 0;
+                *scanlines_value = value;
+                *update = 1;
             }
-            else if((keys & KEY_LEFT) && ((*region))) {
-                (*region) = 0;
-                (*update) = 1;
-            }
-            else if((keys & KEY_A) && (!(*region))) {
-                (*region) = 1;
-                (*update) = 1;
-            }
-            else if((keys & KEY_A) && ((*region))) {
-                (*region) = 0;
-                (*update) = 1;
-            }
-            else if(keys & KEY_DOWN) {
-                (*cursor_y_pos) += 1;
-            }
-            else if(keys & KEY_UP) {
-                (*cursor_y_pos) -= 1;
+            else if(keys & KEY_LEFT) {
+                if(value == 0)
+                    value = SCANLINES;
+                value -= 1;
+                *scanlines_value = value;
+                *update = 1;
             }
             break;
         case 2:
-            if((keys & KEY_RIGHT) && (!(*master))) {
-                (*master) = 1;
-                (*update) = 1;
-            }
-            else if((keys & KEY_LEFT) && ((*master))) {
-                (*master) = 0;
-                (*update) = 1;
-            }
-            else if((keys & KEY_A) && (!(*master))) {
-                (*master) = 1;
-                (*update) = 1;
-            }
-            else if((keys & KEY_A) && ((*master))) {
-                (*master) = 0;
-                (*update) = 1;
-            }
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
-                (*cursor_y_pos) += 1;
-            else if(keys & KEY_UP) {
-                if(curr_gen == 3)
-                    (*cursor_y_pos) -= 2;
-                else
-                    (*cursor_y_pos) -= 1;
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                for(int i = 0; i < 10; i++) {
+                    value += 1;
+                    if(value >= SCANLINES)
+                        value = 0;
+                }
+                *scanlines_value = value;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                for(int i = 0; i < 10; i++) {
+                    if(value == 0)
+                        value = SCANLINES;
+                    value -= 1;
+                }
+                *scanlines_value = value;
+                *update = 1;
             }
             break;
         case 3:
-            if((keys & KEY_A) && get_valid_options_main())
-                return curr_gen;
+            value = *scanlines_start_value;
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
-                (*cursor_y_pos) += 1;
-            else if(keys & KEY_UP)
-                (*cursor_y_pos) -= 1;
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                value += 1;
+                if(value >= SCANLINES)
+                    value = 0;
+                *scanlines_start_value = value;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                if(value == 0)
+                    value = SCANLINES;
+                value -= 1;
+                *scanlines_start_value = value;
+                *update = 1;
+            }
             break;
         case 4:
-            if(keys & KEY_A)
-                return START_MULTIBOOT;
-            else if((keys & KEY_DOWN) && (PRINT_INFO_ALWAYS || (!get_is_cartridge_loaded())) && ENABLED_PRINT_INFO)
-                (*cursor_y_pos) = (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 3);
+            value = *scanlines_start_value;
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
-                (*cursor_y_pos) = (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 2);
-            else if((keys & KEY_UP) && get_valid_options_main())
-                (*cursor_y_pos) -= 1;
-            else if(keys & KEY_UP)
-                (*cursor_y_pos) = BOTTOM_Y_CURSOR_MAIN_MENU_VALUE;
-            break;
-        case (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 3):
-            if(keys & KEY_A)
-                return START_PRINT_READ_INFO;
-            else if(keys & KEY_DOWN)
-                (*cursor_y_pos) += 1;
-            else if(keys & KEY_UP)
-                (*cursor_y_pos) = 4;
-            break;
-        case (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 2):
-            if(keys & KEY_A)
-                return START_SWAP_CARTRIDGE;
-            else if((keys & KEY_DOWN) && get_valid_options_main())
-                (*cursor_y_pos) += 1;
-            else if(keys & KEY_DOWN)
-                (*cursor_y_pos) = BOTTOM_Y_CURSOR_MAIN_MENU_VALUE;
-            else if((keys & KEY_UP) && (PRINT_INFO_ALWAYS || (!get_is_cartridge_loaded())) && ENABLED_PRINT_INFO)
-                (*cursor_y_pos) -= 1;
-            else if(keys & KEY_UP)
-                (*cursor_y_pos) = 4;
-            break;
-        case (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 1):
-            if(keys & KEY_A)
-                return VIEW_OWN_PARTY + curr_gen;
-            else if(keys & KEY_DOWN)
-                (*cursor_y_pos) += 1;
-            else if(keys & KEY_UP)
-                (*cursor_y_pos) -= 1;
-            break;
-        case BOTTOM_Y_CURSOR_MAIN_MENU_VALUE:
-            if(keys & KEY_A)
-                return START_SETTINGS_MENU;
-            else if((keys & KEY_DOWN) && get_valid_options_main())
-                (*cursor_y_pos) = 0;
-            else if(keys & KEY_DOWN)
-                (*cursor_y_pos) = 4;
-            else if((keys & KEY_UP) && get_valid_options_main())
-                (*cursor_y_pos) -= 1;
-            else if(keys & KEY_UP)
-                (*cursor_y_pos) = (BOTTOM_Y_CURSOR_MAIN_MENU_VALUE - 2);
+                *cursor_y_pos = 0;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
+                for(int i = 0; i < 10; i++) {
+                    value += 1;
+                    if(value >= SCANLINES)
+                        value = 0;
+                }
+                *scanlines_start_value = value;
+                *update = 1;
+            }
+            else if(keys & KEY_LEFT) {
+                for(int i = 0; i < 10; i++) {
+                    if(value == 0)
+                        value = SCANLINES;
+                    value -= 1;
+                }
+                *scanlines_start_value = value;
+                *update = 1;
+            }
             break;
         default:
+            *cursor_y_pos = 0;
             break;
     }
     return 0;

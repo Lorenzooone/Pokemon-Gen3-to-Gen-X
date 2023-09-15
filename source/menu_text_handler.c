@@ -1185,92 +1185,26 @@ void print_load_warnings(struct game_data_t* game_data, struct game_data_priv_t*
     PRINT_FUNCTION("Press any button to continue!");
 }
 
-void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master, struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
+void print_main_menu(u8 update, u32 scanlines_value, u32 scanlines_start_value, u8 enabled_scanlines_editing) {
     if(!update)
         return;
-    
-    u8* options = get_options_main();
 
     default_reset_screen();
     
-    if(!get_valid_options_main()) {
-        set_text_y(1);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        if(game_data_priv->game_is_suspended)
-            PRINT_FUNCTION("Error: Found Suspend data!");
-        else if(!get_is_cartridge_loaded())
-            PRINT_FUNCTION("Error reading the data!");
-        else if(can_trade(game_data_priv, game_data->game_identifier.game_main_version) == TRADE_IMPOSSIBLE)
-            PRINT_FUNCTION("Pok\xE9""dex not obtained!");
-        else
-            PRINT_FUNCTION("No valid Pok\xE9mon found!");
-        set_text_y(9);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Send Multiboot");
-        #if ENABLED_PRINT_INFO
-        set_text_y(Y_LIMIT-7);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Currently Read Info");
-        #endif
-        set_text_y(Y_LIMIT-5);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Load Cartridge");
-        set_text_y(Y_LIMIT-1);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Settings");
-    }
-    else {
-        if(curr_gen >= TOTAL_GENS)
-            curr_gen = 2;
-        set_text_y(1);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        curr_gen = options[curr_gen];
-        PRINT_FUNCTION("Target: ");
-        if(get_number_of_higher_ordered_options(options, curr_gen, TOTAL_GENS) > 0 && get_number_of_lower_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            PRINT_FUNCTION("<\x01>", target_strings[curr_gen-1]);
-        else if(get_number_of_higher_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            PRINT_FUNCTION(" \x01>", target_strings[curr_gen-1]);
-        else if(get_number_of_lower_ordered_options(options, curr_gen, TOTAL_GENS) > 0)
-            PRINT_FUNCTION("<\x01", target_strings[curr_gen-1]);
-        else
-            PRINT_FUNCTION(" \x01", target_strings[curr_gen-1]);
-        set_text_y(3);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        if(curr_gen < 3) {
-            PRINT_FUNCTION("Target Region: ");
-            if(!is_jp)
-                PRINT_FUNCTION(" \x01>", region_strings[0]);
-            else
-            PRINT_FUNCTION("<\x01", region_strings[1]);
-        }
-        set_text_y(5);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Act as: ");
-        if(!is_master)
-            PRINT_FUNCTION(" \x01>", actor_strings[1]);
-        else
-            PRINT_FUNCTION("<\x01", actor_strings[0]);
-        set_text_y(7);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Start Trade");
-        set_text_y(9);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Send Multiboot");
-        #if (ENABLED_PRINT_INFO && PRINT_INFO_ALWAYS)
-        set_text_y(Y_LIMIT-7);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Currently Read Info");
-        #endif
-        set_text_y(Y_LIMIT-5);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Swap Cartridge");
-        set_text_y(Y_LIMIT-3);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("View Party \x01", target_strings[curr_gen-1]);
-        set_text_y(Y_LIMIT-1);
-        set_text_x(MAIN_MENU_DISTANCE_FROM_BORDER);
-        PRINT_FUNCTION("Settings");
-    }
+    set_text_y(VBLANK_SCANLINES / 16);
+    PRINT_FUNCTION("\n  Scanline edit: ");
+    if(enabled_scanlines_editing)
+        PRINT_FUNCTION("<Enabled>\n\n");
+    else
+        PRINT_FUNCTION("<Disabled>\n\n");
+    PRINT_FUNCTION("  New scanline: ");
+    PRINT_FUNCTION("<\x0B> +/- 1\n\n", scanlines_value, 3);
+    PRINT_FUNCTION("  New scanline: ");
+    PRINT_FUNCTION("<\x0B> +/- 10\n\n", scanlines_value, 3);
+    PRINT_FUNCTION("  Base scanline: ");
+    PRINT_FUNCTION("<\x0B> +/- 1\n\n", scanlines_start_value, 3);
+    PRINT_FUNCTION("  Base scanline: ");
+    PRINT_FUNCTION("<\x0B> +/- 10\n\n", scanlines_start_value, 3);
 }
 
 void print_multiboot_mid_process(u8 initial_handshake) {
