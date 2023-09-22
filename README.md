@@ -90,7 +90,7 @@ The easiest is to build with docker, since you don't have to install a bunch of 
 ```bash
 docker build . -t pokemon_gen3_to_genx
 # Build GBA rom
-docker run --rm -it -v .:/pokemon_gen3_to_genx pokemon_gen3_to_genx
+docker run --rm -it -v `pwd`:/pokemon_gen3_to_genx pokemon_gen3_to_genx
 # Build NDS rom
-docker run --rm -it -v .:/pokemon_gen3_to_genx pokemon_gen3_to_genx make --file Makefile.arm9
+docker run --rm -it -v `pwd`:/pokemon_gen3_to_genx pokemon_gen3_to_genx make --file Makefile.arm9
 ```
