@@ -12,6 +12,7 @@ RUN apt-get install -y cmake gcc-arm-none-eabi
 
 RUN git clone https://github.com/felixjones/agbabi && \
     cd agbabi && \
+    git checkout v2.1.4 && \
     cmake -S . -DCMAKE_TOOLCHAIN_FILE=cross/agb.cmake -B build && \
     cmake --build build && \
     cmake --install build
@@ -37,8 +38,7 @@ RUN cd etc && \
 
 RUN git clone --recurse-submodules https://github.com/blocksds/sdk.git && \
     cd sdk && \
-    ls /opt/wonderful/bin && \
-    arm-none-eabi-ld --help && \
+    git checkout v0.8.1 && \
     BLOCKSDS=$PWD make -j`nproc` && \
     mkdir /opt/blocksds/ && sudo chown $USER:$USER /opt/blocksds && \
     mkdir /opt/blocksds/external && \
