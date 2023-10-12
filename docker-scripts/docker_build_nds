@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cp -R /home/builder/pokemon_gen3_to_genx/. .
+
+make -f Makefile.arm9 clean
+make -f Makefile.arm9 2>&1 >/dev/null | grep ^$(pwd);
+
+mkdir -p /home/builder/pokemon_gen3_to_genx/out
+cp Pokemon_Gen3_to_GenX.nds /home/builder/pokemon_gen3_to_genx/out/pokemon_gen3_to_genx.nds
+
+
