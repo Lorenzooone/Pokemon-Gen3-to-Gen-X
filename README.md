@@ -83,3 +83,8 @@ Everything else, and the programming code, is governed by the MIT license.
 
 ## Example
 [This is a Video showing how to use the homebrew](https://youtu.be/3-EKe_lQREY).
+
+## Building
+Docker allows easily building without having to install the dependencies.
+- To build for the GBA, while in the root of the project, run: `docker run --rm -it -v ${PWD}:/home/builder/pokemon_gen3_to_genx lorenzooone/pokemon_gen3_to_genx:gba_builder`
+- To build for the NDS, while in the root of the project, run: `docker run --rm -it -v ${PWD}:/home/builder/pokemon_gen3_to_genx lorenzooone/pokemon_gen3_to_genx:nds_builder`

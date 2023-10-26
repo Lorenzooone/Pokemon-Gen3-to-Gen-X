@@ -28,9 +28,9 @@ SDIMAGE		:= image.bin
 
 SOURCEDIRS	:= source
 INCLUDEDIRS	:= include
-GFXDIRS		:= graphics
+GFXDIRS		:= 
 BINDIRS		:= data
-AUDIODIRS	:= audio
+AUDIODIRS	:= 
 NITROFATDIR	:=
 
 # Defines passed to all files
