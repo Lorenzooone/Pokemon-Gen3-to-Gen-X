@@ -7,6 +7,24 @@
 #include "useful_qualifiers.h"
 #include "config_settings.h"
 
+u8 handle_input_multiboot_settings(u16 keys, u8* is_normal, u8* update) {
+    if(keys & KEY_A)
+        return CONFIRM_MULTIBOOT;
+    if(keys & KEY_B)
+        return CANCEL_MULTIBOOT;
+
+    if(*is_normal && (keys & KEY_RIGHT)) {
+        *is_normal = 0;
+        *update = 1;
+    }
+    else if((!(*is_normal)) && (keys & KEY_LEFT)) {
+        *is_normal = 1;
+        *update = 1;
+    }
+
+    return 0;
+}
+
 u8 handle_input_multiboot_menu(u16 keys) {
     if(keys & KEY_A)
         return 1;

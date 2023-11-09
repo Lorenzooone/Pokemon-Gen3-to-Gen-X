@@ -21,6 +21,7 @@ void print_set_nature(u8, struct gen3_mon_data_unenc*);
 void print_iv_fix(struct gen3_mon_data_unenc*);
 void print_pokemon_pages(u8, u8, struct gen3_mon_data_unenc*, u8);
 void print_main_menu(u8, u8, u8, u8, struct game_data_t*, struct game_data_priv_t*);
+void print_multiboot_settings(u8, u8);
 void print_multiboot_mid_process(u8);
 void print_multiboot(enum MULTIBOOT_RESULTS);
 void print_start_trade(void);

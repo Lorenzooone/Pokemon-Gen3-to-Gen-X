@@ -1273,6 +1273,20 @@ void print_main_menu(u8 update, u8 curr_gen, u8 is_jp, u8 is_master, struct game
     }
 }
 
+void print_multiboot_settings(u8 is_normal, u8 update) {
+    if(!update)
+        return;
+
+    default_reset_screen();
+    PRINT_FUNCTION("\nCable type: ");
+    if(is_normal)
+        PRINT_FUNCTION(" GBC> (Fast)");
+    else
+        PRINT_FUNCTION("<GBA  (Slow)");
+    set_text_y(Y_LIMIT-1);
+    PRINT_FUNCTION("A: Start - B: Go Back");
+}
+
 void print_multiboot_mid_process(u8 initial_handshake) {
     default_reset_screen();
     PRINT_FUNCTION("\nInitiating handshake!\n");

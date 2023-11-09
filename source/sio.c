@@ -7,12 +7,11 @@
 void sio_normal_inner_slave(void);
 u8 sio_normal_inner_master(void);
 void sio_write(u32);
+void timed_wait_master(int);
 
 #ifdef HAS_SIO
-IWRAM_CODE int timed_sio_normal_master(int data, int is_32, int vCountWait) {
+IWRAM_CODE void timed_wait_master(int vCountWait) {
     u8 curr_vcount, target_vcount;
-
-    sio_write(data);
 
     // - Wait at least 36 us between sends (this is a bit more, but it works)
     curr_vcount = REG_VCOUNT;
@@ -25,9 +24,28 @@ IWRAM_CODE int timed_sio_normal_master(int data, int is_32, int vCountWait) {
     REG_SIOCNT |= SIO_START;
     // - Wait for IRQ (or for Start bit to become zero).
     while (REG_SIOCNT & SIO_START);
+}
+
+IWRAM_CODE int timed_sio_normal_master(int data, int is_32, int vCountWait) {
+    sio_write(data);
+    
+    timed_wait_master(vCountWait);
 
     // - Process received data.
     return sio_read(is_32);
+}
+
+IWRAM_CODE void timed_sio_multi_master(int data, int vCountWait, u16* out_buff) {
+    if(REG_SIOCNT & SIO_RDY)
+        return;
+
+    REG_SIOMLT_SEND = (data & 0xFFFF);
+    
+    timed_wait_master(vCountWait);
+
+    // - Process received data.
+    for(int i = 0; i < MAX_NUM_SLAVES; i++)
+        out_buff[i] = *((&REG_SIOMULTI1) + i);
 }
 
 IWRAM_CODE void sio_normal_inner_slave() {
@@ -151,6 +169,18 @@ IWRAM_CODE void init_sio_normal(int is_master, int is_32) {
         sio_cnt_val |= SIO_SO_HIGH;
 
     REG_RCNT = R_NORMAL;
+    REG_SIOCNT = sio_cnt_val;
+}
+
+IWRAM_CODE void init_sio_multi(int is_master) {
+    u16 sio_cnt_val = SIO_MULTI | SIO_57600;
+    
+    if(is_master)
+        sio_cnt_val |= SIO_CLK_INT;
+    else
+        sio_cnt_val |= SIO_SO_HIGH;
+
+    REG_RCNT = R_MULTI;
     REG_SIOCNT = sio_cnt_val;
 }
 
