@@ -11,6 +11,7 @@
 #include "communicator.h"
 #include "window_handler.h"
 #include "config_settings.h"
+#include "agbabi.h"
 #include <stddef.h>
 
 #define NUM_LINES 10
@@ -558,6 +559,51 @@ void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* 
     PRINT_FUNCTION("the time of a Working Battery.");
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("B: Exit Without Saving");
+}
+
+void print_clock(void) {
+    default_reset_screen();
+
+    #if ACTIVE_RTC_FUNCTIONS
+    REG_IME = 0;
+	*(vu16*)0x9FE0000 = 0xD200;
+	*(vu16*)0x8000000 = 0x1500;
+	*(vu16*)0x8020000 = 0xD200;
+	*(vu16*)0x8040000 = 0x1500;
+	*(vu16*)0x9880000 = 0x8002; //Kernel mode - Kills ROM, so be careful where this is
+	*(vu16*)0x9FC0000 = 0x1500;
+    *(vu16*)0x9FE0000 = 0xD200;
+    *(vu16*)0x8000000 = 0x1500;
+    *(vu16*)0x8020000 = 0xD200;
+    *(vu16*)0x8040000 = 0x1500;
+    *(vu16*)0x96A0000 = 0x0001; // Enable clock
+    *(vu16*)0x9FC0000 = 0x1500;
+    if(!__agbabi_rtc_init()) {
+        __agbabi_rtc_setdatetime((volatile __agbabi_datetime_t) {
+                0x100978,
+                0x563412
+        }); /* Set date & time to 2078-09-10, 12:34:56 */
+        //__agbabi_rtc_settime((volatile unsigned int)0x563412); /* Set time to 12:34:56 */
+        __agbabi_datetime_t datetime = __agbabi_rtc_datetime();
+        REG_IME = 1;
+        u16 year = bcd_decode(datetime[0], 1);
+        u8 month = bcd_decode(datetime[0] >> 8, 1);
+        u8 day = bcd_decode(datetime[0] >> 16, 1);
+        u8 wday = bcd_decode(datetime[0] >> 24, 1);
+        u8 hour = bcd_decode(datetime[1], 1);
+        u8 minute = bcd_decode(datetime[1] >> 8, 1);
+        u8 second = bcd_decode(datetime[1] >> 16, 1);
+        PRINT_FUNCTION("Year: \x0B\n", year, 2);
+        PRINT_FUNCTION("Month: \x0B\n", month, 2);
+        PRINT_FUNCTION("Day: \x0B\n", day, 2);
+        PRINT_FUNCTION("Hour: \x0B\n", hour, 2);
+        PRINT_FUNCTION("Minute: \x0B\n", minute, 2);
+        PRINT_FUNCTION("Second: \x0B\n", second, 2);
+        PRINT_FUNCTION("WDay: \x0B\n", wday, 2);
+    }
+    else
+        REG_IME = 1;
+    #endif
 }
 
 void print_cheats_menu(u8 update) {
