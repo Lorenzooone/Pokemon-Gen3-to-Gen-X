@@ -1,4 +1,5 @@
 #include "base_include.h"
+#include <agbabi.h>
 #include "multiboot_handler.h"
 #include "graphics_handler.h"
 #include "party_handler.h"
@@ -55,6 +56,7 @@ u8 init_cursor_y_pos_main_menu(void);
 void cursor_update_learnable_move_message_menu(u8);
 void cursor_update_learnable_move_menu(u8);
 void cursor_update_trading_menu(u8, u8);
+void cursor_update_new_clock_menu(u8);
 void cursor_update_main_menu(u8);
 void cursor_update_cheats_menu(u8);
 void cursor_update_trade_options(u8);
@@ -213,6 +215,10 @@ void cursor_update_trading_menu(u8 cursor_y_pos, u8 cursor_x_pos) {
         update_cursor_base_x(CURSOR_X_POS_CANCEL);
         update_cursor_y(CURSOR_Y_POS_CANCEL);
     }
+}
+
+void cursor_update_new_clock_menu(u8 cursor_y_pos) {
+    update_cursor_y(0 + (8 * cursor_y_pos));
 }
 
 void cursor_update_main_menu(u8 cursor_y_pos) {
@@ -788,9 +794,6 @@ int main(void)
     init_rng(0,0);
     init_save_data();
     u32 keys;
-    struct game_data_t game_data[2];
-    struct game_data_priv_t game_data_priv;
-    struct saved_time_t time_change;
     
     init_sprites();
     init_oam_palette();
@@ -811,44 +814,41 @@ int main(void)
     init_item_icon();
     init_cursor();
     
-    int result = 0;
-    u8 evolved = 0;
-    u8 learnable_moves = 0;
     u8 returned_val;
-    u8 move_go_on = 0;
     u8 update = 0;
-    u8 is_normal = 1;
-    u8 target = 1;
-    u8 region = 0;
-    u8 master = 0;
-    u8 curr_gen = 0;
-    u16 num_evolutions = 0;
-    u8 own_menu = 0;
     u8 cursor_y_pos = 0;
-    u8 cursor_x_pos = 0;
-    u8 submenu_cursor_y_pos = 0;
-    u8 submenu_cursor_x_pos = 0;
-    u8 prev_val = 0;
-    u8 curr_mon = 0;
-    u32 curr_move = 0;
-    u8 success = 0;
-    u8 other_mon = 0;
-    u8 failed_entered_menu = 0;
-    u8 curr_page = 0;
-    const u8* party_selected_mons[2] = {&curr_mon, &other_mon};
+    u32 date = 0x00010100;
+    u32 time = 0;
     
-    complete_cartridge_loading(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+    //complete_cartridge_loading(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
     
     //load_pokemon_sprite_raw(&game_data[1].party_3_undec[0], 1, 0, 0);
     //worst_case_conversion_tester(&counter);
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     scanKeys();
     keys = keysDown();
-    
+    update = 1;
+    enable_screen(0);
+    enable_screen(1);
+    update_cursor_base_x(BASE_X_CURSOR_MAIN_MENU);
+
     while(!(keys & KEY_B)) {
         prepare_flush();
         VBlankIntrWait();
+        if(keys) {
+            returned_val = handle_input_new_clock_menu(keys, &date, &time, &cursor_y_pos);
+            if(returned_val == SET_NEW_CLOCK)
+                __agbabi_rtc_setdatetime((volatile __agbabi_datetime_t) {
+                        bcd_encode_bytes(date, 4),
+                        bcd_encode_bytes(time, 3)
+                }); // Set date & time
+            else if(returned_val)
+                update = 1;
+        }
         print_clock();
+        print_new_clock(date, time, update);
+        cursor_update_new_clock_menu(cursor_y_pos);
+        update = 0;
         scanKeys();
         keys = keysDown();
     }

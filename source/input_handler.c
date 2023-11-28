@@ -7,6 +7,11 @@
 #include "useful_qualifiers.h"
 #include "config_settings.h"
 
+u32 sanitize_byte(u32, u8, u8, u8);
+u32 update_byte(u32, u8, u8);
+u32 sanitize_date(u32);
+u32 sanitize_time(u32);
+
 u8 handle_input_multiboot_settings(u16 keys, u8* is_normal, u8* update) {
     if(keys & KEY_A)
         return CONFIRM_MULTIBOOT;
@@ -897,6 +902,97 @@ u8 handle_input_clock_warning_menu(u16 keys, u8* cursor_x_pos) {
         *cursor_x_pos = 1;
     else if((keys & KEY_LEFT) || (keys & KEY_RIGHT))
         *cursor_x_pos ^= 1;
+
+    return 0;
+}
+
+u32 sanitize_byte(u32 data, u8 num_byte, u8 upper, u8 lower) {
+    u32 mask = ~(0xFF << (8 * num_byte));
+    if(((data & (~mask)) >> (8 * num_byte)) == ((lower - 1) & 0xFF))
+        return (data & mask) | (upper << (8 * num_byte));
+    if((((data & (~mask)) >> (8 * num_byte)) >= ((upper + 1) & 0xFF)) || (((data & (~mask)) >> (8 * num_byte)) < lower))
+        return (data & mask) | (lower << (8 * num_byte));
+    return data;
+}
+
+u32 update_byte(u32 data, u8 num_byte, u8 is_positive) {
+    u32 mask = ~(0xFF << (8 * num_byte));
+    if(is_positive)
+        return (data & mask) | (((data & (~mask)) + (1 << (8 * num_byte))) & (~mask));
+    return (data & mask) | (((data & (~mask)) - (1 << (8 * num_byte))) & (~mask));
+}
+
+u32 sanitize_date(u32 date) {
+    date = sanitize_byte(date, 0, 99, 0);
+    date = sanitize_byte(date, 1, 12, 1);
+    date = sanitize_byte(date, 2, get_max_days_in_month(date & 0xFF, (date >> 8) & 0xFF), 1);
+    date = sanitize_byte(date, 3, 6, 0);
+    return date;
+}
+
+u32 sanitize_time(u32 time) {
+    time = sanitize_byte(time, 0, 23, 0);
+    time = sanitize_byte(time, 1, 59, 0);
+    time = sanitize_byte(time, 2, 59, 0);
+    return time;
+}
+
+u8 handle_input_new_clock_menu(u16 keys, u32* date, u32* time, u8* cursor_y_pos) {
+    if(keys & KEY_B)
+        return 0;
+
+    if((keys & KEY_UP) || (keys & KEY_DOWN)) {
+        if(((*cursor_y_pos) == 0) && (keys & KEY_UP))
+            *cursor_y_pos = 7;
+        else if(keys & KEY_UP)
+            *cursor_y_pos -= 1;
+        else if(keys & KEY_DOWN)
+            *cursor_y_pos += 1;
+        if((*cursor_y_pos) == 8)
+            *cursor_y_pos = 0;
+        return 0;
+     }
+
+    if(((*cursor_y_pos) == 7) && (keys & KEY_A))
+        return SET_NEW_CLOCK;
+
+    u32 new_date = *date;
+    u32 new_time = *time;
+
+    switch(*cursor_y_pos) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+            if((keys & KEY_A) || (keys & KEY_RIGHT))
+                new_date = update_byte(new_date, *cursor_y_pos, 1);
+            else if(keys & KEY_LEFT)
+                new_date = update_byte(new_date, *cursor_y_pos, 0);
+            break;
+        case 4:
+        case 5:
+        case 6:
+            if((keys & KEY_A) || (keys & KEY_RIGHT))
+                new_time = update_byte(new_time, (*cursor_y_pos) - 4, 1);
+            else if(keys & KEY_LEFT)
+                new_time = update_byte(new_time, (*cursor_y_pos) - 4, 0);
+            break;
+        default:
+            break;
+    }
+    
+    new_date = sanitize_date(new_date);
+    new_time = sanitize_time(new_time);
+    
+    if(new_date != (*date)) {
+        *date = new_date;
+        return 1;
+    }
+    
+    if(new_time != (*time)) {
+        *time = new_time;
+        return 1;
+    }
 
     return 0;
 }

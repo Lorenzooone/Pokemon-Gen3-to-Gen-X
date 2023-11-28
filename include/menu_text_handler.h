@@ -44,5 +44,7 @@ void print_cheats_menu(u8);
 void print_clock_menu(struct clock_events_t*, struct saved_time_t*, u8);
 void print_warning_when_clock_changed(void);
 void print_load_warnings(struct game_data_t*, struct game_data_priv_t*);
+void print_clock(void);
+void print_new_clock(u32, u32, u8);
 
 #endif

@@ -25,4 +25,10 @@ void wipe_time(struct saved_time_t*);
 void get_clean_time(struct saved_time_t*, struct saved_time_t*);
 void get_increased_time(struct saved_time_t*, struct saved_time_t*, struct saved_time_t*);
 
+#if ACTIVE_RTC_FUNCTIONS
+u8 get_max_days_in_month(u16, u8);
+u32 bcd_decode(u32, u8);
+u32 bcd_encode_bytes(u32, u8);
+#endif
+
 #endif

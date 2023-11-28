@@ -69,7 +69,6 @@ void wipe_time(struct saved_time_t*);
 #if ACTIVE_RTC_FUNCTIONS
 u8 is_leap_year(u16);
 u32 get_num_days(u16, u8, u8);
-u32 bcd_decode(u32, u8);
 #endif
 #if ACTUALLY_RUN_EVENTS
 static u32 get_next_seed(u32);
@@ -216,14 +215,11 @@ void init_rtc_time() {
         if((month == ((u8)ERROR_OUT_BCD)) || (month == 0) || (month > NUM_MONTHS))
             error_out = 1;
         // There is no checking for overflows here, normally... :/
-        u8 checking_month = 0;
+        u8 checking_month = 1;
         if((month > 0) && (month <= NUM_MONTHS))
-            checking_month = month - 1;
-        u8 max_day = num_days_per_month[checking_month];
-        if((month == LEAP_YEAR_EXTRA_DAY_MONTH) && is_leap_year(year))
-            max_day++;
+            checking_month = month;
         // What if the day is 0? And if it's the max_day?! :/
-        if((day == ((u8)ERROR_OUT_BCD)) || (day > max_day))
+        if((day == ((u8)ERROR_OUT_BCD)) || (day > get_max_days_in_month(year, checking_month)))
             error_out = 1;
         // What if the hour is 0? And if it's MAX_HOURS?! :/
         if((hour == ((u8)ERROR_OUT_BCD)) || (hour > MAX_HOURS))
@@ -249,6 +245,13 @@ u8 is_leap_year(u16 year) {
     if((((year % 4) == 0) && ((year % 100) != 0)) || ((year % 400) == 0))
         return 1;
     return 0;
+}
+
+u8 get_max_days_in_month(u16 year, u8 month) {
+    u8 num_days = num_days_per_month[month - 1];
+    if(is_leap_year(year) && (month == (LEAP_YEAR_EXTRA_DAY_MONTH)))
+        num_days++;
+    return num_days;
 }
 
 u32 get_num_days(u16 year, u8 month, u8 day) {
@@ -283,6 +286,23 @@ u32 bcd_decode(u32 data, u8 num_bytes) {
         ret_val += (data & 0xF) * mult;
         data >>= 4;
         mult *= 10;
+    }
+    return ret_val;
+}
+
+u32 bcd_encode_bytes(u32 data, u8 num_bytes) {
+    u32 ret_val = 0;
+    for(int i = 0; i < num_bytes; i++) {
+        u32 value = data & 0xFF;
+        u32 out_val = 0;
+        for(int j = 0; j < 2; j++) {
+            out_val |= (value % 10) << (4 * j);
+            value /= 10;
+        }
+        if(value)
+            out_val = ERROR_OUT_BCD;
+        ret_val |= out_val << (8 * i);
+        data >>= 8;
     }
     return ret_val;
 }

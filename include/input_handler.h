@@ -36,6 +36,7 @@
 #define START_SWAP_CARTRIDGE 0xA3
 #define START_SETTINGS_MENU 0x84
 #define VIEW_OWN_PARTY 0x65
+#define SET_NEW_CLOCK 0x48
 
 #define PAGES_TOTAL 5
 #define FIRST_PAGE 1
@@ -62,5 +63,6 @@ u8 handle_input_clock_menu(u16, struct clock_events_t*, struct saved_time_t*, u8
 u8 handle_input_clock_warning_menu(u16, u8*);
 u8 handle_input_gen12_settings_menu(u16, u8*, u8*);
 u8 handle_input_print_read_info(u16);
+u8 handle_input_new_clock_menu(u16, u32*, u32*, u8*);
 
 #endif
