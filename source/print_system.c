@@ -2,7 +2,6 @@
 #include <stdarg.h>
 #include "optimized_swi.h"
 #include "print_system.h"
-#include "text_handler.h"
 #include "graphics_handler.h"
 #include "sprite_handler.h"
 #include "useful_qualifiers.h"
@@ -11,7 +10,9 @@
 
 #include "text_gen3_to_general_int_bin.h"
 #include "amiga_font_c_bin.h"
+#ifdef SUPPORT_JP_FONT
 #include "jp_font_c_bin.h"
+#endif
 #include "window_graphics_bin.h"
 
 #define VRAM_SIZE 0x10000
@@ -51,7 +52,6 @@ void new_line(void);
 u8 write_char(u16);
 void write_above_char(u16);
 int sub_printf(u8*);
-int sub_printf_gen3(u8*, size_t, u8);
 int prepare_base_10(int, u8*);
 int prepare_base_16(u32, u8*);
 int digits_print(u8*, int, u8, u8);
@@ -230,11 +230,13 @@ void init_text_system() {
         *((u32*)(FONT_POS_SUB+TILE_SIZE+(i<<2))) = 0;
     #endif
 
+    #ifdef SUPPORT_JP_FONT
     // Load japanese font
     LZ77UnCompWram(jp_font_c_bin, buffer);
     convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS_SUB, FONT_1BPP_SIZE, colors, 0);
+    #endif
     #endif
     
     // Set window tiles
@@ -431,27 +433,6 @@ int sub_printf(u8* string) {
     return 0;
 }
 
-int sub_printf_gen3(u8* string, size_t size_max, u8 is_jp) {
-    size_t curr_pos = 0;
-    while((*string) != GEN3_EOL) {
-        if(is_jp) {
-            u8 character = *(string++);
-            if((character >= GEN3_FIRST_TICKS_START && character <= GEN3_FIRST_TICKS_END) || (character >= GEN3_SECOND_TICKS_START && character <= GEN3_SECOND_TICKS_END))
-                write_above_char(GENERIC_TICKS_CHAR+FONT_TILES);
-            else if((character >= GEN3_FIRST_CIRCLE_START && character <= GEN3_FIRST_CIRCLE_END) || (character >= GEN3_SECOND_CIRCLE_START && character <= GEN3_SECOND_CIRCLE_END))
-                write_above_char(GENERIC_CIRCLE_CHAR+FONT_TILES);
-            if(write_char(character+FONT_TILES))
-                return 0;
-        }
-        else if(write_char(text_gen3_to_general_int_bin[*(string++)]))
-            return 0;
-        curr_pos++;
-        if(curr_pos == size_max)
-            return 0;
-    }
-    return 0;
-}
-
 int prepare_base_10(int number, u8* digits) {
     u16* numbers_storage = (u16*)NUMBERS_POS;
 
@@ -592,9 +573,6 @@ int fast_printf(const char * format, ... ) {
             case '\x04':
                 write_base_16(va_arg(va, u32), 0, 0);
                 break;
-            case '\x05':
-                sub_printf_gen3(va_arg(va, u8*), va_arg(va, size_t), va_arg(va, int));
-                break;
             case '\x09':
                 write_base_10(va_arg(va, int), va_arg(va, int), ' ');
                 break;
@@ -617,10 +595,6 @@ int fast_printf(const char * format, ... ) {
                 break;
             case '\x14':
                 write_base_16(va_arg(va, u32), 0, 0);
-                add_requested_spacing(curr_x_pos, curr_y_pos, va_arg(va, int));
-                break;
-            case '\x15':
-                sub_printf_gen3(va_arg(va, u8*), va_arg(va, size_t), va_arg(va, int));
                 add_requested_spacing(curr_x_pos, curr_y_pos, va_arg(va, int));
                 break;
             case '\n':

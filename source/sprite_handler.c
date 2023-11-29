@@ -6,17 +6,12 @@
 #include <stddef.h>
 
 #include "sprite_cursor_bin.h"
-#include "item_icon_bin.h"
 #include "sprite_palettes_bin.h"
-#include "item_icon_palette_bin.h"
 
 #define CPUFASTSET_FILL (0x1000000)
 
-#define ITEM_ICON_INC_X ((POKEMON_SPRITE_X_TILES-ITEM_SPRITE_X_TILES)<<3)
-#define ITEM_ICON_INC_Y ((POKEMON_SPRITE_Y_TILES-ITEM_SPRITE_Y_TILES)<<3)
-
-#define SPRITE_BASE_SIZE_MULTIPLIER NUM_POKEMON_SPRITES
-#define SPRITE_BASE_TILE_SIZE (POKEMON_SPRITE_Y_TILES*POKEMON_SPRITE_X_TILES)
+#define SPRITE_BASE_SIZE_MULTIPLIER 2
+#define SPRITE_BASE_TILE_SIZE 16
 #define SPRITE_TILE_SIZE (SPRITE_BASE_SIZE_MULTIPLIER*SPRITE_BASE_TILE_SIZE)
 #define SPRITE_ALT_DISTANCE (SPRITE_BASE_TILE_SIZE*TILE_SIZE)
 
@@ -51,16 +46,10 @@ void set_attributes(u16, u16, u16);
 u8 get_first_variable_palette(void);
 u8 get_3bpp_palette(int);
 void set_palette_3bpp(u8*, int, int);
-u16 get_item_icon_tile(void);
-u16 get_mail_icon_tile(void);
-void set_item_icon(u16, u16);
-void set_mail_icon(u16, u16);
 void raw_update_cursor_x(u16);
 
 const u16* sprite_cursor_gfx = (const u16*)sprite_cursor_bin;
-const u16* item_icon_gfx = (const u16*)item_icon_bin;
 const u16* sprite_palettes_bin_16 = (const u16*)sprite_palettes_bin;
-const u16* item_icon_palette_bin_16 = (const u16*)item_icon_palette_bin;
 
 u8 __sprite_counter;
 u8 __inner_sprite_counter;
@@ -149,7 +138,7 @@ u8 get_next_sprite_index(){
 }
 
 u8 get_first_variable_palette(){
-    return ((sprite_palettes_bin_size + item_icon_palette_bin_size)>>5);
+    return ((sprite_palettes_bin_size)>>5);
 }
 
 uintptr_t get_vram_pos(){
@@ -224,46 +213,11 @@ void set_cursor_palette() {
 void init_oam_palette(){
     for(size_t i = 0; i < (sprite_palettes_bin_size>>1); i++)
         SPRITE_PALETTE[i] = sprite_palettes_bin_16[i];
-    for(size_t i = 0; i < (item_icon_palette_bin_size>>1); i++)
-        SPRITE_PALETTE[i+(sprite_palettes_bin_size>>1)] = item_icon_palette_bin_16[i];
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     for(size_t i = 0; i < (sprite_palettes_bin_size>>1); i++)
         SPRITE_PALETTE_SUB[i] = sprite_palettes_bin_16[i];
-    for(size_t i = 0; i < (item_icon_palette_bin_size>>1); i++)
-        SPRITE_PALETTE_SUB[i+(sprite_palettes_bin_size>>1)] = item_icon_palette_bin_16[i];
     #endif
     set_cursor_palette();
-}
-
-void init_item_icon(){
-    for(int i = 0; i < SPRITE_BASE_SIZE_MULTIPLIER; i++) {
-        u16* vram_pos = (u16*)(get_vram_pos() + sprite_cursor_bin_size + (SPRITE_ALT_DISTANCE*i));
-        for(size_t j = 0; j < (item_icon_bin_size>>1); j++)
-            vram_pos[j] = item_icon_gfx[j];
-        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-        vram_pos = (u16*)(get_vram_pos_sub() + sprite_cursor_bin_size + (SPRITE_ALT_DISTANCE*i));
-        for(size_t j = 0; j < (item_icon_bin_size>>1); j++)
-            vram_pos[j] = item_icon_gfx[j];
-        #endif
-    }
-}
-
-u16 get_item_icon_tile(){
-    return (SPRITE_TILE_SIZE*cursor_sprite) + (sprite_cursor_bin_size>>5);
-}
-
-u16 get_mail_icon_tile(){
-    return get_item_icon_tile() + 1;
-}
-
-void set_item_icon(u16 y, u16 x){
-    set_attributes((y + ITEM_ICON_INC_Y) & 0xFF, (x + ITEM_ICON_INC_X) & 0xFF, get_item_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
-    inc_inner_sprite_counter();
-}
-
-void set_mail_icon(u16 y, u16 x){
-    set_attributes((y + ITEM_ICON_INC_Y) & 0xFF, (x + ITEM_ICON_INC_X) & 0xFF, get_mail_icon_tile() | (get_curr_priority()<<10) | ((sprite_palettes_bin_size>>5)<<12));
-    inc_inner_sprite_counter();
 }
 
 u8 check_for_same_address(const u8* address){
@@ -274,34 +228,6 @@ u8 check_for_same_address(const u8* address){
         if(sprite_pointers[i] == address)
             return i;
     return POSSIBLE_SPRITES;
-}
-
-void set_pokemon_sprite(const u8* address, u8 palette, u8 info, u8 display_item, u8 display_mail, u16 y, u16 x){
-    set_updated_shadow_oam();
-    if(display_mail)
-        set_mail_icon(y, x);
-    else if(display_item)
-        set_item_icon(y, x);
-    u8 is_3bpp = info&2;
-    u8 zero_fill = info&1;
-    u8 position = check_for_same_address(address);
-    if(position == POSSIBLE_SPRITES) {
-        u8 colors[8];
-        load_pokemon_sprite_gfx((const u32*)address, (u32*)get_vram_pos(), is_3bpp, zero_fill, __sprite_counter-(cursor_sprite+1), colors);
-        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-        load_pokemon_sprite_gfx((const u32*)address, (u32*)get_vram_pos_sub(), is_3bpp, zero_fill, __sprite_counter-(cursor_sprite+1), colors);
-        #endif
-        if(is_3bpp)
-            set_palette_3bpp(colors, __sprite_counter-(cursor_sprite+1), palette);
-        position = __sprite_counter;
-        __sprite_counter++;
-    }
-    if(is_3bpp)
-        palette = get_3bpp_palette(position-(cursor_sprite+1));
-    if(position < POSSIBLE_SPRITES)
-        sprite_pointers[position] = address;
-    set_attributes(y, x|ATTR1_SIZE_32, (SPRITE_TILE_SIZE*position)|(get_curr_priority()<<10)|(palette<<12));
-    inc_inner_sprite_counter();
 }
 
 void update_cursor_y(u16 cursor_y){
