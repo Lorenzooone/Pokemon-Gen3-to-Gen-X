@@ -13,6 +13,7 @@
 void vblank_update_function(void);
 void disable_all_irqs(void);
 void cursor_update_new_clock_menu(u8);
+void enable_ezo_clock(void);
 int main(void);
 
 u32 counter = 0;
@@ -41,6 +42,23 @@ void cursor_update_new_clock_menu(u8 cursor_y_pos) {
     update_cursor_y(BASE_Y_CURSOR_MAIN_MENU + (BASE_Y_CURSOR_INCREMENT_MAIN_MENU * cursor_y_pos));
 }
 
+void enable_ezo_clock(void) {
+    // Commands from https://github.com/ez-flash/omega-kernel
+    *(vu16*)0x9FE0000 = 0xD200;
+    *(vu16*)0x8000000 = 0x1500;
+    *(vu16*)0x8020000 = 0xD200;
+    *(vu16*)0x8040000 = 0x1500;
+    *(vu16*)0x9880000 = 0x8000; //Kernel mode - Kills ROM, so be careful where this is
+    *(vu16*)0x9FC0000 = 0x1500;
+
+    *(vu16*)0x9FE0000 = 0xD200;
+    *(vu16*)0x8000000 = 0x1500;
+    *(vu16*)0x8020000 = 0xD200;
+    *(vu16*)0x8040000 = 0x1500;
+    *(vu16*)0x96A0000 = 0x0001; // Enable clock
+    *(vu16*)0x9FC0000 = 0x1500;
+}
+
 int main(void)
 {
     #ifdef __GBA__
@@ -51,7 +69,7 @@ int main(void)
     set_default_settings();
     init_text_system();
     u32 keys;
-    
+
     init_sprites();
     init_oam_palette();
     init_sprite_counter();
@@ -63,14 +81,16 @@ int main(void)
     #endif
     irqSet(IRQ_VBLANK, vblank_update_function);
     irqEnable(IRQ_VBLANK);
-    
+
     init_cursor();
-    
+
     u8 returned_val;
     u8 update = 0;
     u8 cursor_y_pos = 0;
     u32 date = 0x00010100;
     u32 time = 0;
+
+    //enable_ezo_clock();
 
     set_screen(BASE_SCREEN);
     print_clock();
