@@ -89,6 +89,7 @@ int main(void)
     u8 cursor_y_pos = 0;
     u32 date = 0x00010100;
     u32 time = 0;
+    REG_WAITCNT = BASE_WAITCNT_VAL;
 
     //enable_ezo_clock();
 
