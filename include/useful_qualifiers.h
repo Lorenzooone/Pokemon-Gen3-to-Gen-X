@@ -3,6 +3,7 @@
 
 #define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
 #define ALWAYS_INLINE __attribute__((always_inline)) static inline
+#define NO_INLINE __attribute__((noinline))
 #define MAX_OPTIMIZE __attribute__((optimize(3)))
 #ifndef PACKED
 #define PACKED __attribute__((packed))

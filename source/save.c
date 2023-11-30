@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include "useful_qualifiers.h"
 #include "timing_basic.h"
+#include "delays.h"
 
 #define IS_FLASH 1
 #define SAVE_POS SRAM
@@ -14,8 +15,9 @@
 #define FLASH_TERM_CMD *((vu8*)(SAVE_POS+0x5555)) = 0xF0;
 #define FLASH_ENTER_MAN_CMD BASE_FLASH_CMD *((vu8*)(SAVE_POS+0x5555)) = 0x90;
 #define FLASH_EXIT_MAN_CMD BASE_FLASH_CMD FLASH_TERM_CMD FLASH_TERM_CMD
-#define TIMEOUT (50000*(((CLOCK_SPEED + GBA_CLOCK_SPEED - 1)/GBA_CLOCK_SPEED) + TIMEOUT_INCREASE))
-#define ERASE_TIMEOUT (TIMEOUT)
+#define ID_TIMEOUT_CYCLES CLOCK_CYCLES_PER_MS(28)
+#define TIMEOUT_CYCLES CLOCK_CYCLES_PER_MS(10)
+#define ERASE_TIMEOUT_CYCLES CLOCK_CYCLES_PER_MS(2000)
 #define ERASED_BYTE 0xFF
 #define BANK_SIZE 0x10000
 #define NUM_BANKS 2
@@ -46,12 +48,12 @@ IWRAM_CODE void init_bank() {
     is_macronix = 0;
     #if IS_FLASH
     FLASH_ENTER_MAN_CMD
-    for(vu32 j = 0; j < TIMEOUT; j++);
+    delay_cycles(ID_TIMEOUT_CYCLES);
     u8 man_id = *((vu8*)SAVE_POS);
     if((man_id == MACRONIX_MAN_ID) || (man_id == SANYO_MAN_ID) || (man_id == DEFAULT_MAN_ID))
         is_macronix = 1;
     FLASH_EXIT_MAN_CMD
-    for(vu32 j = 0; j < TIMEOUT; j++);
+    delay_cycles(ID_TIMEOUT_CYCLES);
     #endif
 }
 
@@ -85,7 +87,7 @@ IWRAM_CODE void erase_sector(uintptr_t address) {
             save_data[address+(SECTOR_SIZE-1)-j] = ERASED_BYTE;
         #endif
         
-        for(vu32 j = 0; j < ERASE_TIMEOUT; j++);
+        delay_cycles_until(ERASE_TIMEOUT_CYCLES, &save_data[address], 0xFF, SRAM_ACCESS_CYCLES);
 
         failed = 0;
         for(size_t j = 0; j < SECTOR_SIZE; j++)
@@ -109,7 +111,7 @@ IWRAM_CODE void write_direct_single_byte_save(uintptr_t address, u8 data) {
         FLASH_WRITE_CMD
         #endif
         save_data[address] = data;
-        for(vu32 j = 0; (j < TIMEOUT) && (save_data[address] != data); j++);
+        delay_cycles_until(TIMEOUT_CYCLES, &save_data[address], data, SRAM_ACCESS_CYCLES);
         if(is_macronix && (save_data[address] != data))
             FLASH_TERM_CMD
     }
