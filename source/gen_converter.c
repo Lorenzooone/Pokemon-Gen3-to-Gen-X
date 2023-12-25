@@ -552,6 +552,10 @@ void preload_if_fixable(struct gen3_mon_data_unenc* data_src) {
                     data_src->fixed_ivs.ot_id = generate_ot(data_src->src->ot_id & 0xFFFF, data_src->src->ot_name);
                     data_src->fix_has_altered_ot = 1;
                 }
+                if(data_src->misc.origins_info >> 15) {
+                    data_src->fixed_ivs.origins_info &= ~(1 << 15);
+                    data_src->fix_has_altered_ot = 1;
+                }
                 u8 wanted_nature = get_nature(data_src->src->pid);
                 u32 ot_id =  data_src->fixed_ivs.ot_id;
                 u8 is_shiny = is_shiny_gen3_raw(data_src, ot_id);
@@ -732,11 +736,12 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
             }
             else if(!is_shiny) {
                 // Prefer Colosseum/XD encounter, if possible
-                if(get_conversion_colo_xd() && is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+                if(get_conversion_colo_xd() && is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10) && ((ot_gender == 0) || (!get_prioritize_ot_gender()))) {
                     chosen_version = COLOSSEUM_CODE;
                     generate_generic_genderless_shadow_info_xd(wanted_nature, has_prev_check_tsv_in_xd(species), wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                     misc->ribbons |= COLO_RIBBON_VALUE;
                     is_ability_set = 1;
+                    ot_gender = 0;
                     data_dst->learnable_moves = (const struct learnset_data_mon_moves*)get_learnset_for_species((const u16*)learnset_static_xd_bin, species);
                 }
                 else
@@ -750,7 +755,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
         case ROAMER_ENCOUNTER:
             valid_balls = VALID_POKEBALL_NO_EGG;
             // Prefer Colosseum/XD encounter, if possible
-            if(get_conversion_colo_xd() && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+            if(get_conversion_colo_xd() && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10) && ((ot_gender == 0) || (!get_prioritize_ot_gender()))) {
                 chosen_version = COLOSSEUM_CODE;
                 if(!is_shiny)
                     generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
@@ -758,6 +763,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
                     generate_generic_genderless_shadow_shiny_info_colo(wanted_nature, tsv, &dst->pid, &ivs, &ability);
                 misc->ribbons |= COLO_RIBBON_VALUE;
                 is_ability_set = 1;
+                ot_gender = 0;
             }
             else {
                 if(!is_shiny)

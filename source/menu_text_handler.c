@@ -455,6 +455,11 @@ void print_gen12_settings_menu(u8 update) {
         PRINT_FUNCTION(" <True>\n\n");
     else
         PRINT_FUNCTION(" <False>\n\n");
+    PRINT_FUNCTION("  Preserve OT Gender:");
+    if(get_prioritize_ot_gender())
+        PRINT_FUNCTION(" <True>\n\n");
+    else
+        PRINT_FUNCTION(" <False>\n\n");
     PRINT_FUNCTION("  Gen 1 Everstone: ");
     if(get_gen1_everstone())
         PRINT_FUNCTION("<Enabled>\n\n");
@@ -464,9 +469,9 @@ void print_gen12_settings_menu(u8 update) {
     PRINT_FUNCTION("  Hatched at: ");
     PRINT_FUNCTION("<\x0B> +/- 1\n\n", get_egg_met_location(), 3);
     PRINT_FUNCTION("  Hatched at: ");
-    PRINT_FUNCTION("<\x0B> +/- 10\n\n\n", get_egg_met_location(), 3);
+    PRINT_FUNCTION("<\x0B> +/- 10\n\n", get_egg_met_location(), 3);
     PRINT_FUNCTION("Hatched at: ");
-    PRINT_FUNCTION("\x01\n\n", get_met_location_name_gen3_pure(get_egg_met_location(), get_default_conversion_game()));
+    PRINT_FUNCTION("\x01", get_met_location_name_gen3_pure(get_egg_met_location(), get_default_conversion_game()));
 
     print_bottom_info();
 }

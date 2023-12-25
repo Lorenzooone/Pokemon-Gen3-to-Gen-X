@@ -507,7 +507,7 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
     switch(*cursor_y_pos) {
         case 0:
             if(keys & KEY_UP)
-                *cursor_y_pos = 6;
+                *cursor_y_pos = 7;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
@@ -549,11 +549,21 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
-                set_gen1_everstone(!get_gen1_everstone());
+                set_prioritize_ot_gender(!get_prioritize_ot_gender());
                 *update = 1;
             }
             break;
         case 4:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_gen1_everstone(!get_gen1_everstone());
+                *update = 1;
+            }
+            break;
+        case 5:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
@@ -571,7 +581,7 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
                 *update = 1;
             }
             break;
-        case 5:
+        case 6:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
@@ -585,7 +595,7 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
                 *update = 1;
             }
             break;
-        case 6:
+        case 7:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
