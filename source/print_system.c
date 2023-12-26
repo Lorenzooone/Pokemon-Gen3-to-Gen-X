@@ -33,6 +33,7 @@
 #endif
 #define X_OFFSET_POS 0
 #define Y_OFFSET_POS 1
+#define ALLOC_TILE_BUFFER_SIZE 1024
 
 #define SCREEN_SIZE 0x800
 
@@ -75,6 +76,86 @@ u8 enabled_screen[TOTAL_BG];
 u8 updated_screen[TOTAL_BG];
 u8 buffer_screen[TOTAL_BG];
 u8 screen_positions[TOTAL_BG][2];
+
+#define UNSIGNED_MIN(a, b) ((b) ^ (((a) ^ (b)) & -((a) < (b))))
+#define UNSIGNED_MAX(a, b) ((a) ^ (((a) ^ (b)) & -((a) < (b))))
+
+u32 tile_mask_block_buffer[ALLOC_TILE_BUFFER_SIZE / 32];
+
+const u32 bit_step_lengths[4] = {16, 8, 4, 2};
+const u32 bit_step_lengths_mask[4] = {0xFFFF, 0xFF, 0xF, 0x3};
+
+IWRAM_CODE void init_allocated_tiles() {
+    for(int block_index = 0; block_index < ALLOC_TILE_BUFFER_SIZE / 32; block_index++) {
+        tile_mask_block_buffer[block_index] = 0;
+    }
+}
+
+// Get a free bg tile index that can be used for temporary tiles.
+// Don't forget to free tiles after use!
+// Used by variable width font rendering, but could be used by other things as well.
+// The maximum tiles to have allocated at the same time is ALLOC_TILE_BUFFER_SIZE.
+// Put allocated indices in tile_ids_out
+// Returns the number of allocated tiles
+IWRAM_CODE u32 allocate_tiles(u32 count, u32* tile_ids_out){
+    u32 start_count = count;
+    u32 tile_id = ALLOC_TILE_BUFFER_SIZE;
+    // Search linearly through tile alloc mask buffer
+    for(u32 block_index = 0; (block_index < (ALLOC_TILE_BUFFER_SIZE / 32)) & (count != 0); block_index++) {
+        u32 tile_mask = tile_mask_block_buffer[block_index];
+        allocate_more_in_same_block:
+        while ((tile_mask != 0xFFFFFFFF) & (count != 0)) {
+            // Once a block is found, do divide and conquer to find which tile ids bits are free
+            tile_id = block_index * 32;
+            u32 bit_step_len = 32;
+            // Halve bit_step_len 4 times down to 2-bit, to search for first free tile-bit
+            for (u32 depth_index = 0; depth_index < 4; depth_index++){
+                // Part of block is empty, do several tile allocs in a succession.
+                if(tile_mask == 0){
+                    u32 tiles_left = UNSIGNED_MIN(bit_step_len, count);
+                    tile_mask = tile_mask_block_buffer[block_index];
+                    u32 mask = 1 << (tile_id & 0x1F);
+                    while (tiles_left-- > 0) {
+                        tile_mask |= mask;
+                        tile_ids_out[--count] = tile_id++;
+                        mask <<= 1;
+                    }
+                    tile_mask_block_buffer[block_index] = tile_mask;
+                    goto allocate_more_in_same_block;
+                }
+                // Search block for free tiles
+                bit_step_len = bit_step_lengths[depth_index];
+                u32 bits_to_step_mask = bit_step_lengths_mask[depth_index];
+                u32 bits_to_step = -((tile_mask & bits_to_step_mask) == bits_to_step_mask) & bit_step_len;
+                tile_mask = (tile_mask >> bits_to_step) & bits_to_step_mask;
+                tile_id += bits_to_step;
+            }
+            // Found single (fragmented) tile to allocate in block.
+            u32 bits_to_step_mask = 0x1;
+            u32 bits_to_step = (tile_mask & bits_to_step_mask) == bits_to_step_mask;
+            tile_id += bits_to_step;
+            u32 mask = 1 << (tile_id & 0x1F);
+            tile_mask = tile_mask_block_buffer[block_index] | mask;
+            tile_mask_block_buffer[block_index] = tile_mask;
+            tile_ids_out[--count] = tile_id;
+        }
+    }
+    return start_count - count;
+}
+
+IWRAM_CODE void free_tiles(u32 count, u32* tile_ids){
+    while(count != 0) {
+        count--;
+        u32 tile_id = tile_ids[count];
+        if (tile_id > ALLOC_TILE_BUFFER_SIZE)
+            continue;
+        u32 block_index = tile_id / 32;
+        tile_id %= 32;
+        u32 mask = ((u32)1) << tile_id;
+        tile_mask_block_buffer[block_index] &= ~mask;
+        // tile_ids[count] = ALLOC_TILE_BUFFER_SIZE;
+    }
+}
 
 IWRAM_CODE void set_arrangements(u8 bg_num){
     if(bg_num >= TOTAL_BG)
