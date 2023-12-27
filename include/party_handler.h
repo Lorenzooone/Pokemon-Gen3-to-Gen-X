@@ -174,6 +174,10 @@
 #define ROAMER_ENCOUNTER 2
 #define UNOWN_ENCOUNTER 3
 
+#define SPECIAL_NAME_MARKS_VALUE 0xF
+
+//#define ALLOW_KOREAN
+
 #define NUM_LANGUAGES 8
 #define NUM_POKEMON_NAME_LANGUAGES 4
 #define FIRST_VALID_LANGUAGE 1
@@ -186,6 +190,11 @@
 #define GERMAN_LANGUAGE 5
 #define KOREAN_LANGUAGE 6
 #define SPANISH_LANGUAGE 7
+#ifdef ALLOW_KOREAN
+#define ALL_LANGUAGES ((1 << JAPANESE_LANGUAGE) | (1 << ENGLISH_LANGUAGE) | (1 << FRENCH_LANGUAGE) | (1 << ITALIAN_LANGUAGE) | (1 << GERMAN_LANGUAGE) | (1 << KOREAN_LANGUAGE) | (1 << SPANISH_LANGUAGE))
+#else
+#define ALL_LANGUAGES ((1 << JAPANESE_LANGUAGE) | (1 << ENGLISH_LANGUAGE) | (1 << FRENCH_LANGUAGE) | (1 << ITALIAN_LANGUAGE) | (1 << GERMAN_LANGUAGE) | (1 << SPANISH_LANGUAGE))
+#endif
 
 #define GET_LANGUAGE_IS_JAPANESE(x) ((x) == JAPANESE_LANGUAGE)
 #define GET_LANGUAGE_NICKNAME_LIMIT(x) (GET_LANGUAGE_IS_JAPANESE(x) ? NICKNAME_JP_GEN3_SIZE : NICKNAME_GEN3_SIZE)
@@ -322,11 +331,13 @@ struct gen3_mon {
     u8 is_bad_egg : 1;
     u8 has_species : 1;
     u8 use_egg_name : 1;
-    u8 unused : 5;
+    u8 block_box_rs : 1;
+    u8 unused : 4;
     u8 ot_name[OT_NAME_GEN3_MAX_SIZE];
-    u8 marks;
+    u8 marks : 4;
+    u8 unused2 : 4;
     u16 checksum;
-    u16 unk;
+    u16 unused3;
     u32 enc_data[ENC_DATA_SIZE>>2];
     u32 status;
     u8 level;

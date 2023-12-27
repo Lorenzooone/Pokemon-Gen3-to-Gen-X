@@ -144,12 +144,13 @@ void load_names_gen12(struct game_data_t* game_data, struct gen2_party* party_2,
     if(is_jp)
         language = JAPANESE_LANGUAGE;
     
-    convert_trainer_name_gen3_to_gen12(game_data->trainer_name, trainer_name, game_data->game_identifier.language, language);
+    convert_trainer_name_gen3_to_gen12(game_data->trainer_name, trainer_name, game_data->game_identifier.language, language, 0);
     
     for(size_t i = 0; i < size; i++)
         if((trainer_name[i] == NO_ACTION_BYTE) || (trainer_name[i] == (NO_ACTION_BYTE-1)))
             trainer_name[i] = NO_ACTION_BYTE-2;
-    trainer_name[size-1] = GEN2_EOL;
+    u8 text_size = text_gen2_size(trainer_name, size-1);
+    trainer_name[text_size] = GEN2_EOL;
     
     if(!curr_gen)
         return;
@@ -174,9 +175,11 @@ void load_names_gen12(struct game_data_t* game_data, struct gen2_party* party_2,
             src_nickname = party_1->mons[i].nickname;
         }
         copy_bytes(src_ot_name, ot_names, size, 0, i*size);
-        ot_names[(i*size)+size-1] = GEN2_EOL;
+        text_size = text_gen2_size(&ot_names[i*size], size-1);
+        ot_names[(i*size)+text_size] = GEN2_EOL;
         copy_bytes(src_nickname, nicknames, size, 0, i*size);
-        nicknames[(i*size)+size-1] = GEN2_EOL;
+        text_size = text_gen2_size(&nicknames[i*size], size-1);
+        nicknames[(i*size)+text_size] = GEN2_EOL;
     }
 }
 

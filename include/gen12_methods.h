@@ -24,5 +24,6 @@ u8 get_pokemon_gender_kind_gen2(u8, u8, u8);
 const u8* get_pokemon_name_gen2_gen3_enc(int, u8, u8);
 const u8* get_pokemon_name_gen2(int, u8, u8, u8*);
 const u8* get_default_trainer_name_gen2(u8, u8*);
+const u8* get_actual_ot_name(const u8*, u8, u8, u8);
 
 #endif

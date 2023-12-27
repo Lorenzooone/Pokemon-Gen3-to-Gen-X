@@ -34,6 +34,7 @@ The "Act as" option allows one to choose whether the console will act as the mai
 - Trading across Generations is a lossy operation. As such, some information (like ribbons) will be lost!!!
 - You will not be able to trade Pokémon which did not exist in the target games.
 - These include: Unown ? and !, all Shiny Unown but I and V, certain Female Shiny Pokémon, Pokémon holding Mail.
+- When trading, markings may be applied to Pokémon from Gen 1 or Gen 2 games to preserve some data regarding the OT. Editing the markings may cause data loss.
 
 ### Clock Settings
 In the Settings inside of the Main Menu, the Clock Settings will be available if you're playing Pokémon Ruby/Sapphire/Emerald.
