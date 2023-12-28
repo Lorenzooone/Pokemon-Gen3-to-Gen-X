@@ -20,21 +20,27 @@
 #define PALETTE_SIZE 0x10
 #define PALETTE_BASE 0x5000000
 #define FONT_TILES 0x100
+#define ALLOC_TILE_START_OFFSET 32
+#define ALLOC_TILE_BUFFER_COUNT (1024 - ALLOC_TILE_START_OFFSET)
+// #define ALLOC_TILE_BUFFER_COUNT (512 - ALLOC_TILE_START_OFFSET)
+#define ALLOC_TILE_BUFFER_START (VRAM_0 + ALLOC_TILE_START_OFFSET*TILE_SIZE)
+#define ALLOC_TILE_BUFFER_SIZE (ALLOC_TILE_BUFFER_COUNT*TILE_SIZE)
 #define FONT_SIZE (FONT_TILES*TILE_SIZE)
 #define FONT_1BPP_SIZE (FONT_SIZE>>2)
 #define FONT_POS (((uintptr_t)VRAM_0) + 0)
 #define JP_FONT_POS (FONT_POS + FONT_SIZE)
-#define NUMBERS_POS (VRAM_END - (10000*2))
-#define ARRANGEMENT_POS (JP_FONT_POS+FONT_SIZE)
+// #define ARRANGEMENT_POS (JP_FONT_POS+FONT_SIZE)
+#define ARRANGEMENT_POS (ALLOC_TILE_BUFFER_START+ALLOC_TILE_BUFFER_SIZE) 
+#define NUMBERS_POS (VRAM_END - (1000*2))
 #ifdef __NDS__
+#define ALLOC_TILE_BUFFER_START_SUB (VRAM_0_SUB + ALLOC_TILE_START_OFFSET*TILE_SIZE)
 #define FONT_POS_SUB (((uintptr_t)VRAM_0_SUB) + 0)
-#define JP_FONT_POS_SUB (FONT_POS_SUB + FONT_SIZE)
-#define ARRANGEMENT_POS_SUB (JP_FONT_POS_SUB+FONT_SIZE)
+// #define JP_FONT_POS_SUB (FONT_POS_SUB + FONT_SIZE)
+// #define ARRANGEMENT_POS_SUB (JP_FONT_POS_SUB+FONT_SIZE)
+#define ARRANGEMENT_POS_SUB (ALLOC_TILE_BUFFER_START_SUB+ALLOC_TILE_BUFFER_SIZE) 
 #endif
 #define X_OFFSET_POS 0
 #define Y_OFFSET_POS 1
-#define ALLOC_TILE_START_OFFSET 32
-#define ALLOC_TILE_BUFFER_SIZE (512 - ALLOC_TILE_START_OFFSET)
 
 struct {
     union {
@@ -54,9 +60,6 @@ struct {
         }
     }
 } typedef font_character_t;
-
-font_character_t amiga_font_1bpp_buffer[FONT_TILES];
-#define ALLOC_TILE_START_ADDR (VRAM_0 + ALLOC_TILE_START_OFFSET*TILE_SIZE)
 
 
 #define SCREEN_SIZE 0x800
@@ -85,6 +88,7 @@ void swap_buffer_screen_internal(u8);
 u8 is_screen_disabled(u8);
 void add_requested_spacing(u8, u8, u8);
 
+font_character_t amiga_font_1bpp_buffer[FONT_TILES];
 font_character_t last_char;
 u32 last_tile;
 u8 last_tile_free_column_cnt;
@@ -107,7 +111,7 @@ u8 screen_positions[TOTAL_BG][2];
 #define UNSIGNED_MAX(a, b) ((a) ^ (((a) ^ (b)) & -((a) < (b))))
 
 u32 tile_alloc_index = 0;
-u32 tile_mask_block_buffer[TOTAL_BG][ALLOC_TILE_BUFFER_SIZE / 32];
+u32 tile_mask_block_buffer[TOTAL_BG][ALLOC_TILE_BUFFER_COUNT / 32];
 
 const u32 BIT_STEP_LENGTHS[4] = {16, 8, 4, 2};
 const u32 BIT_STEP_LENGTHS_MASK[4] = {0xFFFF, 0xFF, 0xF, 0x3};
@@ -120,22 +124,22 @@ const font_character_t EMPTY_CHAR = {
 // Get a free bg tile index that can be used for temporary tiles.
 // Don't forget to free tiles after use!
 // Used by variable width font rendering, but could be used by other things as well.
-// The maximum tiles to have allocated at the same time is ALLOC_TILE_BUFFER_SIZE.
+// The maximum tiles to have allocated at the same time is ALLOC_TILE_BUFFER_COUNT.
 // Put allocated indices in tile_ids_out
 // Returns the number of allocated tiles
 IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
 
     // // Just return a rolling index for now
     // for (int i = 0; i < count; i++){
-    //     tile_ids_out[i] = (tile_alloc_index++) % ALLOC_TILE_BUFFER_SIZE;
+    //     tile_ids_out[i] = (tile_alloc_index++) % ALLOC_TILE_BUFFER_COUNT;
     // }
     // return count;
 
     u32 start_count = count;
-    u32 tile_id = ALLOC_TILE_BUFFER_SIZE;
+    u32 tile_id = ALLOC_TILE_BUFFER_COUNT;
     // Search linearly through tile alloc mask buffer
-    for(u32 i = 0; (i < (ALLOC_TILE_BUFFER_SIZE / 32)) & (count != 0); i++) {
-        u32 block_index = tile_alloc_index % (ALLOC_TILE_BUFFER_SIZE / 32);
+    for(u32 i = 0; (i < (ALLOC_TILE_BUFFER_COUNT / 32)) & (count != 0); i++) {
+        u32 block_index = tile_alloc_index % (ALLOC_TILE_BUFFER_COUNT / 32);
         u32 tile_mask = 
             tile_mask_block_buffer[0][block_index]|
             tile_mask_block_buffer[1][block_index]|
@@ -183,28 +187,28 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
     return start_count - count;
 }
 
-IWRAM_CODE void free_tiles(u8 bg_num, u32 count, u32* tile_ids){
-    while(count != 0) {
-        u32 tile_id = tile_ids[count--];
-        // if (tile_id > ALLOC_TILE_BUFFER_SIZE)
-        //     continue;
-        u32 block_index = tile_id / 32;
-        tile_id %= 32;
-        u32 mask = ((u32)1) << tile_id;
-        tile_mask_block_buffer[bg_num][block_index] &= ~mask;
-    }
-}
+// IWRAM_CODE void free_tiles(u8 bg_num, u32 count, u32* tile_ids){
+//     while(count != 0) {
+//         u32 tile_id = tile_ids[count--];
+//         // if (tile_id > ALLOC_TILE_BUFFER_COUNT)
+//         //     continue;
+//         u32 block_index = tile_id / 32;
+//         tile_id %= 32;
+//         u32 mask = ((u32)1) << tile_id;
+//         tile_mask_block_buffer[bg_num][block_index] &= ~mask;
+//     }
+// }
 
 IWRAM_CODE void reset_allocated_tiles_bg(u8 bg_num) {
     tile_mask_block_buffer[bg_num][0] = 0;
     CpuFastSet(tile_mask_block_buffer[bg_num], tile_mask_block_buffer[bg_num], 
-        CPUFASTSET_FILL | (ALLOC_TILE_BUFFER_SIZE / 32));
-    // for(int block_index = 0; block_index < ALLOC_TILE_BUFFER_SIZE / 32; block_index++) {
+        CPUFASTSET_FILL | (ALLOC_TILE_BUFFER_COUNT / 32));
+    // for(int block_index = 0; block_index < ALLOC_TILE_BUFFER_COUNT / 32; block_index++) {
     //     tile_mask_block_buffer[bg_num][block_index] = 0;
     // }
     last_char = EMPTY_CHAR;
     last_tile_free_column_cnt = 8;
-    tile_alloc_index = (tile_alloc_index + 1) % (ALLOC_TILE_BUFFER_SIZE / 32);
+    tile_alloc_index = (tile_alloc_index + 1) % (ALLOC_TILE_BUFFER_COUNT / 32);
     last_tile = tile_alloc_index*32;
     allocate_tiles(1, &last_tile);
 }
@@ -292,11 +296,10 @@ IWRAM_CODE void flush_screens() {
 void init_numbers() {
     u16* numbers_storage = (u16*)NUMBERS_POS;
     
-    for(int i = 0; i < 10; i++)
-        for(int j = 0; j < 10; j++)
-            for(int k = 0; k < 10; k++)
-                for(int l = 0; l < 10; l++)
-                    numbers_storage[l + (k*10) + (j*100) + (i*1000)] = l | (k<<4) | (j<<8) | (i<<12);
+    for(int j = 0; j < 10; j++)
+        for(int k = 0; k < 10; k++)
+            for(int l = 0; l < 10; l++)
+                numbers_storage[l + (k*10) + (j*100)] = l | (k<<4) | (j<<8);
 }
 
 void set_text_palettes() {
@@ -346,12 +349,7 @@ void init_text_system() {
     // Load english font
     u8 colors[] = {2, 1};
     u32 buffer[FONT_1BPP_SIZE>>2];
-    // LZ77UnCompWram(amiga_font_c_bin, buffer);
     LZ77UnCompWram(amiga_font_c_bin, amiga_font_1bpp_buffer);
-    // convert_1bpp((u8*)amiga_font_1bpp_buffer, (u32*)FONT_POS, FONT_1BPP_SIZE, colors, 1);
-    // #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-    // convert_1bpp((u8*)amiga_font_1bpp_buffer, (u32*)FONT_POS_SUB, FONT_1BPP_SIZE, colors, 1);
-    // #endif
     
     for (u16 i = 0; i < TOTAL_BG; i++){
         reset_allocated_tiles_bg(i);
@@ -534,7 +532,7 @@ IWRAM_CODE u8 get_text_y(){
     return y_pos;
 }
 
-u8 flush_char(u16 character) {
+IWRAM_CODE u8 flush_char(u16 character) {
     screen[x_pos+(y_pos*X_SIZE)] = character | (PALETTE << 12);
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     screen_sub[x_pos+(y_pos*X_SIZE)] = character | (PALETTE << 12);
@@ -560,22 +558,17 @@ IWRAM_CODE u8 flush_tile() {
         return 1;
     }
     u8 colors[] = {2, 1};
-    u32* tile_vram_ptr = (u32*)(ALLOC_TILE_START_ADDR + last_tile * TILE_SIZE);
+    u32* tile_vram_ptr = (u32*)(ALLOC_TILE_BUFFER_START + last_tile * TILE_SIZE);
     convert_1bpp((u8*)&last_char, tile_vram_ptr, 8, colors, 1);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    u32* tile_vram_ptr_sub = (u32*)(ALLOC_TILE_BUFFER_START_SUB + last_tile * TILE_SIZE);
+    convert_1bpp((u8*)&last_char, tile_vram_ptr_sub, 8, colors, 1);
+    #endif
     flush_char(ALLOC_TILE_START_OFFSET + last_tile);
-    // last_tile_free_column_cnt = 8;
-    // last_char = EMPTY_CHAR;
     return 0;
 }
 
 IWRAM_CODE void finish_tile() {
-    // if (last_char.p1 == EMPTY_CHAR.p1 && last_char.p2 == EMPTY_CHAR.p2 && last_tile_free_column_cnt == 8){
-    //     return;
-    // }
-    // u8 colors[] = {2, 1};
-    // u32* tile_vram_ptr = (u32*)(ALLOC_TILE_START_ADDR + last_tile * TILE_SIZE);
-    // convert_1bpp((u8*)&last_char, tile_vram_ptr, 8, colors, 1);
-    // write_char_and_advance_cursor(ALLOC_TILE_START_OFFSET + last_tile);
     if (flush_tile()) {
         return;
     }
@@ -615,16 +608,20 @@ u8 write_char_variable_width(u16 character) {
         last_char.l6 |= (character_bitpattern.l6 >> cols_first);
         last_char.l7 |= (character_bitpattern.l7 >> cols_first);
         last_char.l8 |= (character_bitpattern.l8 >> cols_first);
-        u32* tile_vram_ptr = (u32*)(ALLOC_TILE_START_ADDR + last_tile * TILE_SIZE);
         u8 ret = 0;
         // VRAM mem optimization. If the tile to write happens to be empty
         // use a special hardcoded empty tile and reuse the current tile next character
         if (last_char.p1 == EMPTY_CHAR.p1 && last_char.p2 == EMPTY_CHAR.p2) {
             last_tile_free_column_cnt = 8;
-            ret = write_char_and_advance_cursor(EMPTY_TILE);
+            ret = write_char_and_advance_cursor((u16)EMPTY_TILE);
         } else {
+            u32* tile_vram_ptr = (u32*)(ALLOC_TILE_BUFFER_START + last_tile * TILE_SIZE);
             convert_1bpp((u8*)&last_char, tile_vram_ptr, 8, colors, 1);
-            ret = write_char_and_advance_cursor(ALLOC_TILE_START_OFFSET + last_tile);
+            #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+            u32* tile_vram_ptr_sub = (u32*)(ALLOC_TILE_BUFFER_START_SUB + last_tile * TILE_SIZE);
+            convert_1bpp((u8*)&last_char, tile_vram_ptr_sub, 8, colors, 1);
+            #endif
+            ret = write_char_and_advance_cursor((u16)(ALLOC_TILE_START_OFFSET + last_tile));
         }
         last_char.l1 = (character_bitpattern.l1 << cols_last);
         last_char.l2 = (character_bitpattern.l2 << cols_last);
@@ -668,7 +665,6 @@ IWRAM_CODE MAX_OPTIMIZE int sub_printf(u8* string) {
     while((*string) != '\0')
         if(write_char(*(string++)))
             break;
-    // finish_tile();
     return 0;
 }
 
@@ -712,19 +708,19 @@ IWRAM_CODE int prepare_base_10(int number, u8* digits) {
     }
     
     int mod;
-    while(number >= 10000) {
-        number = SWI_DivDivMod(number, 10000, &mod);
-        for(int i = 0; i < 4; i++)
+    while(number >= 1000) {
+        number = SWI_DivDivMod(number, 1000, &mod);
+        for(int i = 0; i < 3; i++)
             digits[pos--] = ((numbers_storage[mod]>>(i*4)) & 0xF) + '0';
     }
     u8 found = 0;
     u8 found_pos = 0;
-    for(int i = 0; i < 4; i++) {
-        u8 digit = ((numbers_storage[number]>>((3-i)*4)) & 0xF);
+    for(int i = 0; i < 3; i++) {
+        u8 digit = ((numbers_storage[number]>>((2-i)*4)) & 0xF);
         if(digit || found) {
-            digits[pos-(3-i)] = digit + '0';
+            digits[pos-(2-i)] = digit + '0';
             if(!found)
-                found_pos = (3-i);
+                found_pos = (2-i);
             found = 1;
         }
     }
