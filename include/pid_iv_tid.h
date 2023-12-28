@@ -20,6 +20,7 @@ void generate_channel_shiny_info(u8, u32*, u32*, u16*, u8*, u8*);
 void generate_channel_info(u8, u16, u32*, u32*, u16*, u8*, u8*);
 u32 generate_ot(u16, u8*);
 u8 are_colo_valid_tid_sid(u16, u16);
+u8 are_rs_valid_tid_sid(u16, u16);
 void convert_roamer_to_colo_info(u8, u16, u8, u8, u16, u32*, u32*, u8*);
 void convert_shiny_roamer_to_colo_info(u8, u8, u8, u16, u32*, u32*, u8*);
 

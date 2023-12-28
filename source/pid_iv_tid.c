@@ -307,6 +307,11 @@ u8 are_colo_valid_tid_sid(u16 tid, u16 sid) {
     return (get_seed_colo(possible_seeds, tid, sid) > 0) ? 1 : 0;
 }
 
+u8 are_rs_valid_tid_sid(u16 tid, u16 sid) {
+    u32 possible_seeds[3];
+    return (get_seed_gba3(possible_seeds, sid, tid) > 0) ? 1 : 0;
+}
+
 u32 generate_ot(u16 tid, u8* name) {
     // Worst case: ANY
     // This should NOT be random...
@@ -329,7 +334,7 @@ u32 generate_ot(u16 tid, u8* name) {
         seed = get_next_seed(seed);
         sid = seed >> 0x10;
     }
-    while(is_bad_tsv(sid^tid) && (!are_colo_valid_tid_sid(tid, sid)));
+    while(is_bad_tsv(sid^tid) && (!are_colo_valid_tid_sid(tid, sid)) && (!are_rs_valid_tid_sid(tid, sid)));
     
     return (sid << 0x10) | tid;
 }
