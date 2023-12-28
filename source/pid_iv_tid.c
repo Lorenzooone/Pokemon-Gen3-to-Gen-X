@@ -44,6 +44,9 @@
 #define COLO_MOD_PART 0x12D96
 #define COLO_DIV_PART 0x2732
 
+#define CHANNEL_SEED_SPACE_SIZE (1 << (32 - 4))
+#define CHANNEL_SEED_MASK (CHANNEL_SEED_SPACE_SIZE - 1)
+
 #define STATIC_IV_MASK (((0xF<<10) | (0xF<<5))<<(16+1))
 
 #define NUM_SEEDS 0x10000
@@ -70,6 +73,11 @@ void _generate_egg_info(u8, u16, u16, u8, u8, u32*, u32*, u32);
 void _generate_egg_shiny_info(u8, u16, u8, u8, u32*, u32*, u32);
 void _convert_roamer_to_colo_info(u8, u16, u8, u8, u16, u32*, u32*, u8*, u32);
 void _generate_generic_genderless_info(u8, u16, u16, u32*, u32*, u8*, u32, genderless_generator_functions_t);
+static u8 validate_channel_pattern_seed(u32);
+static u8 validate_channel_seed(u32);
+void _generate_channel_info(u8, u16, u32*, u32*, u32, u16*, u8*, u8*);
+static u8 is_shiny_channel_valid_seed(u32, u16, u16, u8, u32*, u32*, u16*, u8*, u8*);
+void _generate_channel_shiny_info(u8, u32*, u32*, u32, u16*, u8*, u8*);
 u8 _generator_static_info(u16, u16, u8, u16, u32*, u32*, u8*);
 u8 _generator_generic_shadow_info_colo(u16, u16, u8, u16, u32*, u32*, u8*);
 u8 _generator_generic_shadow_info_xd(u16, u16, u8, u16, u32*, u32*, u8*);
@@ -609,6 +617,213 @@ void _generate_generic_genderless_info(u8 wanted_nature, u16 wanted_ivs, u16 tsv
     *dst_ivs = 0;
 }
 
+// Adapted from: https://github.com/Admiral-Fish/PokeFinder/blob/master/Source/Core/Gen3/Searchers/GameCubeSearcher.cpp
+ALWAYS_INLINE u8 validate_channel_pattern_seed(u32 base_pattern_seed) {
+    u8 target = base_pattern_seed >> 30;
+    
+    if(target == 0)
+        return 0;
+
+    u8 mask = 1 << target;
+    while ((mask & 14) != 14) {
+        base_pattern_seed = get_prev_seed_colo(base_pattern_seed);
+        u8 num = base_pattern_seed >> 30;
+        if (num == target)
+            return 0;
+
+        mask |= 1 << num;
+    }
+
+    return 1;
+}
+
+// Adapted from: https://github.com/Admiral-Fish/PokeFinder/blob/master/Source/Core/Gen3/Searchers/GameCubeSearcher.cpp
+ALWAYS_INLINE u8 validate_channel_seed(u32 origin_seed) {
+    u32 first_seed = get_prev_seed_colo(origin_seed);
+    u32 second_seed = get_prev_seed_colo(first_seed);
+    u32 third_seed = get_prev_seed_colo(second_seed);
+    u16 num1 = first_seed >> 16;
+    u16 num2 = second_seed >> 16;
+    u16 num3 = third_seed >> 16;
+    u32 six_seed = get_prev_seed_colo(get_prev_seed_colo(get_prev_seed_colo(third_seed)));
+    u32 seven_seed = get_prev_seed_colo(six_seed);
+
+    // 8 advances
+    if((num3 > 0x4000) && (num2 > 0x547a) && validate_channel_pattern_seed(get_prev_seed_colo(seven_seed)))
+        return 1;
+
+    // 7 advances
+    if((num2 > 0x4000) && (num1 <= 0x547a) && validate_channel_pattern_seed(seven_seed))
+        return 1;
+
+    // 6 advances
+    if((num1 <= 0x4000) && validate_channel_pattern_seed(six_seed))
+        return 1;
+
+    return 0;
+}
+
+IWRAM_CODE MAX_OPTIMIZE void _generate_channel_info(u8 wanted_nature, u16 wanted_ivs, u32* dst_pid, u32* dst_ivs, u32 start_seed, u16* dst_sid, u8* dst_gender, u8* dst_game) {
+    // Very slow code to convert to a Channel mon (not actually used)
+    u8 base_atk_ivs = ((wanted_ivs>>4) & 0xF)<<1;
+    u8 base_def_ivs = ((wanted_ivs) & 0xF)<<1;
+    u8 base_spe_ivs = ((wanted_ivs>>12) & 0xF)<<1;
+    u8 base_spa_ivs = ((wanted_ivs>>8) & 0xF)<<1;
+
+    u32 rng_base_seed = start_seed & CHANNEL_SEED_MASK;
+    int increase = 1;
+    if(start_seed & CHANNEL_SEED_SPACE_SIZE)
+        increase = -1;
+
+    // Iter the free bits for attack
+    for(size_t i = 0; i < CHANNEL_SEED_SPACE_SIZE; i++) {
+        u32 atk_seed = (base_atk_ivs << 28) | rng_base_seed;
+        rng_base_seed = (rng_base_seed + increase) & CHANNEL_SEED_MASK;
+        u8 atk_iv = atk_seed >> 27;
+        u32 curr_seed = get_next_seed_colo(atk_seed);
+        u8 def_iv = curr_seed >> 27;
+        if((def_iv & (0xF << 1)) != base_def_ivs)
+            continue;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 spe_iv = curr_seed >> 27;
+        if((spe_iv & (0xF << 1)) != base_spe_ivs)
+            continue;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 spa_iv = curr_seed >> 27;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 spd_iv = curr_seed >> 27;
+        if((((spa_iv + spd_iv) >> 1) & (0xF << 1)) != base_spa_ivs)
+            continue;
+        curr_seed = get_prev_seed_colo(atk_seed);
+        u8 hp_iv = curr_seed >> 27;
+        curr_seed = get_prev_seed_colo(curr_seed);
+        u8 gender = curr_seed >> 31;
+        curr_seed = get_prev_seed_colo(curr_seed);
+        u8 game = curr_seed >> 31;
+        curr_seed = get_prev_seed_colo(curr_seed);
+        //u8 berry = curr_seed >> 31;
+        curr_seed = get_prev_seed_colo(curr_seed);
+        u16 low = curr_seed >> 16;
+        curr_seed = get_prev_seed_colo(curr_seed);
+        u16 high = curr_seed >> 16;
+        curr_seed = get_prev_seed_colo(curr_seed);
+        u16 sid = curr_seed >> 16;
+        const u16 tid = 40122;
+        if(tid ^ sid ^ high ^ (low < 8))
+            high ^= 0x8000;
+        u32 pid = (high << 16) | low;
+        if((tid ^ sid ^ high ^ low) < 8)
+            continue;
+        u8 nature = get_nature_fast(pid);
+        if(nature != wanted_nature)
+            continue;
+        if(validate_channel_seed(get_prev_seed_colo(curr_seed))) {
+            *dst_pid = pid;
+            *dst_sid = sid;
+            *dst_gender = gender;
+            *dst_game = game;
+            *dst_ivs = (hp_iv << 0) | (atk_iv << 5) | (def_iv << 10) | (spe_iv << 15) | (spa_iv << 20) | (spd_iv << 25);
+            return;
+        }   
+    }
+
+    *dst_pid = 0;
+    *dst_sid = 0;
+    *dst_gender = 0;
+    *dst_game = 0;
+    *dst_ivs = 0;
+}
+
+void generate_channel_info(u8 wanted_nature, u16 wanted_ivs, u32* dst_pid, u32* dst_ivs, u16* dst_sid, u8* dst_gender, u8* dst_game) {
+    _generate_channel_info(wanted_nature, wanted_ivs, dst_pid, dst_ivs, get_rng(), dst_sid, dst_gender, dst_game);
+}
+
+ALWAYS_INLINE u8 is_shiny_channel_valid_seed(u32 sid_seed, u16 high, u16 low, u8 is_forward, u32* dst_pid, u32* dst_ivs, u16* dst_sid, u8* dst_gender, u8* dst_game) {
+    const u16 tid = 40122;
+    u16 sid = sid_seed >> 16;
+    u32 pid = (high << 16) | low;
+    if(is_forward && (tid ^ sid ^ high ^ (low < 8)))
+        return 0;
+    if((!is_forward) && (!(tid ^ sid ^ (high ^ 0x8000) ^ (low < 8))))
+        return 0;
+    if((tid ^ sid ^ high ^ low) >= 8)
+        return 0;
+    if(validate_channel_seed(get_prev_seed_colo(sid_seed))) {
+        *dst_pid = pid;
+        *dst_sid = sid;
+        u32 curr_seed = get_next_seed_colo(get_next_seed_colo(get_next_seed_colo(sid_seed)));
+        //u8 berry = curr_seed >> 31;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 game = curr_seed >> 31;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 gender = curr_seed >> 31;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 hp_iv = curr_seed >> 27;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 atk_iv = curr_seed >> 27;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 def_iv = curr_seed >> 27;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 spe_iv = curr_seed >> 27;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 spa_iv = curr_seed >> 27;
+        curr_seed = get_next_seed_colo(curr_seed);
+        u8 spd_iv = curr_seed >> 27;
+        *dst_gender = gender;
+        *dst_game = game;
+        *dst_ivs = (hp_iv << 0) | (atk_iv << 5) | (def_iv << 10) | (spe_iv << 15) | (spa_iv << 20) | (spd_iv << 25);
+        return 1;
+    }
+
+    return 0;
+}
+
+IWRAM_CODE MAX_OPTIMIZE void _generate_channel_shiny_info(u8 wanted_nature, u32* dst_pid, u32* dst_ivs, u32 start_seed, u16* dst_sid, u8* dst_gender, u8* dst_game) {
+    // Code to convert to a shiny Channel mon (not actually used)
+    u32 pid = start_seed;
+    u8 nature = get_nature_fast(pid);
+    u8 nature_diff = wanted_nature - nature;
+    if(nature > wanted_nature)
+        nature_diff = wanted_nature - nature + NUM_NATURES;
+    pid += nature_diff;
+    if(pid < NUM_NATURES)
+        pid = wanted_nature;
+    u32 start_pid = pid;
+
+    do {
+        u16 high = pid >> 16;
+        u16 low = pid & 0xFFFF;
+        u32 possible_seeds[4];
+        u8 num_found = 0;
+
+        num_found = get_seed_colo(possible_seeds, high, low);
+
+        for(size_t i = 0; i < num_found; i++)
+            if(is_shiny_channel_valid_seed(possible_seeds[i], high, low, 1, dst_pid, dst_ivs, dst_sid, dst_gender, dst_game))
+                return;
+
+        num_found = get_seed_colo(possible_seeds, high ^ 0x8000, low);
+
+        for(size_t i = 0; i < num_found; i++)
+            if(is_shiny_channel_valid_seed(possible_seeds[i], high, low, 0, dst_pid, dst_ivs, dst_sid, dst_gender, dst_game))
+                return;
+
+        pid += NUM_NATURES;
+        if(pid < NUM_NATURES)
+            pid = wanted_nature;
+    } while(pid != start_pid);
+
+    *dst_pid = 0;
+    *dst_sid = 0;
+    *dst_gender = 0;
+    *dst_game = 0;
+    *dst_ivs = 0;
+}
+
+void generate_channel_shiny_info(u8 wanted_nature, u32* dst_pid, u32* dst_ivs, u16* dst_sid, u8* dst_gender, u8* dst_game) {
+    _generate_channel_shiny_info(wanted_nature, dst_pid, dst_ivs, get_rng(), dst_sid, dst_gender, dst_game);
+}
+
 u8 _generator_static_info(u16 first, u16 second, u8 wanted_nature, u16 tsv, u32* dst_pid, u32* dst_ivs, u8* UNUSED(dst_ability)) {
     u32 possible_seeds[3*2*2];
     u8 num_found = get_reverse_masked_ivs_gba3(possible_seeds, second, first);
@@ -1112,7 +1327,8 @@ void worst_case_conversion_tester(vu32* counter) {
     u32 curr_counter = *counter;
     u32 max_counter = 0;
     u32 pid, ivs;
-    u8 ability;
+    u16 sid;
+    u8 ability, game, gender;
     
     VBlankIntrWait();
     curr_counter = *counter;
@@ -1204,5 +1420,23 @@ void worst_case_conversion_tester(vu32* counter) {
     max_counter = ((*counter)-curr_counter);
     
     PRINT_FUNCTION("Max time conv s: 0x\x04\n", max_counter);
+    
+    VBlankIntrWait();
+    curr_counter = *counter;
+
+    _generate_channel_info(4, 0xFFFF, &pid, &ivs, 0, &sid, &gender, &game);
+
+    max_counter = ((*counter)-curr_counter);
+    
+    PRINT_FUNCTION("Random time c p: 0x\x04\n", max_counter);
+    
+    VBlankIntrWait();
+    curr_counter = *counter;
+
+    _generate_channel_shiny_info(4, &pid, &ivs, 0, &sid, &gender, &game);
+
+    max_counter = ((*counter)-curr_counter);
+    
+    PRINT_FUNCTION("Random time c s: 0x\x04\n", max_counter);
 #endif
 }
