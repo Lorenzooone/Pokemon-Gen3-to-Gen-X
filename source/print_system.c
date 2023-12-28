@@ -22,22 +22,17 @@
 #define FONT_TILES 0x100
 #define ALLOC_TILE_START_OFFSET 32
 #define ALLOC_TILE_BUFFER_COUNT (1024 - ALLOC_TILE_START_OFFSET)
-// #define ALLOC_TILE_BUFFER_COUNT (512 - ALLOC_TILE_START_OFFSET)
-#define ALLOC_TILE_BUFFER_START (VRAM_0 + ALLOC_TILE_START_OFFSET*TILE_SIZE)
+#define ALLOC_TILE_BUFFER_START ((uintptr_t)VRAM_0 + ALLOC_TILE_START_OFFSET*TILE_SIZE)
 #define ALLOC_TILE_BUFFER_SIZE (ALLOC_TILE_BUFFER_COUNT*TILE_SIZE)
 #define FONT_SIZE (FONT_TILES*TILE_SIZE)
 #define FONT_1BPP_SIZE (FONT_SIZE>>2)
 #define FONT_POS (((uintptr_t)VRAM_0) + 0)
-#define JP_FONT_POS (FONT_POS + FONT_SIZE)
-// #define ARRANGEMENT_POS (JP_FONT_POS+FONT_SIZE)
-#define ARRANGEMENT_POS (ALLOC_TILE_BUFFER_START+ALLOC_TILE_BUFFER_SIZE) 
+#define ARRANGEMENT_POS (ALLOC_TILE_BUFFER_START+ALLOC_TILE_BUFFER_SIZE)
 #define NUMBERS_POS (VRAM_END - (1000*2))
 #ifdef __NDS__
-#define ALLOC_TILE_BUFFER_START_SUB (VRAM_0_SUB + ALLOC_TILE_START_OFFSET*TILE_SIZE)
+#define ALLOC_TILE_BUFFER_START_SUB ((uintptr_t)VRAM_0_SUB + ALLOC_TILE_START_OFFSET*TILE_SIZE)
 #define FONT_POS_SUB (((uintptr_t)VRAM_0_SUB) + 0)
-// #define JP_FONT_POS_SUB (FONT_POS_SUB + FONT_SIZE)
-// #define ARRANGEMENT_POS_SUB (JP_FONT_POS_SUB+FONT_SIZE)
-#define ARRANGEMENT_POS_SUB (ALLOC_TILE_BUFFER_START_SUB+ALLOC_TILE_BUFFER_SIZE) 
+#define ARRANGEMENT_POS_SUB (ALLOC_TILE_BUFFER_START_SUB+ALLOC_TILE_BUFFER_SIZE)
 #endif
 #define X_OFFSET_POS 0
 #define Y_OFFSET_POS 1
@@ -615,11 +610,11 @@ u8 write_char_variable_width(u16 character) {
             last_tile_free_column_cnt = 8;
             ret = write_char_and_advance_cursor((u16)EMPTY_TILE);
         } else {
-            u32* tile_vram_ptr = (u32*)(ALLOC_TILE_BUFFER_START + last_tile * TILE_SIZE);
-            convert_1bpp((u8*)&last_char, tile_vram_ptr, 8, colors, 1);
+            u16* tile_vram_ptr = (u16*)ALLOC_TILE_BUFFER_START + (last_tile * TILE_SIZE >> 1);
+            convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr, 8, colors, 1);
             #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-            u32* tile_vram_ptr_sub = (u32*)(ALLOC_TILE_BUFFER_START_SUB + last_tile * TILE_SIZE);
-            convert_1bpp((u8*)&last_char, tile_vram_ptr_sub, 8, colors, 1);
+            u16* tile_vram_ptr_sub = (u16*)ALLOC_TILE_BUFFER_START_SUB + (last_tile * TILE_SIZE >> 1);
+            convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr_sub, 8, colors, 1);
             #endif
             ret = write_char_and_advance_cursor((u16)(ALLOC_TILE_START_OFFSET + last_tile));
         }
