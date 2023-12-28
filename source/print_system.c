@@ -50,9 +50,12 @@ struct {
             u8 l8;
         };
         struct {
+            u8 line[8];
+        };
+        struct {
             u32 p1;
             u32 p2;
-        }
+        };
     }
 } typedef font_character_t;
 
@@ -84,6 +87,7 @@ u8 is_screen_disabled(u8);
 void add_requested_spacing(u8, u8, u8);
 
 font_character_t amiga_font_1bpp_buffer[FONT_TILES];
+font_character_t jp_font_1bpp_buffer[FONT_TILES];
 font_character_t last_char;
 u32 last_tile;
 u8 last_tile_free_column_cnt;
@@ -314,6 +318,21 @@ void set_text_palettes() {
     #endif
 }
 
+// Japanese characters are flipped. Since we have variable font width, we cannot flip the
+// tiles when rendinging, so flip them just after loading them from cartridge ROM
+void flip_characters(size_t len, font_character_t* characters) {
+    for (size_t i = 0; i < len; i++){
+        for (size_t j = 0; j < 8; j++){
+            u8 original = characters[i].line[j];
+            u8 mirrored = 0;
+            for (int k = 0; k < 8; k++) {
+                mirrored |= ((original >> k) & 1) << (7 - k);
+            }
+            characters[i].line[j] = mirrored;
+        }
+    }
+}
+
 void init_text_system() {
     REG_DISPCNT = 0 | TILE_1D_MAP | ACTIVATE_SCREEN_HW;
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
@@ -342,8 +361,6 @@ void init_text_system() {
     enable_screen(0);
     
     // Load english font
-    u8 colors[] = {2, 1};
-    u32 buffer[FONT_1BPP_SIZE>>2];
     LZ77UnCompWram(amiga_font_c_bin, amiga_font_1bpp_buffer);
     
     for (u16 i = 0; i < TOTAL_BG; i++){
@@ -360,13 +377,9 @@ void init_text_system() {
         *((u32*)(FONT_POS_SUB+TILE_SIZE+(i<<2))) = 0;
     #endif
 
-    // // Load japanese font
-    // LZ77UnCompWram(jp_font_c_bin, buffer);
-    // convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS, FONT_1BPP_SIZE, colors, 0);
-    // #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-    // convert_1bpp((u8*)buffer, (u32*)JP_FONT_POS_SUB, FONT_1BPP_SIZE, colors, 0);
-    // #endif
-    
+    LZ77UnCompWram(jp_font_c_bin, jp_font_1bpp_buffer);
+    flip_characters(FONT_TILES, jp_font_1bpp_buffer);
+
     // Set window tiles
     for(size_t i = 0; i < (window_graphics_bin_size>>2); i++)
         *((u32*)(FONT_POS+(2*TILE_SIZE)+(i<<2))) = ((const u32*)window_graphics_bin)[i];
@@ -553,11 +566,11 @@ IWRAM_CODE u8 flush_tile() {
         return 1;
     }
     u8 colors[] = {2, 1};
-    u32* tile_vram_ptr = (u32*)(ALLOC_TILE_BUFFER_START + last_tile * TILE_SIZE);
-    convert_1bpp((u8*)&last_char, tile_vram_ptr, 8, colors, 1);
+    u16* tile_vram_ptr = (u16*)ALLOC_TILE_BUFFER_START + (last_tile * TILE_SIZE >> 1);
+    convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr, 8, colors, 1);
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-    u32* tile_vram_ptr_sub = (u32*)(ALLOC_TILE_BUFFER_START_SUB + last_tile * TILE_SIZE);
-    convert_1bpp((u8*)&last_char, tile_vram_ptr_sub, 8, colors, 1);
+    u16* tile_vram_ptr_sub = (u16*)ALLOC_TILE_BUFFER_START_SUB + (last_tile * TILE_SIZE >> 1);
+    convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr_sub, 8, colors, 1);
     #endif
     flush_char(ALLOC_TILE_START_OFFSET + last_tile);
     return 0;
@@ -573,8 +586,10 @@ IWRAM_CODE void finish_tile() {
 }
 
 u8 write_char_variable_width(u16 character) {
-    font_character_t character_bitpattern = amiga_font_1bpp_buffer[character];
-    u32 width = character == ' '? 4 : character == 'm' || character == 'w' ? 8 : character == 'i' || character == 'l' || character == '!' ? 4 : character >= 'a'? 6 : 7;
+    font_character_t character_bitpattern = character < FONT_TILES
+        ? amiga_font_1bpp_buffer[character]
+        : jp_font_1bpp_buffer[character % FONT_TILES];
+    u32 width = character == ' '? 4 : character >= FONT_TILES? 8 : character == 'm' || character == 'w' ? 8 : character == 'i' || character == 'l' || character == '!' ? 4 : character >= 'a'? 6 : 7;
     if(last_tile_free_column_cnt > width){
         u32 cols_first = last_tile_free_column_cnt - width;
         last_char.l1 |= (character_bitpattern.l1 << cols_first);
@@ -588,13 +603,9 @@ u8 write_char_variable_width(u16 character) {
         last_tile_free_column_cnt -= width;
         return 0;
     } else {
-        u32 tile_index = 0;
-        if (!allocate_tiles(1, &tile_index)) {
-            return 1;
-        }
         u8 colors[] = {2, 1};
         u32 cols_first = width - last_tile_free_column_cnt;
-        u32 cols_last  = 8 - cols_first;
+        u32 cols_last = 8 - cols_first;
         last_char.l1 |= (character_bitpattern.l1 >> cols_first);
         last_char.l2 |= (character_bitpattern.l2 >> cols_first);
         last_char.l3 |= (character_bitpattern.l3 >> cols_first);
@@ -603,12 +614,11 @@ u8 write_char_variable_width(u16 character) {
         last_char.l6 |= (character_bitpattern.l6 >> cols_first);
         last_char.l7 |= (character_bitpattern.l7 >> cols_first);
         last_char.l8 |= (character_bitpattern.l8 >> cols_first);
-        u8 ret = 0;
+        u8 err = 0;
         // VRAM mem optimization. If the tile to write happens to be empty
         // use a special hardcoded empty tile and reuse the current tile next character
         if (last_char.p1 == EMPTY_CHAR.p1 && last_char.p2 == EMPTY_CHAR.p2) {
-            last_tile_free_column_cnt = 8;
-            ret = write_char_and_advance_cursor((u16)EMPTY_TILE);
+            err = advance_cursor();
         } else {
             u16* tile_vram_ptr = (u16*)ALLOC_TILE_BUFFER_START + (last_tile * TILE_SIZE >> 1);
             convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr, 8, colors, 1);
@@ -616,7 +626,7 @@ u8 write_char_variable_width(u16 character) {
             u16* tile_vram_ptr_sub = (u16*)ALLOC_TILE_BUFFER_START_SUB + (last_tile * TILE_SIZE >> 1);
             convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr_sub, 8, colors, 1);
             #endif
-            ret = write_char_and_advance_cursor((u16)(ALLOC_TILE_START_OFFSET + last_tile));
+            err = write_char_and_advance_cursor((u16)(ALLOC_TILE_START_OFFSET + last_tile));
         }
         last_char.l1 = (character_bitpattern.l1 << cols_last);
         last_char.l2 = (character_bitpattern.l2 << cols_last);
@@ -626,11 +636,13 @@ u8 write_char_variable_width(u16 character) {
         last_char.l6 = (character_bitpattern.l6 << cols_last);
         last_char.l7 = (character_bitpattern.l7 << cols_last);
         last_char.l8 = (character_bitpattern.l8 << cols_last);
-        if (!ret) {
+        if (!err) {
+            if (allocate_tiles(1, &last_tile) == 0) {
+                return 1;
+            }
             last_tile_free_column_cnt = cols_last;
-            last_tile = tile_index;
         }
-        return ret;
+        return err;
     }
 }
 
@@ -647,13 +659,30 @@ IWRAM_CODE void new_line(){
 }
 
 IWRAM_CODE void write_above_char(u16 character) {
-    u8 y_pos_altered = y_pos-1;
+    // Save old tile data for writing characters
+    u8 old_y_pos = y_pos;
+    u8 old_x_pos = x_pos;
+    u8 old_last_tile_free_column_cnt = last_tile_free_column_cnt;
+    font_character_t old_last_char = last_char;
+    u32 old_last_tile = last_tile;
+
+    // Setup tile and postiotion for writing above current char
+    last_char = EMPTY_CHAR;
+    allocate_tiles(1, &last_tile);
+    y_pos = y_pos-1;
     if(!y_pos)
-        y_pos_altered = Y_SIZE-1;
-    screen[x_pos+(y_pos_altered*X_SIZE)] = character | (PALETTE << 12);
-    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-    screen_sub[x_pos+(y_pos_altered*X_SIZE)] = character | (PALETTE << 12);
-    #endif
+        y_pos = Y_SIZE-1;
+
+    // Write tile
+    write_char_variable_width(character);
+    flush_tile();
+
+    // Restore old values to continue to write in ordinary position
+    y_pos = old_y_pos;
+    x_pos = old_x_pos;
+    last_tile_free_column_cnt = old_last_tile_free_column_cnt;
+    last_char = old_last_char;
+    last_tile = old_last_tile;
 }
 
 IWRAM_CODE MAX_OPTIMIZE int sub_printf(u8* string) {
