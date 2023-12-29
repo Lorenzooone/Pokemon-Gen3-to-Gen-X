@@ -41,6 +41,7 @@ void print_colour_settings_menu(u8);
 void print_evolution_menu(struct gen3_mon_data_unenc*, u16, u8, u8);
 void print_evolution_window(struct gen3_mon_data_unenc*);
 void print_cheats_menu(u8);
+void print_clock_variable_menu(struct clock_events_t*, struct saved_time_t*, u8);
 void print_clock_menu(struct clock_events_t*, struct saved_time_t*, u8);
 void print_warning_when_clock_changed(void);
 void print_load_warnings(struct game_data_t*, struct game_data_priv_t*);

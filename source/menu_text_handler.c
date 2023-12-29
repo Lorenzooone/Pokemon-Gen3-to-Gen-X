@@ -517,29 +517,52 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     PRINT_FUNCTION("V.\x03.\x03.\x03\x02", version->main_version, version->sub_version, version->revision_version, version->revision_letter);
 }
 
-void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* time_change, u8 update) {
-    if(!update)
+void print_clock_variable_menu(struct clock_events_t* clock_events, struct saved_time_t* time_change, u8 force_print) {
+    u8 update_value = 0;
+    if(has_init_succeded())
+        update_value = update_base_time();
+
+    if((update_value != 2) && (!force_print))
         return;
 
-    init_rtc_time();
     struct saved_time_t base_time;
     struct saved_time_t new_time;
 
     get_clean_time(&clock_events->saved_time, &base_time);
     get_increased_time(&clock_events->saved_time, time_change, &new_time);
 
-    default_reset_screen();
+    u8 old_screen = get_screen_num();
+    set_screen(old_screen + 1);
+    reset_screen(BLANK_FILL);
+    
+    set_text_y(1);
+    set_text_x(8);
 
-    PRINT_FUNCTION("\n  Time: ");
     if(is_daytime(clock_events, time_change))
         PRINT_FUNCTION("<Day>\n\n");
     else
         PRINT_FUNCTION("<Night>\n\n");
-    PRINT_FUNCTION("  Shoal Cave Tide: ");
+    set_text_x(19);
     if(is_high_tide(clock_events, time_change))
-        PRINT_FUNCTION("<High>\n\n");
+        PRINT_FUNCTION("<High>");
     else
-        PRINT_FUNCTION("<Low>\n\n");
+        PRINT_FUNCTION("<Low>");
+    set_text_y(Y_LIMIT-6);
+    set_text_x(11);
+    PRINT_FUNCTION("\x0B-\x0B:\x0B:\x0B\n", base_time.d, 5, base_time.h, 2, base_time.m, 2, base_time.s, 2);
+    set_text_x(11);
+    PRINT_FUNCTION("\x0B-\x0B:\x0B:\x0B\n", new_time.d, 5, new_time.h, 2, new_time.m, 2, new_time.s, 2);
+    set_screen(old_screen);
+}
+
+void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* time_change, u8 update) {
+    if(!update)
+        return;
+
+    default_reset_screen();
+
+    PRINT_FUNCTION("\n  Time: \n\n");
+    PRINT_FUNCTION("  Shoal Cave Tide: \n\n");
     u8 curr_y = get_text_y();
     PRINT_FUNCTION("  Clock Reset Menu: ");
     if(is_rtc_reset_enabled(clock_events))
@@ -555,14 +578,15 @@ void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* 
 
     set_text_y(Y_LIMIT-8);
     PRINT_FUNCTION("  Save and Exit\n\n");
-    PRINT_FUNCTION("Base Time: \x0B-\x0B:\x0B:\x0B\n", base_time.d, 5, base_time.h, 2, base_time.m, 2, base_time.s, 2);
-    PRINT_FUNCTION("New Time:  \x0B-\x0B:\x0B:\x0B\n", new_time.d, 5, new_time.h, 2, new_time.m, 2, new_time.s, 2);
-    set_text_y(Y_LIMIT-4);
+    PRINT_FUNCTION("Base Time:\n");
+    PRINT_FUNCTION("New Time:\n");
     PRINT_FUNCTION("Issues may arise when changing");
     set_text_y(Y_LIMIT-3);
     PRINT_FUNCTION("the time of a Working Battery.");
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("B: Exit Without Saving");
+    
+    print_clock_variable_menu(clock_events, time_change, 1);
 }
 
 void print_cheats_menu(u8 update) {

@@ -646,10 +646,13 @@ void clock_settings_menu_init(struct game_data_priv_t* game_data_priv, struct sa
     set_screen(BASE_SCREEN);
     disable_all_screens_but_current();
     disable_all_cursors();
-    if(reset_time)
+    if(reset_time) {
         wipe_time(time_change);
+        init_rtc_time();
+    }
     print_clock_menu(&game_data_priv->clock_events, time_change, 1);
     enable_screen(BASE_SCREEN);
+    enable_screen(BASE_SCREEN + 1);
     *cursor_y_pos = 0;
     update_cursor_base_x(BASE_X_CURSOR_CLOCK_SETTINGS_MENU);
     cursor_update_clock_settings_menu(*cursor_y_pos);
@@ -998,6 +1001,9 @@ int main(void)
                                 break;
                         }
                     }
+                    break;
+                case CLOCK_SETTINGS_MENU:
+                    print_clock_variable_menu(&game_data_priv.clock_events, &time_change, 0);
                     break;
                 default:
                     break;

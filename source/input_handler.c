@@ -882,8 +882,11 @@ u8 handle_input_clock_menu(u16 keys, struct clock_events_t* clock_events, struct
             }
             break;
         case BOTTOM_Y_CURSOR_CLOCK_SETTINGS_MENU_VALUE:
-            if(keys & KEY_A)
-                return 1;
+            if(keys & KEY_A) {
+                if((time_change->d != 0) || (time_change->h != 0) || (time_change->m != 0) || (time_change->s != 0))
+                    return 1;
+                return EXIT_CLOCK_SETTINGS;
+            }
             else if(keys & KEY_UP)
                 *cursor_y_pos = 9;
             else if(keys & KEY_DOWN)
