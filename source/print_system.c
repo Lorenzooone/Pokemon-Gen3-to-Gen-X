@@ -10,6 +10,7 @@
 #include <stddef.h>
 
 #include "text_gen3_to_general_int_bin.h"
+#include "font_bin.h"
 #include "amiga_font_c_bin.h"
 #include "jp_font_c_bin.h"
 #include "window_graphics_bin.h"
@@ -86,8 +87,7 @@ void swap_buffer_screen_internal(u8);
 u8 is_screen_disabled(u8);
 void add_requested_spacing(u8, u8, u8);
 
-font_character_t amiga_font_1bpp_buffer[FONT_TILES];
-font_character_t jp_font_1bpp_buffer[FONT_TILES];
+font_character_t amiga_font_1bpp_buffer[FONT_TILES * 2];
 font_character_t last_char;
 u32 last_tile;
 u8 last_tile_free_column_cnt;
@@ -361,7 +361,9 @@ void init_text_system() {
     enable_screen(0);
     
     // Load english font
-    LZ77UnCompWram(amiga_font_c_bin, amiga_font_1bpp_buffer);
+    CpuFastSet(font_bin, amiga_font_1bpp_buffer, FONT_TILES * 4);
+    // LZ77UnCompWram(font_bin, amiga_font_1bpp_buffer);
+    // LZ77UnCompWram(amiga_font_c_bin, amiga_font_1bpp_buffer);
     
     for (u16 i = 0; i < TOTAL_BG; i++){
         reset_allocated_tiles_bg(i);
@@ -377,8 +379,8 @@ void init_text_system() {
         *((u32*)(FONT_POS_SUB+TILE_SIZE+(i<<2))) = 0;
     #endif
 
-    LZ77UnCompWram(jp_font_c_bin, jp_font_1bpp_buffer);
-    flip_characters(FONT_TILES, jp_font_1bpp_buffer);
+    // LZ77UnCompWram(jp_font_c_bin, jp_font_1bpp_buffer);
+    // flip_characters(FONT_TILES, jp_font_1bpp_buffer);
 
     // Set window tiles
     for(size_t i = 0; i < (window_graphics_bin_size>>2); i++)
@@ -586,25 +588,28 @@ IWRAM_CODE void finish_tile() {
 }
 
 u8 write_char_variable_width(u16 character) {
-    font_character_t character_bitpattern = character < FONT_TILES
-        ? amiga_font_1bpp_buffer[character]
-        : jp_font_1bpp_buffer[character % FONT_TILES];
-    u32 width = character == ' '? 4 : character >= FONT_TILES? 8 : character == 'm' || character == 'w' ? 8 : character == 'i' || character == 'l' || character == '!' ? 4 : character >= 'a'? 6 : 7;
+    font_character_t character_bitpattern = amiga_font_1bpp_buffer[character];
+    u32 width = character == ' '? 4 
+        : character >= FONT_TILES? 8 
+        : character == 'm' || character == 'w' ? 7 
+        : character == 'i' || character == 'l' || character == '!' ? 2 
+        : character == 'W'? 6 : 5;
+    width++;
     if(last_tile_free_column_cnt > width){
-        u32 cols_first = last_tile_free_column_cnt - width;
-        last_char.l1 |= (character_bitpattern.l1 << cols_first);
-        last_char.l2 |= (character_bitpattern.l2 << cols_first);
-        last_char.l3 |= (character_bitpattern.l3 << cols_first);
-        last_char.l4 |= (character_bitpattern.l4 << cols_first);
-        last_char.l5 |= (character_bitpattern.l5 << cols_first);
-        last_char.l6 |= (character_bitpattern.l6 << cols_first);
-        last_char.l7 |= (character_bitpattern.l7 << cols_first);
-        last_char.l8 |= (character_bitpattern.l8 << cols_first);
+        u32 cols_first = 8 - last_tile_free_column_cnt;
+        last_char.l1 |= (character_bitpattern.l1 >> cols_first);
+        last_char.l2 |= (character_bitpattern.l2 >> cols_first);
+        last_char.l3 |= (character_bitpattern.l3 >> cols_first);
+        last_char.l4 |= (character_bitpattern.l4 >> cols_first);
+        last_char.l5 |= (character_bitpattern.l5 >> cols_first);
+        last_char.l6 |= (character_bitpattern.l6 >> cols_first);
+        last_char.l7 |= (character_bitpattern.l7 >> cols_first);
+        last_char.l8 |= (character_bitpattern.l8 >> cols_first);
         last_tile_free_column_cnt -= width;
         return 0;
     } else {
         u8 colors[] = {2, 1};
-        u32 cols_first = width - last_tile_free_column_cnt;
+        u32 cols_first = 8 - last_tile_free_column_cnt;
         u32 cols_last = 8 - cols_first;
         last_char.l1 |= (character_bitpattern.l1 >> cols_first);
         last_char.l2 |= (character_bitpattern.l2 >> cols_first);
@@ -640,7 +645,7 @@ u8 write_char_variable_width(u16 character) {
             if (allocate_tiles(1, &last_tile) == 0) {
                 return 1;
             }
-            last_tile_free_column_cnt = cols_last;
+            last_tile_free_column_cnt = 8 + cols_last - width;
         }
         return err;
     }
