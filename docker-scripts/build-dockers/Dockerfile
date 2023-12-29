@@ -5,8 +5,8 @@ FROM debian:stable-slim as agbabi
 RUN apt-get update && apt-get install -y build-essential cmake gcc-arm-none-eabi git
 RUN git clone https://github.com/felixjones/agbabi && \
     cd agbabi && \
-    git checkout v2.1.4 && \
-    cmake -S . -DCMAKE_TOOLCHAIN_FILE=cross/agb.cmake -B build && \
+    git checkout 2adf1e6c01f9d4acd6f8e728892c5e18aae5332e && \
+    cmake -S . -DCMAKE_TOOLCHAIN_FILE=cross/agb.cmake -DCMAKE_BUILD_TYPE=MinSizeRel -B build && \
     cmake --build build && \
     cmake --install build
 
