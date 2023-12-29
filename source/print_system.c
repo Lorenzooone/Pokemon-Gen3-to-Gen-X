@@ -20,7 +20,7 @@
 #define PALETTE 0xF
 #define PALETTE_SIZE 0x10
 #define PALETTE_BASE 0x5000000
-#define FONT_TILES 0x100
+#define FONT_TILES 0x200 // Both western and japanese characters in the same font
 #define ALLOC_TILE_START_OFFSET 32
 #define ALLOC_TILE_BUFFER_COUNT (1024 - ALLOC_TILE_START_OFFSET)
 #define ALLOC_TILE_BUFFER_START ((uintptr_t)VRAM_0 + ALLOC_TILE_START_OFFSET*TILE_SIZE)
@@ -87,7 +87,8 @@ void swap_buffer_screen_internal(u8);
 u8 is_screen_disabled(u8);
 void add_requested_spacing(u8, u8, u8);
 
-font_character_t amiga_font_1bpp_buffer[FONT_TILES * 2];
+u32 font_1bpp_width[FONT_TILES / 8];
+font_character_t font_1bpp_buffer[FONT_TILES];
 font_character_t last_char;
 u32 last_tile;
 u8 last_tile_free_column_cnt;
@@ -318,18 +319,36 @@ void set_text_palettes() {
     #endif
 }
 
-// Japanese characters are flipped. Since we have variable font width, we cannot flip the
-// tiles when rendinging, so flip them just after loading them from cartridge ROM
-void flip_characters(size_t len, font_character_t* characters) {
-    for (size_t i = 0; i < len; i++){
-        for (size_t j = 0; j < 8; j++){
-            u8 original = characters[i].line[j];
-            u8 mirrored = 0;
-            for (int k = 0; k < 8; k++) {
-                mirrored |= ((original >> k) & 1) << (7 - k);
-            }
-            characters[i].line[j] = mirrored;
+void compute_font_character_width() {
+    for (size_t i = 0; i < FONT_TILES / 8; i++) {
+        font_1bpp_width[i] = 0;
+    }
+    for (size_t i = 0; i < FONT_TILES; i++) {
+        font_character_t character = font_1bpp_buffer[i];
+        u8 character_width = 8;
+        for (u8 clear_row = true; (character_width > 0) && clear_row; character_width--){
+            clear_row = !(character.l1 & 1) &
+                        !(character.l2 & 1) &
+                        !(character.l3 & 1) &
+                        !(character.l4 & 1) &
+                        !(character.l5 & 1) &
+                        !(character.l6 & 1) &
+                        !(character.l7 & 1) &
+                        !(character.l8 & 1);
+            character.l1 = character.l1 >> 1;
+            character.l2 = character.l2 >> 1;
+            character.l3 = character.l3 >> 1;
+            character.l4 = character.l4 >> 1;
+            character.l5 = character.l5 >> 1;
+            character.l6 = character.l6 >> 1;
+            character.l7 = character.l7 >> 1;
+            character.l8 = character.l8 >> 1;
         }
+        character_width++;
+        if (i == ' '){
+            character_width = 3;
+        }
+        font_1bpp_width[i / 8] |= character_width << ((i % 8) * 4);
     }
 }
 
@@ -361,9 +380,10 @@ void init_text_system() {
     enable_screen(0);
     
     // Load english font
-    CpuFastSet(font_bin, amiga_font_1bpp_buffer, FONT_TILES * 4);
-    // LZ77UnCompWram(font_bin, amiga_font_1bpp_buffer);
-    // LZ77UnCompWram(amiga_font_c_bin, amiga_font_1bpp_buffer);
+    CpuFastSet(font_bin, font_1bpp_buffer, FONT_TILES * sizeof(font_character_t) / sizeof(size_t));
+    compute_font_character_width();
+    // TODO: Import font as compressed font:
+    // LZ77UnCompWram(font_c_bin, font_1bpp_buffer);
     
     for (u16 i = 0; i < TOTAL_BG; i++){
         reset_allocated_tiles_bg(i);
@@ -378,9 +398,6 @@ void init_text_system() {
     for(size_t i = 0; i < (TILE_SIZE>>2); i++)
         *((u32*)(FONT_POS_SUB+TILE_SIZE+(i<<2))) = 0;
     #endif
-
-    // LZ77UnCompWram(jp_font_c_bin, jp_font_1bpp_buffer);
-    // flip_characters(FONT_TILES, jp_font_1bpp_buffer);
 
     // Set window tiles
     for(size_t i = 0; i < (window_graphics_bin_size>>2); i++)
@@ -588,12 +605,8 @@ IWRAM_CODE void finish_tile() {
 }
 
 u8 write_char_variable_width(u16 character) {
-    font_character_t character_bitpattern = amiga_font_1bpp_buffer[character];
-    u32 width = character == ' '? 4 
-        : character >= FONT_TILES? 8 
-        : character == 'm' || character == 'w' ? 7 
-        : character == 'i' || character == 'l' || character == '!' ? 2 
-        : character == 'W'? 6 : 5;
+    font_character_t character_bitpattern = font_1bpp_buffer[character];
+    u32 width = (font_1bpp_width[character / 8] >> ((character % 8) * 4)) & 0xF;
     width++;
     if(last_tile_free_column_cnt > width){
         u32 cols_first = 8 - last_tile_free_column_cnt;
@@ -702,11 +715,12 @@ IWRAM_CODE MAX_OPTIMIZE int sub_printf_gen3(u8* string, size_t size_max, u8 is_j
     while((*string) != GEN3_EOL) {
         if(is_jp) {
             u8 character = *(string++);
+            size_t jp_font_offset = FONT_TILES / 2;
             if((character >= GEN3_FIRST_TICKS_START && character <= GEN3_FIRST_TICKS_END) || (character >= GEN3_SECOND_TICKS_START && character <= GEN3_SECOND_TICKS_END))
-                write_above_char(GENERIC_TICKS_CHAR+FONT_TILES);
+                write_above_char(GENERIC_TICKS_CHAR + jp_font_offset);
             else if((character >= GEN3_FIRST_CIRCLE_START && character <= GEN3_FIRST_CIRCLE_END) || (character >= GEN3_SECOND_CIRCLE_START && character <= GEN3_SECOND_CIRCLE_END))
-                write_above_char(GENERIC_CIRCLE_CHAR+FONT_TILES);
-            if(write_char(character+FONT_TILES))
+                write_above_char(GENERIC_CIRCLE_CHAR + jp_font_offset);
+            if(write_char(character + jp_font_offset))
                 return 0;
         }
         else if(write_char(text_gen3_to_general_int_bin[*(string++)]))
