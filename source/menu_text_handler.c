@@ -619,18 +619,26 @@ void print_colour_settings_menu(u8 update) {
     set_text_y(BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3);
     PRINT_FUNCTION("    Background:");
     print_single_colour_info(BACKGROUND_COLOUR_POS);
-    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+(BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3));
+
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*1));
     PRINT_FUNCTION("    Font:");
-    print_single_colour_info(FONT_COLOUR_POS);
+    print_single_colour_info(FONT_COLOUR_1_POS);
+
     set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*2));
     PRINT_FUNCTION("    Window 1:");
     print_single_colour_info(WINDOW_COLOUR_1_POS);
+    
     set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*3));
     PRINT_FUNCTION("    Window 2:");
     print_single_colour_info(WINDOW_COLOUR_2_POS);
+    
     set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*4));
     PRINT_FUNCTION("    Cursor:");
     print_single_colour_info(SPRITE_COLOUR_POS);
+
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*5));
+    PRINT_FUNCTION("    Font Shadow:");
+    print_single_colour_info(FONT_COLOUR_2_POS);
     
     init_colour_window();
     clear_colour_window();

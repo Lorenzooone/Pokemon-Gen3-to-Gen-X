@@ -140,16 +140,18 @@ MAX_OPTIMIZE ALWAYS_INLINE void convert_xbpp(u8* src, u32* dst, size_t src_size,
 // This code is used each time a text character is rendered, so, it's a specialized version of the generic
 // convert_xbpp with hardcoded num_bpp set to 1. This removes some syscalls (swi bios calls) as well
 // as eliminates some loops.
-IWRAM_CODE MAX_OPTIMIZE void convert_1bpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward) {
+IWRAM_CODE MAX_OPTIMIZE void convert_1bpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward, u8 reset) {
     size_t num_rows = src_size;
     num_rows += (src_size & 1);
     for(size_t i = 0; i < num_rows; i++) {
         u32 src_data = src[i];
-        u32 row = 0;
+        u32 row = (~(-((u32)reset))) & dst[i];
         u32 mask = -((u32)is_forward);
         for(u32 j = 0; j < 8; j++) {
+            u32 curr_src_data = (src_data>>(j));
+            u32 color = colors[curr_src_data & 1] & 0xF;
             u32 direction = (mask & (7-j)) | (~mask & j);
-            row |= (colors[(src_data>>(j))&(1)]&0xF) << (direction * 4);
+            row |= color << (direction * 4);
         }
         dst[i] = row;
     }

@@ -37,6 +37,12 @@
 #endif
 #define X_OFFSET_POS 0
 #define Y_OFFSET_POS 1
+#define COLOR_PALETTE_INDEX_TRANSPARENT 0
+#define COLOR_PALETTE_INDEX_BACKGROUND 2
+#define COLOR_PALETTE_INDEX_WINDOW_1 3
+#define COLOR_PALETTE_INDEX_WINDOW_2 4
+#define COLOR_PALETTE_INDEX_FONT_1 15
+#define COLOR_PALETTE_INDEX_FONT_2 7
 
 struct {
     union {
@@ -128,13 +134,6 @@ const font_character_t EMPTY_CHAR = {
 // Put allocated indices in tile_ids_out
 // Returns the number of allocated tiles
 IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
-
-    // // Just return a rolling index for now
-    // for (int i = 0; i < count; i++){
-    //     tile_ids_out[i] = (tile_alloc_index++) % ALLOC_TILE_BUFFER_COUNT;
-    // }
-    // return count;
-
     u32 start_count = count;
     u32 tile_id = ALLOC_TILE_BUFFER_COUNT;
     // Search linearly through tile alloc mask buffer
@@ -187,25 +186,10 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
     return start_count - count;
 }
 
-// IWRAM_CODE void free_tiles(u8 bg_num, u32 count, u32* tile_ids){
-//     while(count != 0) {
-//         u32 tile_id = tile_ids[count--];
-//         // if (tile_id > ALLOC_TILE_BUFFER_COUNT)
-//         //     continue;
-//         u32 block_index = tile_id / 32;
-//         tile_id %= 32;
-//         u32 mask = ((u32)1) << tile_id;
-//         tile_mask_block_buffer[bg_num][block_index] &= ~mask;
-//     }
-// }
-
 IWRAM_CODE void reset_allocated_tiles_bg(u8 bg_num) {
     tile_mask_block_buffer[bg_num][0] = 0;
     CpuFastSet(tile_mask_block_buffer[bg_num], tile_mask_block_buffer[bg_num], 
         CPUFASTSET_FILL | (ALLOC_TILE_BUFFER_COUNT / 32));
-    // for(int block_index = 0; block_index < ALLOC_TILE_BUFFER_COUNT / 32; block_index++) {
-    //     tile_mask_block_buffer[bg_num][block_index] = 0;
-    // }
     last_char = EMPTY_CHAR;
     last_tile_free_column_cnt = 8;
     tile_alloc_index = (tile_alloc_index + 1) % (ALLOC_TILE_BUFFER_COUNT / 32);
@@ -304,18 +288,20 @@ void init_numbers() {
 
 void set_text_palettes() {
     BG_PALETTE[0]=get_full_colour(BACKGROUND_COLOUR_POS);
-    BG_PALETTE[(PALETTE*PALETTE_SIZE)]=get_full_colour(BACKGROUND_COLOUR_POS);
-    BG_PALETTE[(PALETTE*PALETTE_SIZE)+1]=get_full_colour(FONT_COLOUR_POS);
-    BG_PALETTE[(PALETTE*PALETTE_SIZE)+2]=get_full_colour(BACKGROUND_COLOUR_POS);
-    BG_PALETTE[(PALETTE*PALETTE_SIZE)+3]=get_full_colour(WINDOW_COLOUR_1_POS);
-    BG_PALETTE[(PALETTE*PALETTE_SIZE)+4]=get_full_colour(WINDOW_COLOUR_2_POS);
+    BG_PALETTE[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_TRANSPARENT]     = get_full_colour(BACKGROUND_COLOUR_POS);
+    BG_PALETTE[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_FONT_1]          = get_full_colour(FONT_COLOUR_1_POS);
+    BG_PALETTE[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_FONT_2]          = get_full_colour(FONT_COLOUR_2_POS);
+    BG_PALETTE[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_BACKGROUND]      = get_full_colour(BACKGROUND_COLOUR_POS);
+    BG_PALETTE[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_WINDOW_1]        = get_full_colour(WINDOW_COLOUR_1_POS);
+    BG_PALETTE[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_WINDOW_2]        = get_full_colour(WINDOW_COLOUR_2_POS);
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     BG_PALETTE_SUB[0]=get_full_colour(BACKGROUND_COLOUR_POS);
-    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)]=get_full_colour(BACKGROUND_COLOUR_POS);
-    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+1]=get_full_colour(FONT_COLOUR_POS);
-    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+2]=get_full_colour(BACKGROUND_COLOUR_POS);
-    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+3]=get_full_colour(WINDOW_COLOUR_1_POS);
-    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+4]=get_full_colour(WINDOW_COLOUR_2_POS);
+    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_TRANSPARENT] = get_full_colour(BACKGROUND_COLOUR_POS);
+    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_FONT_1]      = get_full_colour(FONT_COLOUR_1_POS);
+    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_FONT_2]      = get_full_colour(FONT_COLOUR_2_POS);
+    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_BACKGROUND]  = get_full_colour(BACKGROUND_COLOUR_POS);
+    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_WINDOW_1]    = get_full_colour(WINDOW_COLOUR_1_POS);
+    BG_PALETTE_SUB[(PALETTE*PALETTE_SIZE)+COLOR_PALETTE_INDEX_WINDOW_2]    = get_full_colour(WINDOW_COLOUR_2_POS);
     #endif
 }
 
@@ -584,12 +570,15 @@ IWRAM_CODE u8 flush_tile() {
     if (last_char.p1 == EMPTY_CHAR.p1 && last_char.p2 == EMPTY_CHAR.p2 && last_tile_free_column_cnt == 8){
         return 1;
     }
-    u8 colors[] = {2, 1};
+    u8 colors[] = {
+        COLOR_PALETTE_INDEX_BACKGROUND,
+        COLOR_PALETTE_INDEX_FONT_1
+    };
     u16* tile_vram_ptr = (u16*)ALLOC_TILE_BUFFER_START + (last_tile * TILE_SIZE >> 1);
-    convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr, 8, colors, 1);
+    convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr, 8, colors, 1, 1);
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     u16* tile_vram_ptr_sub = (u16*)ALLOC_TILE_BUFFER_START_SUB + (last_tile * TILE_SIZE >> 1);
-    convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr_sub, 8, colors, 1);
+    convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr_sub, 8, colors, 1, 1);
     #endif
     flush_char(ALLOC_TILE_START_OFFSET + last_tile);
     return 0;
@@ -621,7 +610,6 @@ u8 write_char_variable_width(u16 character) {
         last_tile_free_column_cnt -= width;
         return 0;
     } else {
-        u8 colors[] = {2, 1};
         u32 cols_first = 8 - last_tile_free_column_cnt;
         u32 cols_last = 8 - cols_first;
         last_char.l1 |= (character_bitpattern.l1 >> cols_first);
@@ -638,11 +626,30 @@ u8 write_char_variable_width(u16 character) {
         if (last_char.p1 == EMPTY_CHAR.p1 && last_char.p2 == EMPTY_CHAR.p2) {
             err = advance_cursor();
         } else {
+            u8 fg_colors[] = {
+                COLOR_PALETTE_INDEX_BACKGROUND,
+                COLOR_PALETTE_INDEX_FONT_1
+            };
+            u8 bg_colors[] = {
+                COLOR_PALETTE_INDEX_TRANSPARENT,
+                COLOR_PALETTE_INDEX_FONT_2
+            };
             u16* tile_vram_ptr = (u16*)ALLOC_TILE_BUFFER_START + (last_tile * TILE_SIZE >> 1);
-            convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr, 8, colors, 1);
+            font_character_t character_shadow = last_char;
+            character_shadow.l1 = (character_shadow.l1 >> 1); // | (character_bitpattern.l1 << 7);
+            character_shadow.l2 = (character_shadow.l2 >> 1); // | (character_bitpattern.l2 << 7);
+            character_shadow.l3 = (character_shadow.l3 >> 1); // | (character_bitpattern.l2 << 7);
+            character_shadow.l4 = (character_shadow.l4 >> 1); // | (character_bitpattern.l2 << 7);
+            character_shadow.l5 = (character_shadow.l5 >> 1); // | (character_bitpattern.l2 << 7);
+            character_shadow.l6 = (character_shadow.l6 >> 1); // | (character_bitpattern.l2 << 7);
+            character_shadow.l7 = (character_shadow.l7 >> 1); // | (character_bitpattern.l2 << 7);
+            character_shadow.l8 = (character_shadow.l8 >> 1); // | (character_bitpattern.l2 << 7);
+            convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr, 8, fg_colors, 1, 1);
+            convert_1bpp((u8*)&character_shadow, (u32*)tile_vram_ptr, 8, bg_colors, 1, 0);
             #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
             u16* tile_vram_ptr_sub = (u16*)ALLOC_TILE_BUFFER_START_SUB + (last_tile * TILE_SIZE >> 1);
-            convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr_sub, 8, colors, 1);
+            convert_1bpp((u8*)&last_char, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, 1);
+            convert_1bpp((u8*)&character_shadow, (u32*)tile_vram_ptr_sub, 8, bg_colors, 1, 0);
             #endif
             err = write_char_and_advance_cursor((u16)(ALLOC_TILE_START_OFFSET + last_tile));
         }
