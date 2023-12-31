@@ -1089,7 +1089,7 @@ void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
         set_text_x(2);
         PRINT_FUNCTION("Language: \x01\n\n", language_strings[language]);
         set_text_x(2);
-        PRINT_FUNCTION("OT: \x05 - \x02 - \x0B\n\n", mon->src->ot_name, GET_LANGUAGE_OT_NAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language), get_trainer_gender_char_raw(mon), (mon->src->ot_id)&0xFFFF, 5);
+        PRINT_FUNCTION("OT: \x05 \x02 \x0B\n\n", mon->src->ot_name, GET_LANGUAGE_OT_NAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language), get_trainer_gender_char_raw(mon), (mon->src->ot_id)&0xFFFF, 5);
         set_text_x(2);
         PRINT_FUNCTION("Item: \x01\n\n", get_item_name_raw(mon));
         
