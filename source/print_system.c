@@ -611,7 +611,7 @@ IWRAM_CODE u8 flush_tile() {
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     u16* tile_vram_ptr_sub = (u16*)DYNAMIC_TILE_BUFFER_START_ADR_SUB + (tile_canvas_index * TILE_SIZE >> 1);
     convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr_sub, 8, bg_colors, 1, 1);
-    convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, 0);
+    convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, 0);
     #endif
     flush_char(DYNAMIC_TILE_INDEX_OFFSET + tile_canvas_index);
     return 0;
@@ -661,28 +661,28 @@ IWRAM_CODE MAX_OPTIMIZE u8 write_char_variable_width(u16 character, u8 clear_can
     u16* tile_vram_ptr_sub = (u16*)DYNAMIC_TILE_BUFFER_START_ADR_SUB + (tile_canvas_index * TILE_SIZE >> 1);
     #endif
     // VRAM mem optimization. If the tile to write happens to be empty
-    if (tile_canvas_bg_bitpattern.p1 != EMPTY_CHAR_BITPATTERN.p1 || tile_canvas_bg_bitpattern.p2 != EMPTY_CHAR_BITPATTERN.p2) {
-        u8 bg_colors[] = {
-            COLOR_PALETTE_INDEX_TRANSPARENT,
-            COLOR_PALETTE_INDEX_FONT_2
-        };
-        convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr, 8, bg_colors, 1, clear_canvas);
-        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-        convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr_sub, 8, bg_colors, 1, clear_canvas);
-        #endif
-        did_write_to_canvas = true;
-    } 
     if (tile_canvas_fg_bitpattern.p1 != EMPTY_CHAR_BITPATTERN.p1 || tile_canvas_fg_bitpattern.p2 != EMPTY_CHAR_BITPATTERN.p2) {
         u8 fg_colors[] = {
             COLOR_PALETTE_INDEX_BACKGROUND,
             COLOR_PALETTE_INDEX_FONT_1
         };
-        convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr, 8, fg_colors, 1, clear_canvas & !did_write_to_canvas);
+        convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr, 8, fg_colors, 1, clear_canvas);
         #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-        convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, clear_canvas & !did_write_to_canvas);
+        convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, clear_canvas);
         #endif
         did_write_to_canvas = true;
     }
+    if (tile_canvas_bg_bitpattern.p1 != EMPTY_CHAR_BITPATTERN.p1 || tile_canvas_bg_bitpattern.p2 != EMPTY_CHAR_BITPATTERN.p2) {
+        u8 bg_colors[] = {
+            COLOR_PALETTE_INDEX_TRANSPARENT | (-(!did_write_to_canvas) & COLOR_PALETTE_INDEX_BACKGROUND),
+            COLOR_PALETTE_INDEX_FONT_2
+        };
+        convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr, 8, bg_colors, 1, clear_canvas & !did_write_to_canvas);
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr_sub, 8, bg_colors, 1, clear_canvas & !did_write_to_canvas);
+        #endif
+        did_write_to_canvas = true;
+    } 
     if (did_write_to_canvas) {
         flush_char((u16)(DYNAMIC_TILE_INDEX_OFFSET + tile_canvas_index));
     } 
