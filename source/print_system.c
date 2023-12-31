@@ -100,9 +100,14 @@ void add_requested_spacing(u8, u8, u8);
 #define font_1bpp_buffer ((character_bitpattern_t*)DYNAMIC_TILE_1BBP_BUFFER_ADR)
 #define font_1bpp_width ((u32*)DYNAMIC_TILE_WIDTH_BUFFER_ADR)
 #define dynamic_tile_alloc_buffer ((u32*)DYNAMIC_TILE_ALLOC_BUFFER_ADR)
-u32 dynamic_tile_alloc_index = 0;
-character_bitpattern_t tile_canvas_bitpattern;
+#define get_tile_index_at(x, y) (screen[(x)+((y)*X_SIZE)] & 0xFFF) - DYNAMIC_TILE_INDEX_OFFSET
+#define reset_tile_canvas() do { \
+    tile_canvas_free_column_cnt = 7; \
+    tile_canvas_bg_bitpattern = EMPTY_CHAR_BITPATTERN; \
+} while(0);
+character_bitpattern_t tile_canvas_bg_bitpattern;
 u32 tile_canvas_index;
+u32 tile_canvas_rolling_index_offset = 0;
 u8 tile_canvas_free_column_cnt;
 u8 x_pos;
 u8 y_pos;
@@ -127,6 +132,20 @@ const character_bitpattern_t EMPTY_CHAR_BITPATTERN = {
     .p2 = 0,
 };
 
+IWRAM_CODE ALWAYS_INLINE MAX_OPTIMIZE u32 is_allocated(u32 tile_id) {
+    if(tile_id > DYNAMIC_TILE_MAX_SLOTS){
+        return false;
+    }
+    u32 block_index = tile_id / 32;
+    u32 index_in_block = tile_id % 32;
+    u32 tile_mask =
+        dynamic_tile_alloc_buffer[0 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] |
+        dynamic_tile_alloc_buffer[1 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] |
+        dynamic_tile_alloc_buffer[2 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] |
+        dynamic_tile_alloc_buffer[3 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index];
+    return (tile_mask >> index_in_block) & 1;
+}
+
 // Get a free bg tile index that can be used for temporary tiles.
 // Don't forget to free tiles after use!
 // Used by variable width font rendering, but could be used by other things as well.
@@ -138,7 +157,7 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
     u32 tile_id = DYNAMIC_TILE_MAX_SLOTS;
     // Search linearly through tile alloc mask buffer
     for(u32 i = 0; (i < (DYNAMIC_TILE_MAX_SLOTS / 32)) & (count != 0); i++) {
-        u32 block_index = dynamic_tile_alloc_index % (DYNAMIC_TILE_MAX_SLOTS / 32);
+        u32 block_index = tile_canvas_rolling_index_offset % (DYNAMIC_TILE_MAX_SLOTS / 32);
         u32 tile_mask = 
             dynamic_tile_alloc_buffer[0 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index]|
             dynamic_tile_alloc_buffer[1 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index]|
@@ -181,7 +200,7 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
             dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] = tile_mask;
             tile_ids_out[--count] = tile_id;
         }
-        dynamic_tile_alloc_index += (tile_mask == 0xFFFFFFFF);
+        tile_canvas_rolling_index_offset += (tile_mask == 0xFFFFFFFF);
     }
     return start_count - count;
 }
@@ -190,9 +209,8 @@ IWRAM_CODE void reset_allocated_tiles_bg(u8 bg_num) {
     u32* addr = &(dynamic_tile_alloc_buffer[bg_num * DYNAMIC_TILE_MAX_SLOTS / 32]);
     *addr = 0;
     CpuFastSet(addr, addr, CPUFASTSET_FILL | (DYNAMIC_TILE_MAX_SLOTS / 32));
-    tile_canvas_bitpattern = EMPTY_CHAR_BITPATTERN;
-    tile_canvas_free_column_cnt = 8;
-    dynamic_tile_alloc_index = (dynamic_tile_alloc_index + 1) % (DYNAMIC_TILE_MAX_SLOTS / 32);
+    reset_tile_canvas();
+    tile_canvas_rolling_index_offset = (tile_canvas_rolling_index_offset + 1) % (DYNAMIC_TILE_MAX_SLOTS / 32);
     allocate_tiles(1, &tile_canvas_index);
 }
 
@@ -331,7 +349,7 @@ void compute_font_character_width() {
         }
         character_width++;
         if (i == ' '){
-            character_width = 3;
+            character_width = 2;
         }
         font_1bpp_width[i / 8] |= character_width << ((i % 8) * 4);
     }
@@ -556,24 +574,44 @@ IWRAM_CODE u8 advance_cursor() {
     return 0;
 }
 
-IWRAM_CODE u8 write_char_and_advance_cursor(u16 character) {
-    flush_char(character);
-    return advance_cursor();
-}
+// IWRAM_CODE u8 write_char_and_advance_cursor(u16 character) {
+//     flush_char(character);
+//     return advance_cursor();
+// }
 
 IWRAM_CODE u8 flush_tile() {
-    if (tile_canvas_bitpattern.p1 == EMPTY_CHAR_BITPATTERN.p1 && tile_canvas_bitpattern.p2 == EMPTY_CHAR_BITPATTERN.p2){
+    character_bitpattern_t tile_canvas_fg_bitpattern = tile_canvas_bg_bitpattern;
+    tile_canvas_fg_bitpattern.l1 = (tile_canvas_fg_bitpattern.l1 << 1);
+    tile_canvas_fg_bitpattern.l2 = (tile_canvas_fg_bitpattern.l2 << 1);
+    tile_canvas_fg_bitpattern.l3 = (tile_canvas_fg_bitpattern.l3 << 1);
+    tile_canvas_fg_bitpattern.l4 = (tile_canvas_fg_bitpattern.l4 << 1);
+    tile_canvas_fg_bitpattern.l5 = (tile_canvas_fg_bitpattern.l5 << 1);
+    tile_canvas_fg_bitpattern.l6 = (tile_canvas_fg_bitpattern.l6 << 1);
+    tile_canvas_fg_bitpattern.l7 = (tile_canvas_fg_bitpattern.l7 << 1);
+    tile_canvas_fg_bitpattern.l8 = (tile_canvas_fg_bitpattern.l8 << 1);
+
+    if (tile_canvas_bg_bitpattern.p1 == EMPTY_CHAR_BITPATTERN.p1 && 
+        tile_canvas_bg_bitpattern.p2 == EMPTY_CHAR_BITPATTERN.p2 &&
+        tile_canvas_fg_bitpattern.p1 == EMPTY_CHAR_BITPATTERN.p1 &&
+        tile_canvas_fg_bitpattern.p2 == EMPTY_CHAR_BITPATTERN.p2
+    ){
         return 1;
     }
-    u8 colors[] = {
+    u8 fg_colors[] = {
         COLOR_PALETTE_INDEX_BACKGROUND,
         COLOR_PALETTE_INDEX_FONT_1
     };
+    u8 bg_colors[] = {
+        COLOR_PALETTE_INDEX_TRANSPARENT,
+        COLOR_PALETTE_INDEX_FONT_2
+    };
     u16* tile_vram_ptr = (u16*)DYNAMIC_TILE_BUFFER_START_ADR + (tile_canvas_index * TILE_SIZE >> 1);
-    convert_1bpp((u8*)&tile_canvas_bitpattern, (u32*)tile_vram_ptr, 8, colors, 1, 1);
+    convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr, 8, bg_colors, 1, 1);
+    convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr, 8, fg_colors, 1, 0);
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     u16* tile_vram_ptr_sub = (u16*)DYNAMIC_TILE_BUFFER_START_ADR_SUB + (tile_canvas_index * TILE_SIZE >> 1);
-    convert_1bpp((u8*)&tile_canvas_bitpattern, (u32*)tile_vram_ptr_sub, 8, colors, 1, 1);
+    convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr_sub, 8, bg_colors, 1, 1);
+    convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, 0);
     #endif
     flush_char(DYNAMIC_TILE_INDEX_OFFSET + tile_canvas_index);
     return 0;
@@ -581,94 +619,94 @@ IWRAM_CODE u8 flush_tile() {
 
 IWRAM_CODE void finish_tile() {
     u8 didnt_write_tile = flush_tile();
-    tile_canvas_free_column_cnt = 8;
+    reset_tile_canvas();
     if (didnt_write_tile) {
         return;
     }
-    tile_canvas_bitpattern = EMPTY_CHAR_BITPATTERN;
     allocate_tiles(1, &tile_canvas_index);
 }
 
-IWRAM_CODE u8 write_char_variable_width(u16 character) {
+IWRAM_CODE MAX_OPTIMIZE u8 write_char_variable_width(u16 character, u8 clear_canvas) {
     character_bitpattern_t character_bitpattern = font_1bpp_buffer[character];
     u32 width = (font_1bpp_width[character / 8] >> ((character % 8) * 4)) & 0xF;
-    width++;
+    // Leave 1 pixel of space for font shadow.
+    tile_canvas_free_column_cnt -= tile_canvas_free_column_cnt != 0;
+    u32 cols_first = 8 - tile_canvas_free_column_cnt;
+    tile_canvas_bg_bitpattern.l1 |= (character_bitpattern.l1 >> cols_first);
+    tile_canvas_bg_bitpattern.l2 |= (character_bitpattern.l2 >> cols_first);
+    tile_canvas_bg_bitpattern.l3 |= (character_bitpattern.l3 >> cols_first);
+    tile_canvas_bg_bitpattern.l4 |= (character_bitpattern.l4 >> cols_first);
+    tile_canvas_bg_bitpattern.l5 |= (character_bitpattern.l5 >> cols_first);
+    tile_canvas_bg_bitpattern.l6 |= (character_bitpattern.l6 >> cols_first);
+    tile_canvas_bg_bitpattern.l7 |= (character_bitpattern.l7 >> cols_first);
+    tile_canvas_bg_bitpattern.l8 |= (character_bitpattern.l8 >> cols_first);
     if(tile_canvas_free_column_cnt > width){
-        u32 cols_first = 8 - tile_canvas_free_column_cnt;
-        tile_canvas_bitpattern.l1 |= (character_bitpattern.l1 >> cols_first);
-        tile_canvas_bitpattern.l2 |= (character_bitpattern.l2 >> cols_first);
-        tile_canvas_bitpattern.l3 |= (character_bitpattern.l3 >> cols_first);
-        tile_canvas_bitpattern.l4 |= (character_bitpattern.l4 >> cols_first);
-        tile_canvas_bitpattern.l5 |= (character_bitpattern.l5 >> cols_first);
-        tile_canvas_bitpattern.l6 |= (character_bitpattern.l6 >> cols_first);
-        tile_canvas_bitpattern.l7 |= (character_bitpattern.l7 >> cols_first);
-        tile_canvas_bitpattern.l8 |= (character_bitpattern.l8 >> cols_first);
         tile_canvas_free_column_cnt -= width;
         return 0;
-    } else {
-        u32 cols_first = 8 - tile_canvas_free_column_cnt;
-        u32 cols_last = 8 - cols_first;
-        tile_canvas_bitpattern.l1 |= (character_bitpattern.l1 >> cols_first);
-        tile_canvas_bitpattern.l2 |= (character_bitpattern.l2 >> cols_first);
-        tile_canvas_bitpattern.l3 |= (character_bitpattern.l3 >> cols_first);
-        tile_canvas_bitpattern.l4 |= (character_bitpattern.l4 >> cols_first);
-        tile_canvas_bitpattern.l5 |= (character_bitpattern.l5 >> cols_first);
-        tile_canvas_bitpattern.l6 |= (character_bitpattern.l6 >> cols_first);
-        tile_canvas_bitpattern.l7 |= (character_bitpattern.l7 >> cols_first);
-        tile_canvas_bitpattern.l8 |= (character_bitpattern.l8 >> cols_first);
-        u8 err = 0;
-        // VRAM mem optimization. If the tile to write happens to be empty
-        // use a special hardcoded empty tile and reuse the current tile next character
-        if (tile_canvas_bitpattern.p1 == EMPTY_CHAR_BITPATTERN.p1 && tile_canvas_bitpattern.p2 == EMPTY_CHAR_BITPATTERN.p2) {
-            err = advance_cursor();
-        } else {
-            u8 fg_colors[] = {
-                COLOR_PALETTE_INDEX_BACKGROUND,
-                COLOR_PALETTE_INDEX_FONT_1
-            };
-            u8 bg_colors[] = {
-                COLOR_PALETTE_INDEX_TRANSPARENT,
-                COLOR_PALETTE_INDEX_FONT_2
-            };
-            u16* tile_vram_ptr = (u16*)DYNAMIC_TILE_BUFFER_START_ADR + (tile_canvas_index * TILE_SIZE >> 1);
-            character_bitpattern_t character_shadow = tile_canvas_bitpattern;
-            character_shadow.l1 = (character_shadow.l1 >> 1); // | (character_bitpattern.l1 << 7);
-            character_shadow.l2 = (character_shadow.l2 >> 1); // | (character_bitpattern.l2 << 7);
-            character_shadow.l3 = (character_shadow.l3 >> 1); // | (character_bitpattern.l2 << 7);
-            character_shadow.l4 = (character_shadow.l4 >> 1); // | (character_bitpattern.l2 << 7);
-            character_shadow.l5 = (character_shadow.l5 >> 1); // | (character_bitpattern.l2 << 7);
-            character_shadow.l6 = (character_shadow.l6 >> 1); // | (character_bitpattern.l2 << 7);
-            character_shadow.l7 = (character_shadow.l7 >> 1); // | (character_bitpattern.l2 << 7);
-            character_shadow.l8 = (character_shadow.l8 >> 1); // | (character_bitpattern.l2 << 7);
-            convert_1bpp((u8*)&tile_canvas_bitpattern, (u32*)tile_vram_ptr, 8, fg_colors, 1, 1);
-            convert_1bpp((u8*)&character_shadow, (u32*)tile_vram_ptr, 8, bg_colors, 1, 0);
-            #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
-            u16* tile_vram_ptr_sub = (u16*)DYNAMIC_TILE_BUFFER_START_ADR_SUB + (tile_canvas_index * TILE_SIZE >> 1);
-            convert_1bpp((u8*)&tile_canvas_bitpattern, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, 1);
-            convert_1bpp((u8*)&character_shadow, (u32*)tile_vram_ptr_sub, 8, bg_colors, 1, 0);
-            #endif
-            err = write_char_and_advance_cursor((u16)(DYNAMIC_TILE_INDEX_OFFSET + tile_canvas_index));
-        }
-        tile_canvas_bitpattern.l1 = (character_bitpattern.l1 << cols_last);
-        tile_canvas_bitpattern.l2 = (character_bitpattern.l2 << cols_last);
-        tile_canvas_bitpattern.l3 = (character_bitpattern.l3 << cols_last);
-        tile_canvas_bitpattern.l4 = (character_bitpattern.l4 << cols_last);
-        tile_canvas_bitpattern.l5 = (character_bitpattern.l5 << cols_last);
-        tile_canvas_bitpattern.l6 = (character_bitpattern.l6 << cols_last);
-        tile_canvas_bitpattern.l7 = (character_bitpattern.l7 << cols_last);
-        tile_canvas_bitpattern.l8 = (character_bitpattern.l8 << cols_last);
-        if (!err) {
-            if (allocate_tiles(1, &tile_canvas_index) == 0) {
-                return 1;
-            }
-            tile_canvas_free_column_cnt = 8 + cols_last - width;
-        }
-        return err;
+    } 
+    u32 cols_last = 8 - cols_first;
+    u32 did_write_to_canvas = false;
+    cols_first--;
+    character_bitpattern_t tile_canvas_fg_bitpattern = tile_canvas_bg_bitpattern;
+    tile_canvas_fg_bitpattern.l1 = (tile_canvas_fg_bitpattern.l1 << 1) | (character_bitpattern.l1 >> cols_first);
+    tile_canvas_fg_bitpattern.l2 = (tile_canvas_fg_bitpattern.l2 << 1) | (character_bitpattern.l2 >> cols_first);
+    tile_canvas_fg_bitpattern.l3 = (tile_canvas_fg_bitpattern.l3 << 1) | (character_bitpattern.l3 >> cols_first);
+    tile_canvas_fg_bitpattern.l4 = (tile_canvas_fg_bitpattern.l4 << 1) | (character_bitpattern.l4 >> cols_first);
+    tile_canvas_fg_bitpattern.l5 = (tile_canvas_fg_bitpattern.l5 << 1) | (character_bitpattern.l5 >> cols_first);
+    tile_canvas_fg_bitpattern.l6 = (tile_canvas_fg_bitpattern.l6 << 1) | (character_bitpattern.l6 >> cols_first);
+    tile_canvas_fg_bitpattern.l7 = (tile_canvas_fg_bitpattern.l7 << 1) | (character_bitpattern.l7 >> cols_first);
+    tile_canvas_fg_bitpattern.l8 = (tile_canvas_fg_bitpattern.l8 << 1) | (character_bitpattern.l8 >> cols_first);
+    u16* tile_vram_ptr = (u16*)DYNAMIC_TILE_BUFFER_START_ADR + (tile_canvas_index * TILE_SIZE >> 1);
+    #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+    u16* tile_vram_ptr_sub = (u16*)DYNAMIC_TILE_BUFFER_START_ADR_SUB + (tile_canvas_index * TILE_SIZE >> 1);
+    #endif
+    // VRAM mem optimization. If the tile to write happens to be empty
+    if (tile_canvas_bg_bitpattern.p1 != EMPTY_CHAR_BITPATTERN.p1 || tile_canvas_bg_bitpattern.p2 != EMPTY_CHAR_BITPATTERN.p2) {
+        u8 bg_colors[] = {
+            COLOR_PALETTE_INDEX_TRANSPARENT,
+            COLOR_PALETTE_INDEX_FONT_2
+        };
+        convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr, 8, bg_colors, 1, clear_canvas);
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        convert_1bpp((u8*)&tile_canvas_bg_bitpattern, (u32*)tile_vram_ptr_sub, 8, bg_colors, 1, clear_canvas);
+        #endif
+        did_write_to_canvas = true;
+    } 
+    if (tile_canvas_fg_bitpattern.p1 != EMPTY_CHAR_BITPATTERN.p1 || tile_canvas_fg_bitpattern.p2 != EMPTY_CHAR_BITPATTERN.p2) {
+        u8 fg_colors[] = {
+            COLOR_PALETTE_INDEX_BACKGROUND,
+            COLOR_PALETTE_INDEX_FONT_1
+        };
+        convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr, 8, fg_colors, 1, clear_canvas & !did_write_to_canvas);
+        #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
+        convert_1bpp((u8*)&tile_canvas_fg_bitpattern, (u32*)tile_vram_ptr_sub, 8, fg_colors, 1, clear_canvas & !did_write_to_canvas);
+        #endif
+        did_write_to_canvas = true;
     }
+    if (did_write_to_canvas) {
+        flush_char((u16)(DYNAMIC_TILE_INDEX_OFFSET + tile_canvas_index));
+    } 
+    u8 err = advance_cursor();
+    tile_canvas_bg_bitpattern.l1 = (character_bitpattern.l1 << cols_last);
+    tile_canvas_bg_bitpattern.l2 = (character_bitpattern.l2 << cols_last);
+    tile_canvas_bg_bitpattern.l3 = (character_bitpattern.l3 << cols_last);
+    tile_canvas_bg_bitpattern.l4 = (character_bitpattern.l4 << cols_last);
+    tile_canvas_bg_bitpattern.l5 = (character_bitpattern.l5 << cols_last);
+    tile_canvas_bg_bitpattern.l6 = (character_bitpattern.l6 << cols_last);
+    tile_canvas_bg_bitpattern.l7 = (character_bitpattern.l7 << cols_last);
+    tile_canvas_bg_bitpattern.l8 = (character_bitpattern.l8 << cols_last);
+    if (!err) {
+        if (allocate_tiles(1, &tile_canvas_index) == 0) {
+            return 1;
+        }
+        tile_canvas_free_column_cnt = 8 + cols_last - width;
+    }
+    return err;
+
 }
 
 IWRAM_CODE ALWAYS_INLINE u8 write_char(u16 character) {
-    return write_char_variable_width(character);
+    return write_char_variable_width(character, true);
 }
 
 IWRAM_CODE void new_line(){
@@ -684,25 +722,31 @@ IWRAM_CODE void write_above_char(u16 character) {
     u8 old_y_pos = y_pos;
     u8 old_x_pos = x_pos;
     u8 old_tile_canvas_free_column_cnt = tile_canvas_free_column_cnt;
-    character_bitpattern_t old_tile_canvas_bitpattern = tile_canvas_bitpattern;
+    character_bitpattern_t old_tile_canvas_bg_bitpattern = tile_canvas_bg_bitpattern;
     u32 old_tile_canvas_index = tile_canvas_index;
 
     // Setup tile and reposition for writing above current char
-    tile_canvas_bitpattern = EMPTY_CHAR_BITPATTERN;
-    allocate_tiles(1, &tile_canvas_index);
+    tile_canvas_bg_bitpattern = EMPTY_CHAR_BITPATTERN;
     y_pos = y_pos-1;
     if(!y_pos)
         y_pos = Y_SIZE-1;
+    
+    // Fetch tile_canvas index from VRAM, which we might reuse since characters can overlap the same tile
+    tile_canvas_index = get_tile_index_at(x_pos, y_pos);
+    u32 use_new_tile = !is_allocated(tile_canvas_index);
+    if (use_new_tile){
+        allocate_tiles(1, &tile_canvas_index);
+    }
 
     // Write tile
-    write_char_variable_width(character);
+    write_char_variable_width(character, use_new_tile);
     flush_tile();
 
     // Restore old values to continue to write in ordinary position
     y_pos = old_y_pos;
     x_pos = old_x_pos;
     tile_canvas_free_column_cnt = old_tile_canvas_free_column_cnt;
-    tile_canvas_bitpattern = old_tile_canvas_bitpattern;
+    tile_canvas_bg_bitpattern = old_tile_canvas_bg_bitpattern;
     tile_canvas_index = old_tile_canvas_index;
 }
 
