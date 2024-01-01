@@ -84,13 +84,7 @@ Everything else, and the programming code, is governed by the MIT license.
 ## Example
 [This is a Video showing how to use the homebrew](https://youtu.be/3-EKe_lQREY).
 
-
 ## Building
-The easiest is to build with docker, since you don't have to install a bunch of tools and libraries
-```bash
-docker build . -t pokemon_gen3_to_genx
-# Build GBA rom
-docker run --rm -it -v `pwd`:/pokemon_gen3_to_genx pokemon_gen3_to_genx
-# Build NDS rom
-docker run --rm -it -v `pwd`:/pokemon_gen3_to_genx pokemon_gen3_to_genx make --file Makefile.arm9
-```
+Docker allows easily building without having to install the dependencies.
+- To build for the GBA, while in the root of the project, run: `docker run --rm -it -v ${PWD}:/home/builder/pokemon_gen3_to_genx lorenzooone/pokemon_gen3_to_genx:gba_builder`
+- To build for the NDS, while in the root of the project, run: `docker run --rm -it -v ${PWD}:/home/builder/pokemon_gen3_to_genx lorenzooone/pokemon_gen3_to_genx:nds_builder`
