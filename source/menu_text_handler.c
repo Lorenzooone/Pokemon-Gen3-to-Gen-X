@@ -540,13 +540,13 @@ void print_clock_variable_menu(struct clock_events_t* clock_events, struct saved
     reset_screen(BLANK_FILL);
     
     set_text_y(1);
-    set_text_x(8);
+    set_text_x(6);
 
     if(is_daytime(clock_events, time_change))
         PRINT_FUNCTION("<Day>\n\n");
     else
         PRINT_FUNCTION("<Night>\n\n");
-    set_text_x(19);
+    set_text_x(12);
     if(is_high_tide(clock_events, time_change))
         PRINT_FUNCTION("<High>");
     else
@@ -565,8 +565,9 @@ void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* 
 
     default_reset_screen();
 
-    PRINT_FUNCTION("\n  Time: \n\n");
-    PRINT_FUNCTION("  Shoal Cave Tide: \n\n");
+    PRINT_FUNCTION("\n");
+    PRINT_FUNCTION("      Time: \n\n");
+    PRINT_FUNCTION("      Shoal Cave Tide: \n\n");
     u8 curr_y = get_text_y();
     PRINT_FUNCTION("      Clock Reset Menu: ");
     if(is_rtc_reset_enabled(clock_events))
