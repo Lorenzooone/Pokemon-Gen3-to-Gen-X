@@ -46,17 +46,18 @@ struct {
 #define PALETTE_BASE 0x5000000
 #define FONT_TILES 0x200 // Both western and japanese characters in the same font
 #define DYNAMIC_TILE_INDEX_OFFSET 32
-#define DYNAMIC_TILE_MAX_SLOTS (1024 - DYNAMIC_TILE_INDEX_OFFSET)
+#define DYNAMIC_TILE_ALLOC_BUFFER_SIZE 1024 // This number has to be divisable by 128
+#define DYNAMIC_TILE_MAX_SLOTS (DYNAMIC_TILE_ALLOC_BUFFER_SIZE - DYNAMIC_TILE_INDEX_OFFSET)
 #define DYNAMIC_TILE_BUFFER_START_ADR ((uintptr_t)VRAM_0 + DYNAMIC_TILE_INDEX_OFFSET*TILE_SIZE)
 #define DYNAMIC_TILE_BUFFER_BYTE_SIZE (DYNAMIC_TILE_MAX_SLOTS*TILE_SIZE)
 #define FONT_SIZE (FONT_TILES*TILE_SIZE)
 #define FONT_1BPP_SIZE (FONT_SIZE>>2)
 #define VRAM_START (((uintptr_t)VRAM_0) + 0)
 #define ARRANGEMENT_POS (DYNAMIC_TILE_BUFFER_START_ADR+DYNAMIC_TILE_BUFFER_BYTE_SIZE)
-#define NUMBERS_POS (VRAM_END - ((1000 + 24)*2)) // 24 bytes wasted in VRAM, might get alignment wins?? :D
+#define NUMBERS_POS (VRAM_END - ((1000 + 24)*2)) // Add 24 bytes for alignment
 #define DYNAMIC_TILE_1BBP_BUFFER_ADR ((character_bitpattern_t*)NUMBERS_POS - (FONT_TILES))
-#define DYNAMIC_TILE_WIDTH_BUFFER_ADR ((u32*)DYNAMIC_TILE_1BBP_BUFFER_ADR - (FONT_TILES / 8))
-#define DYNAMIC_TILE_ALLOC_BUFFER_ADR ((u32*)DYNAMIC_TILE_WIDTH_BUFFER_ADR - (TOTAL_BG * (DYNAMIC_TILE_MAX_SLOTS / 32)))
+#define DYNAMIC_TILE_ALLOC_BUFFER_ADR ((u32*)DYNAMIC_TILE_1BBP_BUFFER_ADR - (TOTAL_BG * (DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32)))
+#define DYNAMIC_TILE_WIDTH_BUFFER_ADR ((u32*)DYNAMIC_TILE_ALLOC_BUFFER_ADR - (FONT_TILES / 8))
 #ifdef __NDS__
 #define DYNAMIC_TILE_BUFFER_START_ADR_SUB ((uintptr_t)VRAM_0_SUB + DYNAMIC_TILE_INDEX_OFFSET*TILE_SIZE)
 #define VRAM_START_SUB (((uintptr_t)VRAM_0_SUB) + 0)
@@ -139,10 +140,10 @@ IWRAM_CODE ALWAYS_INLINE MAX_OPTIMIZE u32 is_allocated(u32 tile_id) {
     u32 block_index = tile_id / 32;
     u32 index_in_block = tile_id % 32;
     u32 tile_mask =
-        dynamic_tile_alloc_buffer[0 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] |
-        dynamic_tile_alloc_buffer[1 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] |
-        dynamic_tile_alloc_buffer[2 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] |
-        dynamic_tile_alloc_buffer[3 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index];
+        dynamic_tile_alloc_buffer[0 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index] |
+        dynamic_tile_alloc_buffer[1 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index] |
+        dynamic_tile_alloc_buffer[2 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index] |
+        dynamic_tile_alloc_buffer[3 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index];
     return (tile_mask >> index_in_block) & 1;
 }
 
@@ -159,10 +160,10 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
     for(u32 i = 0; (i < (DYNAMIC_TILE_MAX_SLOTS / 32)) & (count != 0); i++) {
         u32 block_index = tile_canvas_rolling_index_offset % (DYNAMIC_TILE_MAX_SLOTS / 32);
         u32 tile_mask = 
-            dynamic_tile_alloc_buffer[0 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index]|
-            dynamic_tile_alloc_buffer[1 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index]|
-            dynamic_tile_alloc_buffer[2 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index]|
-            dynamic_tile_alloc_buffer[3 * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index];
+            dynamic_tile_alloc_buffer[0 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index]|
+            dynamic_tile_alloc_buffer[1 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index]|
+            dynamic_tile_alloc_buffer[2 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index]|
+            dynamic_tile_alloc_buffer[3 * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index];
 
         allocate_more_in_same_block:
         while ((tile_mask != 0xFFFFFFFF) & (count != 0)) {
@@ -174,14 +175,14 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
                 // Part of block is empty, do several tile allocs in a succession.
                 if(tile_mask == 0){
                     u32 tiles_left = UNSIGNED_MIN(bit_step_len, count);
-                    tile_mask = dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index];
+                    tile_mask = dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index];
                     u32 mask = 1 << (tile_id & 0x1F);
                     while (tiles_left-- > 0) {
                         tile_mask |= mask;
                         tile_ids_out[--count] = tile_id++;
                         mask <<= 1;
                     }
-                    dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] = tile_mask;
+                    dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index] = tile_mask;
                     goto allocate_more_in_same_block;
                 }
                 // Search block for free tiles
@@ -196,8 +197,8 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
             u32 bits_to_step = (tile_mask & bits_to_step_mask) == bits_to_step_mask;
             tile_id += bits_to_step;
             u32 mask = 1 << (tile_id & 0x1F);
-            tile_mask = dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] | mask;
-            dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_MAX_SLOTS / 32 + block_index] = tile_mask;
+            tile_mask = dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index] | mask;
+            dynamic_tile_alloc_buffer[screen_num * DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32 + block_index] = tile_mask;
             tile_ids_out[--count] = tile_id;
         }
         tile_canvas_rolling_index_offset += (tile_mask == 0xFFFFFFFF);
@@ -206,9 +207,9 @@ IWRAM_CODE MAX_OPTIMIZE u32 allocate_tiles(u32 count, u32* tile_ids_out){
 }
 
 IWRAM_CODE void reset_allocated_tiles(u8 bg_num) {
-    u32* addr = &(dynamic_tile_alloc_buffer[bg_num * DYNAMIC_TILE_MAX_SLOTS / 32]);
+    u32* addr = &(dynamic_tile_alloc_buffer[bg_num * (DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32)]);
     *addr = 0;
-    CpuFastSet(addr, addr, CPUFASTSET_FILL | (DYNAMIC_TILE_MAX_SLOTS / 32));
+    CpuFastSet(addr, addr, CPUFASTSET_FILL | (DYNAMIC_TILE_ALLOC_BUFFER_SIZE / 32));
     reset_canvas_tile();
     tile_canvas_rolling_index_offset = (tile_canvas_rolling_index_offset + 1) % (DYNAMIC_TILE_MAX_SLOTS / 32);
     allocate_tiles(1, &tile_canvas_index);
@@ -716,9 +717,9 @@ IWRAM_CODE void write_above_char(u16 character) {
 
     // Setup tile and reposition for writing above current char
     tile_canvas_bg_bitpattern = EMPTY_CHAR_BITPATTERN;
-    y_pos = y_pos-1;
     if(!y_pos)
-        y_pos = Y_SIZE-1;
+        y_pos = Y_SIZE;
+    y_pos--;
     
     // Fetch tile_canvas index from VRAM, which we might reuse since characters can overlap the same tile
     tile_canvas_index = get_tile_index_at(x_pos, y_pos);

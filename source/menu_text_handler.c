@@ -909,7 +909,6 @@ void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
 
 void print_evolution_window(struct gen3_mon_data_unenc* mon) {
     u8 useless = 0;
-    reset_screen(BLANK_FILL);
 
     if((!mon->is_valid_gen3) || (mon->is_egg))
         return;
@@ -918,6 +917,7 @@ void print_evolution_window(struct gen3_mon_data_unenc* mon) {
     if(!num_species)
         return;
 
+    reset_screen(BLANK_FILL);
     init_evolution_window(num_species);
     clear_evolution_window(num_species);
 
@@ -936,10 +936,6 @@ void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen,
     if(!update)
         return;
 
-    u8 old_screen = get_screen_num();
-    set_screen(screen);
-    default_reset_screen();
-
     if((!mon->is_valid_gen3) || (mon->is_egg))
         return;
 
@@ -950,6 +946,10 @@ void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen,
     u8 old_level = mon->src->level;
     if((!new_species) || (!is_species_valid(new_species)))
         return;
+
+    u8 old_screen = get_screen_num();
+    set_screen(screen);
+    default_reset_screen();
     
     if(needs_levelup)
         mon->src->level += 1;
