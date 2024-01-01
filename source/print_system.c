@@ -572,7 +572,7 @@ IWRAM_CODE u8 advance_cursor() {
     return 0;
 }
 
-IWRAM_CODE void flush_tile_bitpattern(u32 tile_index, character_bitpattern_t tile_fg_bitpattern, character_bitpattern_t tile_bg_bitpattern, u8 clear_canvas_tile){
+IWRAM_CODE MAX_OPTIMIZE void flush_tile_bitpattern(u32 tile_index, character_bitpattern_t tile_fg_bitpattern, character_bitpattern_t tile_bg_bitpattern, u8 clear_canvas_tile){
     u32 did_write_to_canvas = false;
     u16* tile_vram_ptr = (u16*)DYNAMIC_TILE_BUFFER_START_ADR + (tile_index * TILE_SIZE >> 1);
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
@@ -696,6 +696,14 @@ IWRAM_CODE void new_line(){
     y_pos += 1;
     if(y_pos >= Y_SIZE)
         y_pos = 0;
+}
+
+IWRAM_CODE void tab(){
+    flush_and_reset_canvas_tile();
+    advance_cursor();
+    while(x_pos % 4 != 0){
+        advance_cursor();
+    }
 }
 
 IWRAM_CODE void write_above_char(u16 character) {
@@ -904,7 +912,7 @@ IWRAM_CODE int fast_printf(const char * format, ... ) {
             case '\x05':
                 sub_printf_gen3(va_arg(va, u8*), va_arg(va, size_t), va_arg(va, int));
                 break;
-            case '\x09':
+            case '\x16':
                 write_base_10(va_arg(va, int), va_arg(va, int), ' ');
                 break;
             case '\x0B':
@@ -934,6 +942,9 @@ IWRAM_CODE int fast_printf(const char * format, ... ) {
                 break;
             case '\n':
                 new_line();
+                break;
+            case '\t':
+                tab();
                 break;
             default:
                 write_char(character);

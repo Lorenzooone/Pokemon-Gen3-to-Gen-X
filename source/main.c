@@ -973,7 +973,7 @@ int main(void)
                                 curr_move++;
                                 break;
                             case LEARNT:
-                                handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                                handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNED_P);
                                 break;
                             case LEARNABLE:
                                 curr_state = LEARNABLE_MOVES_MESSAGE_MENU;
@@ -1366,7 +1366,7 @@ int main(void)
                     else {
                         forget_and_learn_move(&game_data[0].party_3_undec[curr_mon], curr_move, returned_val-1);
                         learnable_moves_message_init(game_data, curr_mon);
-                        handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                        handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNED_P);
                     }
                 }
                 else

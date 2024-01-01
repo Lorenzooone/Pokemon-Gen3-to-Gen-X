@@ -6,7 +6,7 @@
 #include "multiboot_handler.h"
 #include "config_settings.h"
 
-enum MOVES_PRINTING_TYPE{LEARNT_P, DID_NOT_LEARN_P, LEARNABLE_P};
+enum MOVES_PRINTING_TYPE{LEARNED_P, DID_NOT_LEARN_P, LEARNABLE_P};
 enum CRASH_REASONS{BAD_SAVE, BAD_TRADE, CARTRIDGE_REMOVED};
 
 void print_game_info(struct game_data_t*, int);
