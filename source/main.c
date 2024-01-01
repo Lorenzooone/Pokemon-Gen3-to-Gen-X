@@ -544,6 +544,7 @@ void info_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon,
 
 void nature_menu_init(struct game_data_t* game_data, u8 cursor_x_pos, u8 curr_mon, u8* wanted_nature) {
     curr_state = NATURE_SETTING;
+    default_reset_screen();
     set_screen(NATURE_SCREEN);
     disable_all_sprites();
     *wanted_nature = get_nature(game_data[cursor_x_pos].party_3_undec[curr_mon].src->pid);
@@ -604,6 +605,7 @@ void learnable_moves_message_init(struct game_data_t* game_data, u8 curr_mon) {
 
 void base_settings_menu_init(struct game_data_t* game_data, u8* cursor_y_pos) {
     curr_state = BASE_SETTINGS_MENU;
+    default_reset_screen();
     set_screen(BASE_SCREEN);
     disable_all_screens_but_current();
     disable_all_cursors();
@@ -691,6 +693,7 @@ void conclude_trade(struct game_data_t* game_data, struct game_data_priv_t* game
 
 void return_to_trade_menu(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv, u8 target, u8 region, u8 master, u8 curr_gen, u8 own_menu, u8* cursor_y_pos, u8* cursor_x_pos) {
     curr_state = TRADING_MENU;
+    default_reset_screen();
     set_screen(BASE_SCREEN);
     reset_sprites_to_party();
     disable_all_screens_but_current();
@@ -974,7 +977,7 @@ int main(void)
                                 curr_move++;
                                 break;
                             case LEARNT:
-                                handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                                handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNED_P);
                                 break;
                             case LEARNABLE:
                                 curr_state = LEARNABLE_MOVES_MESSAGE_MENU;
@@ -1382,7 +1385,7 @@ int main(void)
                     else {
                         forget_and_learn_move(&game_data[0].party_3_undec[curr_mon], curr_move, returned_val-1);
                         learnable_moves_message_init(game_data, curr_mon);
-                        handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNT_P);
+                        handle_learnable_moves_message(game_data, curr_mon, &cursor_x_pos, &curr_move, LEARNED_P);
                     }
                 }
                 else
