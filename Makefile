@@ -33,7 +33,7 @@ CFLAGS	:=	-g -Wall -Wstrict-overflow=5 -Wextra\
 		-Wpointer-arith -Wpedantic -Wcast-qual -Wswitch-default\
 		-Wstrict-prototypes -Wmissing-prototypes\
 		-Wshadow -Wwrite-strings -save-temps -Os -s\
-		-mcpu=arm7tdmi -mtune=arm7tdmi\
+		-mcpu=arm7tdmi -mtune=arm7tdmi -masm-syntax-unified\
  		-fomit-frame-pointer -flto=auto \
 		-ffast-math -D__GBA__\
 		-fno-tree-loop-distribute-patterns \

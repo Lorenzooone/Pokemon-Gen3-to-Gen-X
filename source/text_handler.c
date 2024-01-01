@@ -167,7 +167,7 @@ void sanitize_name_general_to_general(const u8* src, u8* dst, const u8* default_
     size_t question_marks_count = question_marks_count_dst - question_marks_count_src;
     if(question_marks_count_src > question_marks_count_dst)
         question_marks_count = 0;
-    if((question_marks_count >= (text_general_size(dst, dst_size, dst_terminator) >> 1)) || (!text_general_size(dst, dst_size, dst_terminator)))
+    if((question_marks_count >= ((text_general_size(dst, dst_size, dst_terminator) + 1) >> 1)) || (!text_general_size(dst, dst_size, dst_terminator)))
         text_general_copy(default_name, dst, dst_size, dst_size, dst_terminator);
 }
 

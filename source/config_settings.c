@@ -14,6 +14,7 @@
 #define DEFAULT_SYS_LANGUAGE ENGLISH_LANGUAGE
 #define DEFAULT_TARGET_INT_LANGUAGE UNKNOWN_LANGUAGE
 #define DEFAULT_CONVERSION_COLO_XD 1
+#define DEFAULT_PRIORITIZE_OT_GENDER 1
 #define DEFAULT_DEFAULT_CONVERSION_GAME FR_VERSION_ID
 #define DEFAULT_GEN1_EVERSTONE 0
 #define DEFAULT_ALLOW_CROSS_GEN_EVOS 0
@@ -28,6 +29,7 @@ const u8* get_valid_egg_met_locs(void);
 static u8 sys_language;
 static u8 target_int_language;
 static u8 conversion_colo_xd;
+static u8 prioritize_ot_gender;
 static u8 default_conversion_game;
 static u8 default_colours[NUM_COLOURS][NUM_SUB_COLOURS];
 static u8 gen1_everstone;
@@ -39,13 +41,14 @@ static u16 applied_ball;
 static u8 egg_met_location;
 static u8 first_set_egg_met_location;
 
-const struct version_t version = { .main_version = 1, .sub_version = 1, .revision_version = 11, .revision_letter = CONSOLE_LETTER};
+const struct version_t version = { .main_version = 1, .sub_version = 1, .revision_version = 12, .revision_letter = CONSOLE_LETTER};
 const u8* egg_valid_met_locations[NUMBER_OF_GAMES+FIRST_VERSION_ID] = {valid_egg_locations_rs_bin, valid_egg_locations_rs_bin, valid_egg_locations_rs_bin, valid_egg_locations_e_bin, valid_egg_locations_frlg_bin, valid_egg_locations_frlg_bin};
 
 void set_default_settings() {
     set_sys_language(DEFAULT_SYS_LANGUAGE);
     set_target_int_language(DEFAULT_TARGET_INT_LANGUAGE);
     set_conversion_colo_xd(DEFAULT_CONVERSION_COLO_XD);
+    set_prioritize_ot_gender(DEFAULT_PRIORITIZE_OT_GENDER);
     first_set_egg_met_location = 1;
     set_default_conversion_game(DEFAULT_DEFAULT_CONVERSION_GAME);
     for(size_t i = 0; i < NUM_COLOURS; i++)
@@ -101,6 +104,10 @@ void set_target_int_language(u8 new_val) {
 
 void set_conversion_colo_xd(u8 new_val) {
     conversion_colo_xd = new_val;
+}
+
+void set_prioritize_ot_gender(u8 new_val) {
+    prioritize_ot_gender = new_val;
 }
 
 void set_default_conversion_game(u8 new_val) {
@@ -200,6 +207,10 @@ u8 get_filtered_target_int_language() {
 
 u8 get_conversion_colo_xd() {
     return conversion_colo_xd;
+}
+
+u8 get_prioritize_ot_gender() {
+    return prioritize_ot_gender;
 }
 
 u8 get_default_conversion_game() {

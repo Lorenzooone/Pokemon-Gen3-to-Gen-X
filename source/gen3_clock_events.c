@@ -144,6 +144,7 @@ const u16 berry_trees_pos[NUM_MAIN_GAME_ID] = {0x688, 0, 0x71C};
 const u16 daily_show_thresholds[TOTAL_DAILY_SHOW_VARS] = {100, 50, 100, 20, 20, 20, 30};
 static u32 time_events_rng_seed;
 #endif
+static u8 init_successful;
 
 u8 has_rtc_events(struct game_identity* game_id) {
     if(game_id->game_main_version == RS_MAIN_GAME_CODE)
@@ -196,51 +197,76 @@ void change_tide(struct clock_events_t* clock_events, struct saved_time_t* extra
         increase_clock(extra_time, 0xFFFF, 0, 0, 0, 0);
 }
 
+u8 has_init_succeded() {
+    return init_successful;
+}
+
+u8 update_base_time() {
+    #if ACTIVE_RTC_FUNCTIONS
+    __agbabi_datetime_t datetime = __agbabi_rtc_datetime();
+    u16 year = bcd_decode(datetime[0], 1);
+    u8 month = bcd_decode(datetime[0] >> 8, 1);
+    u8 day = bcd_decode(datetime[0] >> 16, 1);
+    u8 hour = bcd_decode(datetime[1], 1);
+    u8 minute = bcd_decode(datetime[1] >> 8, 1);
+    u8 second = bcd_decode(datetime[1] >> 16, 1);
+    u8 error_out = 0;
+    if(year == ((u16)ERROR_OUT_BCD))
+        error_out = 1;
+    if((month == ((u8)ERROR_OUT_BCD)) || (month == 0) || (month > NUM_MONTHS))
+        error_out = 1;
+    // There is no checking for overflows here, normally... :/
+    u8 checking_month = 0;
+    if((month > 0) && (month <= NUM_MONTHS))
+        checking_month = month - 1;
+    u8 max_day = num_days_per_month[checking_month];
+    if((month == LEAP_YEAR_EXTRA_DAY_MONTH) && is_leap_year(year))
+        max_day++;
+    // What if the day is 0? And if it's the max_day?! :/
+    if((day == ((u8)ERROR_OUT_BCD)) || (day > max_day))
+        error_out = 1;
+    // What if the hour is 0? And if it's MAX_HOURS?! :/
+    if((hour == ((u8)ERROR_OUT_BCD)) || (hour > MAX_HOURS))
+        error_out = 1;
+    // What if the minute is 0? And if it's MAX_MINUTES?! :/
+    if((minute == ((u8)ERROR_OUT_BCD)) || (minute > MAX_MINUTES))
+        error_out = 1;
+    // What if the second is 0? And if it's MAX_SECONDS?! :/
+    if((second == ((u8)ERROR_OUT_BCD)) || (second > MAX_SECONDS))
+        error_out = 1;
+    if(!error_out) {
+        u16 final_days = get_num_days(year, month, day);
+        u8 final_hours = hour;
+        u8 final_minutes = minute;
+        u8 final_seconds = second;
+        u8 updated = 0;
+        if(base_rtc_time.d != final_days)
+            updated = 1;
+        if(base_rtc_time.h != final_hours)
+            updated = 1;
+        if(base_rtc_time.m != final_minutes)
+            updated = 1;
+        if(base_rtc_time.s != final_seconds)
+            updated = 1;
+        base_rtc_time.d = final_days;
+        base_rtc_time.h = final_hours;
+        base_rtc_time.m = final_minutes;
+        base_rtc_time.s = final_seconds;
+        return 1 + updated;
+    }
+    #endif
+    return 0;
+}
+
 void init_rtc_time() {
     base_rtc_time.d = 1;
     base_rtc_time.h = 0;
     base_rtc_time.m = 0;
     base_rtc_time.s = 0;
+    init_successful = 0;
     #if ACTIVE_RTC_FUNCTIONS
-    if(!__agbabi_rtc_init()) {
-        __agbabi_datetime_t datetime = __agbabi_rtc_datetime();
-        u16 year = bcd_decode(datetime[0], 1);
-        u8 month = bcd_decode(datetime[0] >> 8, 1);
-        u8 day = bcd_decode(datetime[0] >> 16, 1);
-        u8 hour = bcd_decode(datetime[1], 1);
-        u8 minute = bcd_decode(datetime[1] >> 8, 1);
-        u8 second = bcd_decode(datetime[1] >> 16, 1);
-        u8 error_out = 0;
-        if(year == ((u16)ERROR_OUT_BCD))
-            error_out = 1;
-        if((month == ((u8)ERROR_OUT_BCD)) || (month == 0) || (month > NUM_MONTHS))
-            error_out = 1;
-        // There is no checking for overflows here, normally... :/
-        u8 checking_month = 0;
-        if((month > 0) && (month <= NUM_MONTHS))
-            checking_month = month - 1;
-        u8 max_day = num_days_per_month[checking_month];
-        if((month == LEAP_YEAR_EXTRA_DAY_MONTH) && is_leap_year(year))
-            max_day++;
-        // What if the day is 0? And if it's the max_day?! :/
-        if((day == ((u8)ERROR_OUT_BCD)) || (day > max_day))
-            error_out = 1;
-        // What if the hour is 0? And if it's MAX_HOURS?! :/
-        if((hour == ((u8)ERROR_OUT_BCD)) || (hour > MAX_HOURS))
-            error_out = 1;
-        // What if the minute is 0? And if it's MAX_MINUTES?! :/
-        if((minute == ((u8)ERROR_OUT_BCD)) || (minute > MAX_MINUTES))
-            error_out = 1;
-        // What if the second is 0? And if it's MAX_SECONDS?! :/
-        if((second == ((u8)ERROR_OUT_BCD)) || (second > MAX_SECONDS))
-            error_out = 1;
-        if(!error_out) {
-            base_rtc_time.d = get_num_days(year, month, day);
-            base_rtc_time.h = hour;
-            base_rtc_time.m = minute;
-            base_rtc_time.s = second;
-        }
-    }
+    if((!__agbabi_rtc_init()) && update_base_time())
+        init_successful = 1;
     #endif
 }
 
@@ -426,8 +452,8 @@ void run_daily_update(struct game_data_t* game_data, struct clock_events_t* cloc
 #else
 void run_daily_update(struct game_data_t* game_data, struct clock_events_t* clock_events, struct saved_time_t* extra_time, u8 UNUSED(is_game_cleared)) {
 #endif
-    if(has_rtc_events(&game_data->game_identifier))
-        init_rtc_time();
+    if(has_rtc_events(&game_data->game_identifier) && has_init_succeded())
+        update_base_time();
     swap_time(&clock_events->saved_time);
     u16 d = clock_events->saved_time.d;
     add_time(&clock_events->saved_time, extra_time, &clock_events->saved_time);
@@ -488,8 +514,8 @@ void wipe_clock(struct clock_events_t* clock_events) {
 }
 
 u8 is_daily_update_safe(struct game_data_t* game_data, struct clock_events_t* clock_events, struct saved_time_t* extra_time) {
-    if(has_rtc_events(&game_data->game_identifier))
-        init_rtc_time();
+    if(has_rtc_events(&game_data->game_identifier) && has_init_succeded())
+        update_base_time();
     swap_time(&clock_events->saved_time);
     struct saved_time_t tmp;
     u16 days_increase = clock_events->saved_time.d;

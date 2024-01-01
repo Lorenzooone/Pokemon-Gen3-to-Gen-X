@@ -108,7 +108,7 @@ void complete_save_menu(struct game_data_t*, struct game_data_priv_t*, u8, u8);
 void complete_cartridge_loading(struct game_data_t*, struct game_data_priv_t*, u8, u8, u8, u8*);
 int main(void);
 
-enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK, PRINT_READ_INFO, GEN12_SETTINGS_MENU};
+enum STATE {MAIN_MENU, MULTIBOOT, TRADING_MENU, INFO_MENU, START_TRADE, WAITING_DATA, TRADE_OPTIONS, NATURE_SETTING, OFFER_MENU, TRADING_ANIMATION, OFFER_INFO_MENU, IV_FIX_MENU, LEARNABLE_MOVES_MESSAGE,  LEARNABLE_MOVES_MESSAGE_MENU, LEARNABLE_MOVES_MENU, SWAP_CARTRIDGE_MENU, BASE_SETTINGS_MENU, COLOURS_SETTINGS_MENU, CLOCK_SETTINGS_MENU, CHEATS_MENU, EVOLUTION_MENU, WARNINGS_WHEN_LOADING, WARNING_WHEN_ADVANCING_CLOCK, PRINT_READ_INFO, GEN12_SETTINGS_MENU, MULTIBOOT_SETTINGS_MENU};
 enum STATE curr_state;
 u32 counter = 0;
 u32 input_counter = 0;
@@ -648,10 +648,13 @@ void clock_settings_menu_init(struct game_data_priv_t* game_data_priv, struct sa
     set_screen(BASE_SCREEN);
     disable_all_screens_but_current();
     disable_all_cursors();
-    if(reset_time)
+    if(reset_time) {
         wipe_time(time_change);
+        init_rtc_time();
+    }
     print_clock_menu(&game_data_priv->clock_events, time_change, 1);
     enable_screen(BASE_SCREEN);
+    enable_screen(BASE_SCREEN + 1);
     *cursor_y_pos = 0;
     update_cursor_base_x(BASE_X_CURSOR_CLOCK_SETTINGS_MENU);
     cursor_update_clock_settings_menu(*cursor_y_pos);
@@ -820,6 +823,7 @@ int main(void)
     u8 returned_val;
     u8 move_go_on = 0;
     u8 update = 0;
+    u8 is_normal = 1;
     u8 target = 1;
     u8 region = 0;
     u8 master = 0;
@@ -1001,6 +1005,9 @@ int main(void)
                         }
                     }
                     break;
+                case CLOCK_SETTINGS_MENU:
+                    print_clock_variable_menu(&game_data_priv.clock_events, &time_change, 0);
+                    break;
                 default:
                     break;
             }
@@ -1013,14 +1020,10 @@ int main(void)
                 print_main_menu(update, target, region, master, &game_data[0], &game_data_priv);
                 cursor_update_main_menu(cursor_y_pos);
                 if(returned_val == START_MULTIBOOT) {
-                    curr_state = MULTIBOOT;
-                    #ifdef HAS_SIO
-                    sio_stop_irq_slave();
-                    irqDisable(IRQ_SERIAL);
-                    #endif
+                    curr_state = MULTIBOOT_SETTINGS_MENU;
+                    is_normal = 1;
                     disable_cursor();
-                    init_save_data();
-                    print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + MULTIBOOT_MAX_SIZE)));
+                    print_multiboot_settings(is_normal, 1);
                 }
                 if(returned_val == START_PRINT_READ_INFO) {
                     curr_state = PRINT_READ_INFO;
@@ -1090,6 +1093,22 @@ int main(void)
                     offer_init(game_data, curr_mon, other_mon, &submenu_cursor_y_pos, &submenu_cursor_x_pos, 0);
                 else
                     print_pokemon_pages(returned_val, submenu_cursor_y_pos != prev_val, &game_data[submenu_cursor_y_pos].party_3_undec[*party_selected_mons[submenu_cursor_y_pos]], curr_page);
+                break;
+            case MULTIBOOT_SETTINGS_MENU:
+                returned_val = handle_input_multiboot_settings(keys, &is_normal, &update);
+                if(returned_val == CONFIRM_MULTIBOOT) {
+                    curr_state = MULTIBOOT;
+                    #ifdef HAS_SIO
+                    sio_stop_irq_slave();
+                    irqDisable(IRQ_SERIAL);
+                    #endif
+                    init_save_data();
+                    print_multiboot(multiboot_normal((u16*)EWRAM, (u16*)(EWRAM + MULTIBOOT_MAX_SIZE), is_normal));
+                }
+                else if(returned_val == CANCEL_MULTIBOOT)
+                    main_menu_init(&game_data[0], &game_data_priv, target, region, master, &cursor_y_pos);
+                else
+                    print_multiboot_settings(is_normal, update);
                 break;
             case MULTIBOOT:
                 if(handle_input_multiboot_menu(keys)) {

@@ -12,7 +12,7 @@ void alter_nature(struct gen3_mon_data_unenc*, u8);
 void set_alter_data(struct gen3_mon_data_unenc*, struct alternative_data_gen3*);
 void preload_if_fixable(struct gen3_mon_data_unenc*);
 
-void convert_trainer_name_gen3_to_gen12(u8*, u8*, u8, u8);
+void convert_trainer_name_gen3_to_gen12(u8*, u8*, u8, u8, u8);
 void convert_trainer_name_gen12_to_gen3(u8*, u8*, u8, u8, u8);
 
 u8 gen3_to_gen2(struct gen2_mon*, struct gen3_mon_data_unenc*, u32);

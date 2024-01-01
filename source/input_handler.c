@@ -7,6 +7,24 @@
 #include "useful_qualifiers.h"
 #include "config_settings.h"
 
+u8 handle_input_multiboot_settings(u16 keys, u8* is_normal, u8* update) {
+    if(keys & KEY_A)
+        return CONFIRM_MULTIBOOT;
+    if(keys & KEY_B)
+        return CANCEL_MULTIBOOT;
+
+    if(*is_normal && (keys & KEY_RIGHT)) {
+        *is_normal = 0;
+        *update = 1;
+    }
+    else if((!(*is_normal)) && (keys & KEY_LEFT)) {
+        *is_normal = 1;
+        *update = 1;
+    }
+
+    return 0;
+}
+
 u8 handle_input_multiboot_menu(u16 keys) {
     if(keys & KEY_A)
         return 1;
@@ -489,7 +507,7 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
     switch(*cursor_y_pos) {
         case 0:
             if(keys & KEY_UP)
-                *cursor_y_pos = 6;
+                *cursor_y_pos = 7;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A)) {
@@ -531,11 +549,21 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
-                set_gen1_everstone(!get_gen1_everstone());
+                set_prioritize_ot_gender(!get_prioritize_ot_gender());
                 *update = 1;
             }
             break;
         case 4:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_gen1_everstone(!get_gen1_everstone());
+                *update = 1;
+            }
+            break;
+        case 5:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
@@ -553,7 +581,7 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
                 *update = 1;
             }
             break;
-        case 5:
+        case 6:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
@@ -567,7 +595,7 @@ u8 handle_input_gen12_settings_menu(u16 keys, u8* cursor_y_pos, u8* update) {
                 *update = 1;
             }
             break;
-        case 6:
+        case 7:
             if(keys & KEY_UP)
                 *cursor_y_pos -= 1;
             else if(keys & KEY_DOWN)
@@ -854,8 +882,11 @@ u8 handle_input_clock_menu(u16 keys, struct clock_events_t* clock_events, struct
             }
             break;
         case BOTTOM_Y_CURSOR_CLOCK_SETTINGS_MENU_VALUE:
-            if(keys & KEY_A)
-                return 1;
+            if(keys & KEY_A) {
+                if((time_change->d != 0) || (time_change->h != 0) || (time_change->m != 0) || (time_change->s != 0))
+                    return 1;
+                return EXIT_CLOCK_SETTINGS;
+            }
             else if(keys & KEY_UP)
                 *cursor_y_pos = 9;
             else if(keys & KEY_DOWN)

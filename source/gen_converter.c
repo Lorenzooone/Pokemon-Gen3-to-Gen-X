@@ -75,7 +75,7 @@ void convert_strings_of_gen3_generic(struct gen3_mon*, u16, u8*, u8*, u8, u8, u8
 void convert_strings_of_gen12(struct gen3_mon*, u8, u8*, u8*, u8, u8);
 void special_convert_strings_distribution(struct gen3_mon*, u16);
 u8 text_handling_gen12_to_gen3(struct gen3_mon*, u16, u16, u8, u8*, u8*, u8, u8);
-void set_language_gen12_to_gen3(struct gen3_mon*, u16, u8, u8*, u8);
+void set_language_gen12_to_gen3(struct gen3_mon*, u16, u8, const u8*, const u8*, u8);
 void sanitize_ot_name_gen3_to_gen12(u8*, u8*, u8, u8);
 void sanitize_ot_name_gen12_to_gen3(u8*, u8*, u8);
 void clean_name_gen12(u8*, u8);
@@ -552,6 +552,10 @@ void preload_if_fixable(struct gen3_mon_data_unenc* data_src) {
                     data_src->fixed_ivs.ot_id = generate_ot(data_src->src->ot_id & 0xFFFF, data_src->src->ot_name);
                     data_src->fix_has_altered_ot = 1;
                 }
+                if(data_src->misc.origins_info >> 15) {
+                    data_src->fixed_ivs.origins_info &= ~(1 << 15);
+                    data_src->fix_has_altered_ot = 1;
+                }
                 u8 wanted_nature = get_nature(data_src->src->pid);
                 u32 ot_id =  data_src->fixed_ivs.ot_id;
                 u8 is_shiny = is_shiny_gen3_raw(data_src, ot_id);
@@ -732,11 +736,12 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
             }
             else if(!is_shiny) {
                 // Prefer Colosseum/XD encounter, if possible
-                if(get_conversion_colo_xd() && is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+                if(get_conversion_colo_xd() && is_static_in_xd(species) && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10) && ((ot_gender == 0) || (!get_prioritize_ot_gender()))) {
                     chosen_version = COLOSSEUM_CODE;
                     generate_generic_genderless_shadow_info_xd(wanted_nature, has_prev_check_tsv_in_xd(species), wanted_ivs, tsv, &dst->pid, &ivs, &ability);
                     misc->ribbons |= COLO_RIBBON_VALUE;
                     is_ability_set = 1;
+                    ot_gender = 0;
                     data_dst->learnable_moves = (const struct learnset_data_mon_moves*)get_learnset_for_species((const u16*)learnset_static_xd_bin, species);
                 }
                 else
@@ -750,7 +755,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
         case ROAMER_ENCOUNTER:
             valid_balls = VALID_POKEBALL_NO_EGG;
             // Prefer Colosseum/XD encounter, if possible
-            if(get_conversion_colo_xd() && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10)) {
+            if(get_conversion_colo_xd() && are_colo_valid_tid_sid(ot_id & 0xFFFF, ot_id >> 0x10) && ((ot_gender == 0) || (!get_prioritize_ot_gender()))) {
                 chosen_version = COLOSSEUM_CODE;
                 if(!is_shiny)
                     generate_generic_genderless_shadow_info_colo(wanted_nature, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
@@ -758,6 +763,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
                     generate_generic_genderless_shadow_shiny_info_colo(wanted_nature, tsv, &dst->pid, &ivs, &ability);
                 misc->ribbons |= COLO_RIBBON_VALUE;
                 is_ability_set = 1;
+                ot_gender = 0;
             }
             else {
                 if(!is_shiny)
@@ -903,7 +909,7 @@ void sanitize_ot_name_gen12_to_gen3(u8* src, u8* dst, u8 language) {
     sanitize_name_gen12_to_gen3(src, dst, get_default_trainer_name(language), gen2_name_cap, gen3_ot_name_cap);
 }
 
-void convert_trainer_name_gen3_to_gen12(u8* src, u8* dst, u8 src_language, u8 dst_language) {
+void convert_trainer_name_gen3_to_gen12(u8* src, u8* dst, u8 src_language, u8 dst_language, u8 marks) {
     u8 is_jp_gen3 = GET_LANGUAGE_IS_JAPANESE(src_language);
     u8 is_jp_target = GET_LANGUAGE_IS_JAPANESE(dst_language);
 
@@ -925,6 +931,26 @@ void convert_trainer_name_gen3_to_gen12(u8* src, u8* dst, u8 src_language, u8 ds
 
     // Do some sanitization
     sanitize_ot_name_gen3_to_gen12(src, dst, src_language, dst_language);
+
+    // Apply special OT Name handling with special markings value
+    if(marks == SPECIAL_NAME_MARKS_VALUE) {
+        const u8* special_name = get_actual_ot_name(dst, is_jp_target, 1, src_language);
+        if(special_name) {
+            for(size_t i = 0; i < gen12_ot_name_size; i++)
+                dst[i] = special_name[i];
+            return;
+        }
+        marks = 0;
+    }
+
+    // Apply special OT Name handling and 0 out certain parts of the name
+    if(marks > gen12_ot_name_size)
+        marks = 0;
+    size_t pos_zeros = text_gen2_size(dst, gen12_ot_name_cap) + 1;
+    if(marks > pos_zeros)
+        pos_zeros = marks;
+    for(; pos_zeros < gen12_ot_name_size; pos_zeros++)
+        dst[pos_zeros] = 0;
 }
 
 void convert_trainer_name_gen12_to_gen3(u8* src, u8* dst, u8 src_is_jp, u8 dst_language, u8 max_size) {
@@ -988,7 +1014,7 @@ void convert_strings_of_gen3_generic(struct gen3_mon* src, u16 species, u8* ot_n
         text_gen2_replace(nickname, gen12_nickname_cap, GEN2_DOT, GEN1_DOT);
     */
 
-    convert_trainer_name_gen3_to_gen12(src->ot_name, ot_name, src->language, target_language);
+    convert_trainer_name_gen3_to_gen12(src->ot_name, ot_name, src->language, target_language, src->marks);
 }
 
 void convert_strings_of_gen3(struct gen3_mon* src, u16 species, u8* ot_name, u8* ot_name_jp, u8* nickname, u8* nickname_jp, u8 is_egg, u8 is_gen2) {
@@ -1265,21 +1291,54 @@ void clean_name_gen12(u8* name, u8 is_jp) {
     text_gen2_replace(name, gen2_name_cap, GEN1_DOT, GEN2_DOT);
 }
 
-void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, u8* nickname, u8 is_jp) {
+void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, const u8* ot_name, const u8* nickname, u8 is_jp) {
     u8 gen2_buffer[STRING_GEN2_MAX_SIZE];
     u8 int_language = get_filtered_target_int_language();
+    u32 possible_languages = ALL_LANGUAGES & (~(1 << JAPANESE_LANGUAGE));
+    u8 gen12_ot_name_size = STRING_GEN2_INT_SIZE;
+    if(is_jp) {
+        possible_languages = (1 << JAPANESE_LANGUAGE);
+        gen12_ot_name_size = STRING_GEN2_JP_SIZE;
+    }
+
+    const u8* special_name = get_actual_ot_name(ot_name, is_jp, 0, 0);
+
+    // Abuse markings to store info about the Gen 1/2 OT Name's trailing bytes
+    if(special_name != NULL) {
+        possible_languages &= special_name[gen12_ot_name_size];
+        dst->marks = SPECIAL_NAME_MARKS_VALUE;
+    }
+    else {
+        size_t end_eol = gen12_ot_name_size;
+        for(; end_eol > 0; end_eol--) {
+            if(ot_name[end_eol - 1] == GEN2_EOL)
+                break;
+        }
+        dst->marks = end_eol;
+    }
+
+    // Fix possible bad language filtering (Korean)
+    if(!possible_languages) {
+        possible_languages = ALL_LANGUAGES & (~(1 << JAPANESE_LANGUAGE));
+        dst->marks = 0;
+    }
 
     if((!is_jp) && (get_target_int_language() == UNKNOWN_LANGUAGE)) {
         u32 found_languages = 0;
         for(size_t i = FIRST_INTERNATIONAL_VALID_LANGUAGE; i < NUM_LANGUAGES; i++)
             if(text_gen2_is_same(nickname, get_pokemon_name_gen2(species, is_egg, i, gen2_buffer), STRING_GEN2_INT_CAP, STRING_GEN2_INT_CAP))
-                found_languages |= 1<<i;
-        if(found_languages && (!(found_languages & (1<<int_language))))
-            for(size_t i = FIRST_INTERNATIONAL_VALID_LANGUAGE; i < NUM_LANGUAGES; i++)
-                if(found_languages & (1<<i)) {
-                    int_language = i;
-                    break;
-                }
+                found_languages |= 1 << i;
+        // OT Name has priority
+        if(possible_languages & found_languages)
+            possible_languages &= found_languages;
+    }
+
+    if((!is_jp) && (!(possible_languages & (1 << int_language)))) {
+        for(size_t i = FIRST_INTERNATIONAL_VALID_LANGUAGE; i < NUM_LANGUAGES; i++)
+            if(possible_languages & (1 << i)) {
+                int_language = i;
+                break;
+            }
     }
 
     if(is_jp)
@@ -1303,7 +1362,7 @@ u8 text_handling_gen12_to_gen3(struct gen3_mon* dst, u16 species, u16 swapped_ot
     clean_name_gen12(nickname, is_jp);
 
     // Handle language
-    set_language_gen12_to_gen3(dst, species, is_egg, nickname, is_jp);
+    set_language_gen12_to_gen3(dst, species, is_egg, ot_name, nickname, is_jp);
 
     // Specially handle Celebi's event
     if((species == CELEBI_SPECIES) && (!is_egg)) {

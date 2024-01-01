@@ -9,6 +9,8 @@
 #include "pokemon_gender_bin.h"
 #include "pokemon_stats_gen1_bin.h"
 #include "pokemon_stats_bin.h"
+#include "default_names_int_gen_i_ii_bin.h"
+#include "default_names_jpn_gen_i_ii_bin.h"
 
 const u8* set_buffer_with_gen2(const u8*, u8, u8*);
 u16 get_stat_exp_contribution(u16);
@@ -226,6 +228,43 @@ const u8* get_pokemon_name_gen2(int index, u8 is_egg, u8 language, u8* buffer) {
 
 const u8* get_default_trainer_name_gen2(u8 language, u8* buffer) {
     return set_buffer_with_gen2(get_default_trainer_name(language), language, buffer);
+}
+
+const u8* get_actual_ot_name(const u8* gen2_ot_name, u8 is_jp, u8 terminator_stop, u8 language_target) {
+    const u8* names_list = default_names_int_gen_i_ii_bin;
+    if(is_jp)
+        names_list = default_names_jpn_gen_i_ii_bin;
+
+    u8 names_size = names_list[0] - 1;
+    u8 num_entries = names_list[1];
+
+    u16 curr_pos = 2;
+    u8 found = 0;
+    for(int i = 0; i < num_entries; i++) {
+        int diff = 0;
+        for(int j = 0; j < names_size; j++) {
+            diff = gen2_ot_name[j] - names_list[curr_pos + j];
+            if(diff != 0)
+                break;
+            if(terminator_stop && (gen2_ot_name[j] == GEN2_EOL))
+                break;
+        }
+        if(diff == 0) {
+            if((language_target == 0) || (names_list[curr_pos + names_size] & (1 << language_target))) {
+                found = 1;
+                break;
+            }
+        }
+        // Use the fact that the list is sorted
+        if(diff < 0)
+            break;
+        curr_pos += names_size + 1;
+    }
+
+    if(!found)
+        return NULL;
+
+    return &names_list[curr_pos];
 }
 
 u8 get_pokemon_gender_gen2(u8 index, u8 atk_ivs, u8 is_egg, u8 curr_gen) {

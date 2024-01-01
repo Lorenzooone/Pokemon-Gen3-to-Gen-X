@@ -7,12 +7,16 @@
 #define SIO_MASTER 1
 #define SIO_SLAVE 0
 
+#define MAX_NUM_SLAVES 3
+
 #define SIO_DEFAULT_VALUE 0xFE
 
 void init_sio_normal(int, int);
+void init_sio_multi(int);
 int sio_normal(int, int, int, u8*);
 void sio_normal_prepare_irq_slave(int);
 int timed_sio_normal_master(int, int, int);
+void timed_sio_multi_master(int, int, u16*);
 void sio_handle_irq_slave(int);
 void sio_stop_irq_slave(void);
 int sio_read(u8);

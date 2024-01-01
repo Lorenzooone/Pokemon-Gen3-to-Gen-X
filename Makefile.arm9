@@ -127,7 +127,7 @@ CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(ARCH) \
 			-Wall -Wstrict-overflow=5 -Wextra\
 			-Wpointer-arith -Wpedantic -Wcast-qual -Wswitch-default\
 			-Wstrict-prototypes -Wmissing-prototypes\
-			-Wshadow -Wwrite-strings \
+			-Wshadow -Wwrite-strings -masm-syntax-unified\
 			-ffunction-sections -fdata-sections \
 			-fomit-frame-pointer
 
