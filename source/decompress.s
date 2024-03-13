@@ -17,8 +17,10 @@
  .global swi_LZ77UnCompWrite8bit
  .type swi_LZ77UnCompWrite16bit,function
  .type swi_LZ77UnCompWrite8bit,function
-#ifdef __GBA__
-.section .iwram, "ax", %progbits
+#ifdef __NDS__
+ .section .itcm, "ax", %progbits
+#else
+ .section .iwram, "ax", %progbits
 #endif
 
 swi_LZ77UnCompWrite16bit:
