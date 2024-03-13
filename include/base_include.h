@@ -40,6 +40,7 @@ ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
 // NDS defines and all
 #include <nds.h>
 #include "useful_qualifiers.h"
+#include "decompress.h"
 #define SCANLINES 0x107
 #define ROM GBAROM
 ALWAYS_INLINE MAX_OPTIMIZE int __get_next_vcount_interrupt(void) {
@@ -84,7 +85,7 @@ typedef struct {
 #define Div(x, y) swiDivide(x, y)
 #define DivMod(x, y) swiRemainder(x, y)
 #define Sqrt(x) swiSqrt(x)
-#define LZ77UnCompWram(x, y) swiDecompressLZSSWram(x, y)
+#define LZ77UnCompWram(x, y) swi_LZ77UnCompWrite8bit(x, y)
 #define CpuFastSet(x, y, z) swiFastCopy(x, y, z)
 #define VBlankIntrWait() swiWaitForVBlank()
 #define Halt() CP15_WaitForInterrupt()
