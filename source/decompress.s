@@ -23,6 +23,8 @@
  .section .iwram, "ax", %progbits
 #endif
 
+#define ALIGNMENT_FIX
+
 swi_LZ77UnCompWrite16bit:
 swi_LZ77UnCompWrite8bit:
     stmfd sp!, {r3 - r7}
@@ -49,7 +51,7 @@ swi_LZ77UnCompWrite8bit:
     tst r1, #1
     moveq r7, r4
     orrne r7, r4, lsl #8
-    strneh r7, [r1]
+    strneh r7, [r1, #-1]
     add r1, #1
 
     @ check if decompressed length has been reached.
@@ -85,7 +87,12 @@ swi_LZ77UnCompWrite8bit:
     beq .lz77_optimized_16bit_copy_window_loop
     ldrb r6, [r5], #1
     orr r7, r6, lsl #8
+    #ifdef ALIGNMENT_FIX
+    subs r1, #1
+    strh r7, [r1], #2
+    #else
     strh r7, [r1], #1
+    #endif
     subs r4, #1
 .lz77_optimized_16bit_copy_window_loop:
     ldrh r6, [r5], #2
@@ -109,7 +116,7 @@ swi_LZ77UnCompWrite8bit:
     b .lz77_16bit_loop
 
 .lz77_16bit_copy_window_not_aligned_check:
-    sub r1, #1
+    subs r1, #1
     cmp r1, r5
     beq .set_previous_byte
     tst r5, #1
