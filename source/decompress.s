@@ -47,6 +47,10 @@ swi_LZ77UnCompWrite8bit:
     @ ignore zero-length decompression requests
     beq .lz77_16bit_done
 
+    @ Cover un-aligned destination
+    tst r1, #1
+    ldrneb r7, [r1, #-1]
+
 .lz77_16bit_loop:
     @ read encoder byte, shift to MSB for easier access.
     ldrb r3, [r0], #1
@@ -208,5 +212,11 @@ swi_LZ77UnCompWrite8bit:
     b .lz77_16bit_loop
 
 .lz77_16bit_done:
+    @ Cover un-aligned end
+    tst r1, #1
+    ldrneb r6, [r1]
+    orrne r7, r6, lsl #8
+    strneh r7, [r1, #-1]
+
     ldmfd sp!, {r3 - r7}
     bx lr
