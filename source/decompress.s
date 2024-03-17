@@ -23,7 +23,16 @@
  .section .iwram, "ax", %progbits
 #endif
 
+@ALIGNMENT_FIX has an impact of around 0.25% on performance, but it prevents
+@alignment warnings (which wouldn't affect real hardware).
 #define ALIGNMENT_FIX
+
+@OVERRUN_PROTECTION has an impact of around 0.9% on performance, but it
+@prevents overrunning the buffer by up to 2 extra bytes if the compressed data
+@has issues. Apparently, the regular BIOS functions lack any kind of overrun
+@protection. So instead of potentially writing 2 extra bytes, they could
+@write way more...
+#define OVERRUN_PROTECTION
 
 swi_LZ77UnCompWrite16bit:
 swi_LZ77UnCompWrite8bit:
@@ -61,7 +70,13 @@ swi_LZ77UnCompWrite8bit:
     @ read next encoder or process next block
     lsls r3, #1
     bcc .lz77_16bit_encoder_loop
-    b .lz77_16bit_loop
+
+    @ read encoder byte, shift to MSB for easier access.
+    ldrb r3, [r0], #1
+    orr r3, #0x01000000
+    tst r3, #0x80
+    beq .lz77_16bit_copy_byte
+
 .lz77_16bit_copy_window:
     @ read window tuple {displacement, size}
     ldrb r4, [r0], #1
@@ -84,7 +99,7 @@ swi_LZ77UnCompWrite8bit:
     tst r6, #1
     bne .lz77_16bit_copy_window_not_aligned_check
     tst r1, #1
-    beq .lz77_optimized_16bit_copy_window_loop
+    beq .lz77_optimized_16bit_copy_window_pre_loop
     ldrb r6, [r5], #1
     orr r7, r6, lsl #8
     #ifdef ALIGNMENT_FIX
@@ -94,18 +109,22 @@ swi_LZ77UnCompWrite8bit:
     strh r7, [r1], #1
     #endif
     subs r4, #1
+.lz77_optimized_16bit_copy_window_pre_loop:
+    #ifdef OVERRUN_PROTECTION
+    cmp r4, #1
+    ble .lz77_optimized_16bit_copy_window_after_loop
+    #endif
 .lz77_optimized_16bit_copy_window_loop:
     ldrh r6, [r5], #2
     strh r6, [r1], #2
     subs r4, #2
     cmp r4, #1
     bgt .lz77_optimized_16bit_copy_window_loop
-    bne .aligned_window_end_check
+.lz77_optimized_16bit_copy_window_after_loop:
     @ copy byte from window to current destination
-    ldrb r7, [r5]
-    add r1, #1
+    ldreqb r7, [r5]
+    addeq r1, #1
 
-.aligned_window_end_check:
     @ check if decompressed length has been reached
     cmp r2, #0
     beq .lz77_16bit_done
@@ -120,10 +139,14 @@ swi_LZ77UnCompWrite8bit:
     cmp r1, r5
     beq .set_previous_byte
     tst r5, #1
-    beq .lz77_16bit_copy_window_not_aligned_loop
-    ldrb r7, [r5], #1
-    add r1, #1
-    subs r4, #1
+    ldrneb r7, [r5], #1
+    addne r1, #1
+    subne r4, #1
+
+    #ifdef OVERRUN_PROTECTION
+    cmp r4, #1
+    ble .lz77_16bit_copy_window_not_aligned_after_loop
+    #endif
 .lz77_16bit_copy_window_not_aligned_loop:
     ldrh r6, [r5], #2
     orr r7, r6, lsl #8
@@ -132,13 +155,12 @@ swi_LZ77UnCompWrite8bit:
     subs r4, #2
     cmp r4, #1
     bgt .lz77_16bit_copy_window_not_aligned_loop
-    bne .window_end_check
+.lz77_16bit_copy_window_not_aligned_after_loop:
     @ copy byte from window to current destination
-    ldrb r6, [r5]
-    orr r7, r6, lsl #8
-    strh r7, [r1], #1
+    ldreqb r6, [r5]
+    orreq r7, r6, lsl #8
+    streqh r7, [r1], #1
 
-.window_end_check:
     add r1, #1
     @ check if decompressed length has been reached
     cmp r2, #0
@@ -155,23 +177,27 @@ swi_LZ77UnCompWrite8bit:
     ldrb r7, [r1], #1
     movs r6, r7
     orr r7, r6, lsl #8
-    b .set_loop
+    b .pre_set_loop
 .got_byte_in_r7:
     movs r6, r7
     orr r7, r6, lsl #8
     strh r7, [r1], #2
     subs r4, #1
+.pre_set_loop:
+    #ifdef OVERRUN_PROTECTION
+    cmp r4, #1
+    ble .set_after_loop
+    #endif
 .set_loop:
     strh r7, [r1], #2
     subs r4, #2
     cmp r4, #1
     bgt .set_loop
-    bne .set_previous_byte_end_check
+.set_after_loop:
     @ copy byte from window to current destination
-    lsr r7, #8
-    add r1, #1
+    lsreq r7, #8
+    addeq r1, #1
 
-.set_previous_byte_end_check:
     @ check if decompressed length has been reached
     cmp r2, #0
     beq .lz77_16bit_done
