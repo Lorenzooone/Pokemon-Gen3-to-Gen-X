@@ -34,9 +34,15 @@
 @write way more...
 #define OVERRUN_PROTECTION
 
+@PREVENT_OOB_READS has an impact of around 2% on performance. It prevents
+@the LZ77 window from going to an address before the initial destination one.
+@Such LZ77 data is badly formed, and this shouldn't be enabled at all
+@unless you don't trust the data coming in...
+@#define PREVENT_OOB_READS
+
 swi_LZ77UnCompWrite16bit:
 swi_LZ77UnCompWrite8bit:
-    stmfd sp!, {r3 - r7}
+    stmfd sp!, {r3 - r8}
 
     @ Read header word:
     @ bit0-3:  reserved
@@ -50,6 +56,11 @@ swi_LZ77UnCompWrite8bit:
     @ Cover un-aligned destination
     tst r1, #1
     ldrneb r7, [r1, #-1]
+
+    #ifdef PREVENT_OOB_READS
+    @ Store the initial address in r8
+    movs r8, r1
+    #endif
 
 .lz77_16bit_loop:
     @ read encoder byte, shift to MSB for easier access.
@@ -98,6 +109,11 @@ swi_LZ77UnCompWrite8bit:
     movgt r4, r2
     subs r2, r4
     subs r5, r1, r5
+    #ifdef PREVENT_OOB_READS
+    subs r6, r5, r8
+    cmp r6, #0
+    blt .lz77_16bit_done
+    #endif
     @ About 50% of the time, the two addresses will be aligned. Abuse this...
     eor r6, r1, r5
     tst r6, #1
@@ -218,5 +234,5 @@ swi_LZ77UnCompWrite8bit:
     orrne r7, r6, lsl #8
     strneh r7, [r1, #-1]
 
-    ldmfd sp!, {r3 - r7}
+    ldmfd sp!, {r3 - r8}
     bx lr
