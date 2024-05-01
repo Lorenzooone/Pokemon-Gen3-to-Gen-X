@@ -9,7 +9,6 @@
 #include "rng.h"
 #include "pid_iv_tid.h"
 #include "fast_pokemon_methods.h"
-#include "optimized_swi.h"
 #include "useful_qualifiers.h"
 #include <stddef.h>
 
@@ -288,7 +287,7 @@ void convert_exp_nature_of_gen3(struct gen3_mon* src, struct gen3_mon_growth* gr
         u8 nature = get_nature(src->pid);
 
         // Nature handling
-        u8 exp_nature = DivMod(exp, NUM_NATURES);
+        u8 exp_nature = get_nature(exp);
         if(exp_nature > nature)
             nature += NUM_NATURES;
         exp += nature - exp_nature;
@@ -338,7 +337,7 @@ u8 get_exp_nature(struct gen3_mon* dst, struct gen3_mon_growth* growth, u8 level
     s32 exp = get_proper_exp_from_gen12(mon_index, level, is_egg, given_exp);
     
     // Save nature in experience, like the Gen I-VII conversion
-    u8 nature = SWI_DivMod(exp, NUM_NATURES);
+    u8 nature = get_nature(exp);
 
     // Store exp and level
     dst->level = level;
@@ -608,7 +607,7 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
         return;
     
     // Normalize nature
-    wanted_nature = SWI_DivMod(wanted_nature, NUM_NATURES);
+    wanted_nature = get_nature(wanted_nature);
     
     if(wanted_nature == get_nature(data_src->src->pid))
         return;
@@ -697,6 +696,9 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
     struct gen3_mon_misc* misc = &data_dst->misc;
     u8 trainer_game_version = id_to_version(&trainer_data->game_identifier);
     u8 trainer_gender = trainer_data->trainer_gender;
+    
+    // Normalize nature
+    wanted_nature = get_nature(wanted_nature);
     
     // Handle eggs separately
     u32 ot_id = dst->ot_id;
