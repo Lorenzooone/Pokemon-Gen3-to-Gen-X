@@ -608,7 +608,7 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
         return;
     
     // Normalize nature
-    SWI_DivMod(wanted_nature, NUM_NATURES);
+    wanted_nature = SWI_DivMod(wanted_nature, NUM_NATURES);
     
     if(wanted_nature == get_nature(data_src->src->pid))
         return;
