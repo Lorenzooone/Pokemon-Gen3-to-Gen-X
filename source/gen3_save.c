@@ -527,8 +527,10 @@ void read_party(int slot, struct game_data_t* game_data, struct game_data_priv_t
                 game_data_priv->game_is_suspended = 0;
         }
 
-        if(section_id == SECTION_LOCATION_ID)
+        if(section_id == SECTION_LOCATION_ID) {
             game_data_priv->curr_map = read_short_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + LOCATION_POS);
+            game_data_priv->curr_map = ((game_data_priv->curr_map & 0xFF) << 8) | ((game_data_priv->curr_map & 0xFF00) >> 8);
+        }
 
         if(section_id == SECTION_BASE_DEX_ID) {
             game_data_priv->nat_dex_magic = read_byte_save((slot * SAVE_SLOT_SIZE) + (i * SECTION_SIZE) + nat_dex_magic_pos[game_id]);
