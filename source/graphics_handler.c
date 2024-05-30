@@ -49,26 +49,6 @@ MAX_OPTIMIZE void load_pokemon_sprite_gfx(const u32* src, u32* dst, u8 is_3bpp, 
     }
 }
 
-void convert_xbpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward, u8 num_bpp) {
-    if(num_bpp == 0 || num_bpp > 4)
-        return;
-    size_t num_rows = Div(src_size, num_bpp);
-    if(DivMod(src_size, num_bpp))
-        num_rows += 1;
-    for(size_t i = 0; i < num_rows; i++) {
-        u32 src_data = 0;
-        for(int j = 0; j < num_bpp; j++)
-            src_data |= src[(i*num_bpp)+j]<<(8*j);
-        u32 row = 0;
-        for(int j = 0; j < 8; j++)
-            if(!is_forward)
-                row |= (colors[(src_data>>(num_bpp*j))&((1<<num_bpp)-1)]&0xF) << (4*j);
-            else
-                row |= (colors[(src_data>>(num_bpp*j))&((1<<num_bpp)-1)]&0xF) << (4*(7-j));
-        dst[i] = row;
-    }
-}
-
 MAX_OPTIMIZE ALWAYS_INLINE void pokemon_sprite_zero_fill(u32* src_buffer, u32* dst, u8 is_odd, u8 is_3bpp) {
     u32 zero = 0;
     u32 mid_buffer[BUFFER_SIZE];
@@ -136,8 +116,45 @@ IWRAM_CODE MAX_OPTIMIZE void convert_3bpp_forward_odd(const u8* src, u32* dst, s
     }
 }
 
-void convert_1bpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward) {
-    convert_xbpp(src, dst, src_size, colors, is_forward, 1);
+MAX_OPTIMIZE ALWAYS_INLINE void convert_xbpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward, u8 num_bpp) {
+    if ((num_bpp == 0) | (num_bpp > 4))
+        return;
+    size_t num_rows = Div(src_size, num_bpp);
+    if(DivMod(src_size, num_bpp))
+        num_rows += 1;
+    for(size_t i = 0; i < num_rows; i++) {
+        u32 src_data = 0;
+        for(u32 j = 0; j < num_bpp; j++)
+            src_data |= src[(i*num_bpp)+j]<<(8*j);
+        u32 row = 0;
+        u32 mask = -((u32)is_forward);
+        for(u32 j = 0; j < 8; j++) {
+            u32 direction = (mask & (7-j)) | (~mask & j);
+            row |= (colors[(src_data>>(num_bpp*j))&((1<<num_bpp)-1)]&0xF) << (direction * 4);
+        }
+        dst[i] = row;
+    }
+}
+
+// Convert a 1bpp bit pattern into a tile that can be rendered by the gba.
+// This code is used each time a text character is rendered, so, it's a specialized version of the generic
+// convert_xbpp with hardcoded num_bpp set to 1. This removes some syscalls (swi bios calls) as well
+// as eliminates some loops.
+IWRAM_CODE MAX_OPTIMIZE void convert_1bpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward, u8 clear_canvas_tile) {
+    size_t num_rows = src_size;
+    num_rows += (src_size & 1);
+    for(size_t i = 0; i < num_rows; i++) {
+        u32 src_data = src[i];
+        u32 row = (~(-((u32)clear_canvas_tile))) & dst[i];
+        u32 mask = -((u32)is_forward);
+        for(u32 j = 0; j < 8; j++) {
+            u32 curr_src_data = (src_data>>(j));
+            u32 color = colors[curr_src_data & 1] & 0xF;
+            u32 direction = (mask & (7-j)) | (~mask & j);
+            row |= color << (direction * 4);
+        }
+        dst[i] = row;
+    }
 }
 
 void convert_2bpp(u8* src, u32* dst, size_t src_size, u8* colors, u8 is_forward) {

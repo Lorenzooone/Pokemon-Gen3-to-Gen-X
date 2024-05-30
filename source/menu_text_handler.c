@@ -123,6 +123,13 @@ const char* trade_start_state_strings[] = {"Unknown", "Entering Room", "Starting
 const char* offer_strings[] = {"Sending ", "Receiving"};
 const char colours_chars[] = {'R', 'G', 'B'};
 const char* invalid_strings[][PRINTABLE_INVALID_STRINGS] = {{"      TRADE REJECTED!", "The Pok\xE9mon offered by the", "other player has issues!"}, {"      TRADE REJECTED!", "The trade would leave you", "with no usable Pok\xE9mon!"}};
+const char* pokemon_info_page_names[PAGES_TOTAL] = {
+    "SUMMARY",
+    "STATS",
+    "MOVES",
+    "CONTEST",
+    "RIBBONS",
+};
 
 const u8 ribbon_print_pos[NUM_LINES*2] = {0,1,2,3,4,5,6,7,8,9,14,15,13,16,10,0xFF,11,0xFF,12,0xFF};
 typedef void (*print_info_functions_t)(struct gen3_mon_data_unenc*);
@@ -273,8 +280,10 @@ void print_trade_menu_cancel(u8 update) {
 
 void print_swap_cartridge_menu() {
     default_reset_screen();
-
+    set_text_y(4);
+    set_text_x(7);
     PRINT_FUNCTION("Insert the new cartridge,\n\n");
+    set_text_x(7);
     PRINT_FUNCTION("then press A to continue.\n\n");
 }
 
@@ -296,24 +305,19 @@ void print_learnable_move(struct gen3_mon_data_unenc* mon, u16 index, enum MOVES
     set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
 
     switch(moves_printing_type) {
-        case LEARNT_P:
-            PRINT_FUNCTION("\x05 learnt\n\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
-            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
+        case LEARNED_P:
+            PRINT_FUNCTION("\x05 learned ", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
             PRINT_FUNCTION("\x01!", get_move_name_raw(move));
             break;
         case DID_NOT_LEARN_P:
-            PRINT_FUNCTION("\x05 did not\n\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
-            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
-            PRINT_FUNCTION("learn \x01!", get_move_name_raw(move));
+            PRINT_FUNCTION("\x05 did not learn ", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x01!", get_move_name_raw(move));
             break;
         case LEARNABLE_P:
-            PRINT_FUNCTION("\x05 wants to\n", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x05 wants to learn ", get_pokemon_name_raw(mon), get_pokemon_name_raw_language_limit(mon), IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("\x01!\n", get_move_name_raw(move));
             set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
-            PRINT_FUNCTION("learn \x01!\n", get_move_name_raw(move));
-            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
-            PRINT_FUNCTION("Would you like to replace\n");
-            set_text_x(LEARN_MOVE_MESSAGE_WINDOW_X);
-            PRINT_FUNCTION("an existing move with it?");
+            PRINT_FUNCTION("Would you like to replace an existing move with it?");
             set_text_y(BASE_Y_CURSOR_LEARN_MOVE_MESSAGE>>3);
             set_text_x((BASE_X_CURSOR_LEARN_MOVE_MESSAGE_YES>>3)+2+LEARN_MOVE_MESSAGE_WINDOW_X);
             PRINT_FUNCTION("Yes");
@@ -448,29 +452,29 @@ void print_gen12_settings_menu(u8 update) {
         return;
 
     default_reset_screen();
-    PRINT_FUNCTION("\n  Target Language: <\x01>\n\n", get_language_string(get_target_int_language()));
-    PRINT_FUNCTION("  Convert to: <\x01>\n\n", game_strings[get_default_conversion_game()]);
-    PRINT_FUNCTION("  Prioritize Colo/XD:");
+    PRINT_FUNCTION("\n      Target Language: <\x01>\n\n", get_language_string(get_target_int_language()));
+    PRINT_FUNCTION("      Convert to: <\x01>\n\n", game_strings[get_default_conversion_game()]);
+    PRINT_FUNCTION("      Prioritize Colo/XD:");
     if(get_conversion_colo_xd())
         PRINT_FUNCTION(" <True>\n\n");
     else
         PRINT_FUNCTION(" <False>\n\n");
-    PRINT_FUNCTION("  Preserve OT Gender:");
+    PRINT_FUNCTION("      Preserve OT Gender:");
     if(get_prioritize_ot_gender())
         PRINT_FUNCTION(" <True>\n\n");
     else
         PRINT_FUNCTION(" <False>\n\n");
-    PRINT_FUNCTION("  Gen 1 Everstone: ");
+    PRINT_FUNCTION("      Gen 1 Everstone: ");
     if(get_gen1_everstone())
         PRINT_FUNCTION("<Enabled>\n\n");
     else
         PRINT_FUNCTION("<Disabled>\n\n");
-    PRINT_FUNCTION("  Caught in: <\x01 Ball>\n\n", get_pokeball_base_name_gen3_pure(get_applied_ball()));
-    PRINT_FUNCTION("  Hatched at: ");
+    PRINT_FUNCTION("      Caught in: <\x01 Ball>\n\n", get_pokeball_base_name_gen3_pure(get_applied_ball()));
+    PRINT_FUNCTION("      Hatched at: ");
     PRINT_FUNCTION("<\x0B> +/- 1\n\n", get_egg_met_location(), 3);
-    PRINT_FUNCTION("  Hatched at: ");
+    PRINT_FUNCTION("      Hatched at: ");
     PRINT_FUNCTION("<\x0B> +/- 10\n\n", get_egg_met_location(), 3);
-    PRINT_FUNCTION("Hatched at: ");
+    PRINT_FUNCTION("        Hatched at: ");
     PRINT_FUNCTION("\x01", get_met_location_name_gen3_pure(get_egg_met_location(), get_default_conversion_game()));
 
     print_bottom_info();
@@ -481,15 +485,15 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
         return;
 
     default_reset_screen();
-    PRINT_FUNCTION("\n  System Language: <\x01>\n\n", get_language_string(get_sys_language()));
-    PRINT_FUNCTION("  Gen 1/2 Settings\n\n");
+    PRINT_FUNCTION("\n      System Language: <\x01>\n\n", get_language_string(get_sys_language()));
+    PRINT_FUNCTION("      Gen 1/2 Settings\n\n");
     u8 curr_y = get_text_y();
     if(is_loaded) {
         if(has_rtc_events(game_identifier))
-            PRINT_FUNCTION("  Clock Settings\n\n");
+            PRINT_FUNCTION("      Clock Settings\n\n");
         set_text_y(curr_y+2);
         if(game_identifier->game_sub_version_undetermined)
-            PRINT_FUNCTION("  Game Loaded: <\x01>\n\n", game_strings[id_to_version(game_identifier)]);
+            PRINT_FUNCTION("      Game Loaded: <\x01>\n\n", game_strings[id_to_version(game_identifier)]);
         /*
         //change_time_of_day(game_data);
         //enable_rtc_reset(&game_data->clock_events);
@@ -506,10 +510,10 @@ void print_base_settings_menu(struct game_identity* game_identifier, u8 is_loade
     }
 
     set_text_y(curr_y+4);
-    PRINT_FUNCTION("  Color Settings");
+    PRINT_FUNCTION("      Color Settings");
 
     set_text_y(Y_LIMIT-3);
-    PRINT_FUNCTION("  Cheats");
+    PRINT_FUNCTION("      Cheats");
 
     print_bottom_info();
     const struct version_t* version = get_version();
@@ -536,13 +540,13 @@ void print_clock_variable_menu(struct clock_events_t* clock_events, struct saved
     reset_screen(BLANK_FILL);
     
     set_text_y(1);
-    set_text_x(8);
+    set_text_x(6);
 
     if(is_daytime(clock_events, time_change))
         PRINT_FUNCTION("<Day>\n\n");
     else
         PRINT_FUNCTION("<Night>\n\n");
-    set_text_x(19);
+    set_text_x(12);
     if(is_high_tide(clock_events, time_change))
         PRINT_FUNCTION("<High>");
     else
@@ -561,28 +565,29 @@ void print_clock_menu(struct clock_events_t* clock_events, struct saved_time_t* 
 
     default_reset_screen();
 
-    PRINT_FUNCTION("\n  Time: \n\n");
-    PRINT_FUNCTION("  Shoal Cave Tide: \n\n");
+    PRINT_FUNCTION("\n");
+    PRINT_FUNCTION("      Time: \n\n");
+    PRINT_FUNCTION("      Shoal Cave Tide: \n\n");
     u8 curr_y = get_text_y();
-    PRINT_FUNCTION("  Clock Reset Menu: ");
+    PRINT_FUNCTION("      Clock Reset Menu: ");
     if(is_rtc_reset_enabled(clock_events))
         PRINT_FUNCTION("<Enabled>");
     else
         PRINT_FUNCTION("<Disabled>");
     set_text_y(curr_y+2);
 
-    PRINT_FUNCTION("  Days Increase:    <\x0B>\n", time_change->d, 5);
-    PRINT_FUNCTION("  Hours Increase:   <\x0B>\n", time_change->h, 2);
-    PRINT_FUNCTION("  Minutes Increase: <\x0B>\n", time_change->m, 2);
-    PRINT_FUNCTION("  Seconds Increase: <\x0B>\n", time_change->s, 2);
+    PRINT_FUNCTION("      Days Increase:    <\x0B>\n", time_change->d, 5);
+    PRINT_FUNCTION("      Hours Increase:   <\x0B>\n", time_change->h, 2);
+    PRINT_FUNCTION("      Minutes Increase: <\x0B>\n", time_change->m, 2);
+    PRINT_FUNCTION("      Seconds Increase: <\x0B>\n", time_change->s, 2);
 
     set_text_y(Y_LIMIT-8);
-    PRINT_FUNCTION("  Save and Exit\n\n");
-    PRINT_FUNCTION("Base Time:\n");
-    PRINT_FUNCTION("New Time:\n");
-    PRINT_FUNCTION("Issues may arise when changing");
+    PRINT_FUNCTION("      Save and Exit\n\n");
+    PRINT_FUNCTION("\tBase Time:\n");
+    PRINT_FUNCTION("\tNew Time:\n");
+    PRINT_FUNCTION("\tIssues may arise when changing");
     set_text_y(Y_LIMIT-3);
-    PRINT_FUNCTION("the time of a Working Battery.");
+    PRINT_FUNCTION("\tthe time of a Working Battery.");
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("B: Exit Without Saving");
     
@@ -594,27 +599,27 @@ void print_cheats_menu(u8 update) {
         return;
 
     default_reset_screen();
-    PRINT_FUNCTION("\n  Cross-Gen Evo.:");
+    PRINT_FUNCTION("\n      Cross-Gen Evo.:");
     if(get_allow_cross_gen_evos())
         PRINT_FUNCTION(" <Enabled>\n\n");
     else
         PRINT_FUNCTION(" <Disabled>\n\n");
-    PRINT_FUNCTION("  Tradeless Evo.:");
+    PRINT_FUNCTION("      Tradeless Evo.:");
     if(get_evolve_without_trade())
         PRINT_FUNCTION(" <Enabled>\n\n");
     else
         PRINT_FUNCTION(" <Disabled>\n\n");
-    PRINT_FUNCTION("  Undistr. Events:");
+    PRINT_FUNCTION("      Undistr. Events:");
     if(get_allow_undistributed_events())
         PRINT_FUNCTION(" <Enabled>\n\n");
     else
         PRINT_FUNCTION(" <Disabled>\n\n");
-    PRINT_FUNCTION("  Fast Hatch Eggs:");
+    PRINT_FUNCTION("      Fast Hatch Eggs:");
     if(get_fast_hatch_eggs())
         PRINT_FUNCTION(" <Enabled>\n\n");
     else
         PRINT_FUNCTION(" <Disabled>\n\n");
-    PRINT_FUNCTION("  Give Pok\xE9rus to Party\n\n");
+    PRINT_FUNCTION("      Give Pok\xE9rus to Party\n\n");
 
     print_bottom_info();
 }
@@ -634,23 +639,31 @@ void print_colour_settings_menu(u8 update) {
         return;
 
     default_reset_screen();
-    PRINT_FUNCTION("\n  Colour");
+    PRINT_FUNCTION("\n      Colour");
     print_single_colour_info(NUM_COLOURS);
     set_text_y(BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3);
-    PRINT_FUNCTION("  Background:");
+    PRINT_FUNCTION("      Background:");
     print_single_colour_info(BACKGROUND_COLOUR_POS);
-    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+(BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3));
-    PRINT_FUNCTION("  Font:");
-    print_single_colour_info(FONT_COLOUR_POS);
+
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*1));
+    PRINT_FUNCTION("      Font:");
+    print_single_colour_info(FONT_COLOUR_1_POS);
+
     set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*2));
-    PRINT_FUNCTION("  Window 1:");
+    PRINT_FUNCTION("      Window 1:");
     print_single_colour_info(WINDOW_COLOUR_1_POS);
+    
     set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*3));
-    PRINT_FUNCTION("  Window 2:");
+    PRINT_FUNCTION("      Window 2:");
     print_single_colour_info(WINDOW_COLOUR_2_POS);
+    
     set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*4));
-    PRINT_FUNCTION("  Cursor:");
+    PRINT_FUNCTION("      Cursor:");
     print_single_colour_info(SPRITE_COLOUR_POS);
+
+    set_text_y((BASE_Y_CURSOR_COLOURS_SETTINGS_MENU>>3)+((BASE_Y_CURSOR_INCREMENT_COLOURS_SETTINGS_MENU>>3)*5));
+    PRINT_FUNCTION("      Font Shadow:");
+    print_single_colour_info(FONT_COLOUR_2_POS);
     
     init_colour_window();
     clear_colour_window();
@@ -669,16 +682,16 @@ void print_trade_options(u8 cursor_x_pos, u8 own_menu, u8 evolution){
     clear_trade_options_window();
     set_text_y(TRADE_OPTIONS_WINDOW_Y);
     set_text_x(TRADE_OPTIONS_WINDOW_X);
-    PRINT_FUNCTION("  Summary");
+    PRINT_FUNCTION("      Summary");
     set_text_x(TRADE_OPTIONS_WINDOW_X + (TRADE_OPTIONS_WINDOW_X_SIZE>>1));
     if(own_menu && evolution)
-        PRINT_FUNCTION("  Evolve");
+        PRINT_FUNCTION("      Evolve");
     else if(own_menu)
-        PRINT_FUNCTION("  Fix IV");
+        PRINT_FUNCTION("      Fix IV");
     else if(cursor_x_pos)
-        PRINT_FUNCTION("  Set Nature");
+        PRINT_FUNCTION("      Set Nature");
     else 
-        PRINT_FUNCTION("  Offer");
+        PRINT_FUNCTION("      Offer");
 }
 
 void print_waiting(s8 y_increase){
@@ -785,15 +798,15 @@ void print_start_trade(){
     //    return;
     
     default_reset_screen();
-    PRINT_FUNCTION("\nState: \x01\n", trade_start_state_strings[raw_state]);
+    PRINT_FUNCTION("\n      State: \x01\n", trade_start_state_strings[raw_state]);
     if((raw_state != START_TRADE_PAR) && (raw_state != START_TRADE_DON))
         print_bottom_info();
     else {
         for(int i = 0; i < get_number_of_buffers(); i++) {
             if(raw_state != START_TRADE_DON)
-                PRINT_FUNCTION("\nSection \x03: \x09/\x03\n", i+1, get_transferred(i), 3, get_buffer_size(i));
+                PRINT_FUNCTION("\n      Section \x03: \x16/\x03\n", i+1, get_transferred(i), 3, get_buffer_size(i));
             else
-                PRINT_FUNCTION("\nSection \x03: \x09/\x03\n", i+1, get_buffer_size(i), 3, get_buffer_size(i));
+                PRINT_FUNCTION("\n      Section \x03: \x16/\x03\n", i+1, get_buffer_size(i), 3, get_buffer_size(i));
         }
         if(!get_transferred(0))
             print_bottom_info();
@@ -801,17 +814,17 @@ void print_start_trade(){
 }
 
 void print_basic_alter_conf_data(struct gen3_mon_data_unenc* mon, struct alternative_data_gen3* altered) {
-    PRINT_FUNCTION("\n       OLD    NEW   OLD  NEW");
-    PRINT_FUNCTION("\nSTAT  VALUE  VALUE   IV   IV");
+    PRINT_FUNCTION("\n\t\tOLD\tNEW\tOLD\tNEW");
+    PRINT_FUNCTION("\n\tSTAT\tVALUE\tVALUE\tIV\tIV");
     for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
-        PRINT_FUNCTION("\n \x11", stat_strings[i], 3);
-        PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
-        PRINT_FUNCTION("  \x09\x02", calc_stats_gen3_raw_alternative(mon, altered, i), 4, get_nature_symbol(altered->pid, i));
-        PRINT_FUNCTION("  \x09  \x09", get_ivs_gen3(&mon->misc, i), 3, get_ivs_gen3_pure(altered->ivs, i), 3);
+        PRINT_FUNCTION("\n\t\x11", stat_strings[i], 3);
+        PRINT_FUNCTION("\t\x16\x02", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
+        PRINT_FUNCTION("\t\x16\x02", calc_stats_gen3_raw_alternative(mon, altered, i), 4, get_nature_symbol(altered->pid, i));
+        PRINT_FUNCTION("\t\x16\t\x16", get_ivs_gen3(&mon->misc, i), 3, get_ivs_gen3_pure(altered->ivs, i), 3);
     }
-    PRINT_FUNCTION("\n\nOld ");
+    PRINT_FUNCTION("\n\n\tOld ");
     PRINT_FUNCTION("Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
-    PRINT_FUNCTION("\nNew ");
+    PRINT_FUNCTION("\n\tNew ");
     PRINT_FUNCTION("Hidden Power: \x01 \x03", get_hidden_power_type_name_gen3_pure(altered->ivs), get_hidden_power_power_gen3_pure(altered->ivs));
 }
 
@@ -833,14 +846,14 @@ void print_set_nature(u8 load_sprites, struct gen3_mon_data_unenc* mon) {
     if(mon->growth.species == DUNSPARCE_SPECIES) {
         ability_text_y -= 1;
         set_text_y(ability_text_y + 1);
-        PRINT_FUNCTION("Dudunsparce Segments: \x03", get_dudunsparce_segments(mon->alter_nature.pid));
+        PRINT_FUNCTION("\tDudunsparce Segments: \x03", get_dudunsparce_segments(mon->alter_nature.pid));
     }
 
     set_text_y(ability_text_y);
-    PRINT_FUNCTION("Ability: \x01 (\x03)", get_ability_name_raw_alternative(mon, &mon->alter_nature), get_ability_num_gen_4_5(mon->alter_nature.pid));
+    PRINT_FUNCTION("\tAbility: \x01 (\x03)", get_ability_name_raw_alternative(mon, &mon->alter_nature), get_ability_num_gen_4_5(mon->alter_nature.pid));
 
     set_text_y(nature_text_y);
-    PRINT_FUNCTION("\x01 Nature to: <\x01>", get_nature_name(mon->src->pid), get_nature_name(mon->alter_nature.pid));
+    PRINT_FUNCTION("\t\x01 Nature to: <\x01>", get_nature_name(mon->src->pid), get_nature_name(mon->alter_nature.pid));
 
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("A: Confirm - B: Go Back");
@@ -860,18 +873,18 @@ void print_iv_fix(struct gen3_mon_data_unenc* mon) {
     print_basic_alter_conf_data(mon, &mon->fixed_ivs);
 
     if((species == LATIAS_SPECIES) || (species == LATIOS_SPECIES))
-        PRINT_FUNCTION("\nMet in: \x01", get_met_location_name_gen3_raw(mon));
+        PRINT_FUNCTION("\n\tMet in: \x01", get_met_location_name_gen3_raw(mon));
     else
-        PRINT_FUNCTION("\nOld Met in: \x01", get_met_location_name_gen3_raw(mon));
+        PRINT_FUNCTION("\n\tOld Met in: \x01", get_met_location_name_gen3_raw(mon));
     if((species == RAIKOU_SPECIES) || (species == ENTEI_SPECIES) || (species == SUICUNE_SPECIES))
-        PRINT_FUNCTION("\nNew Met in: Deep Colosseum");
+        PRINT_FUNCTION("\n\tNew Met in: Deep Colosseum");
 
     if(get_met_level_gen3_raw(mon) != (mon->fixed_ivs.origins_info&0x7F))
-        PRINT_FUNCTION("\nCaught Level: from \x03 to \x03", get_met_level_gen3_raw(mon), mon->fixed_ivs.origins_info&0x7F);
+        PRINT_FUNCTION("\n\tCaught Level: from \x03 to \x03", get_met_level_gen3_raw(mon), mon->fixed_ivs.origins_info&0x7F);
 
     if(mon->fix_has_altered_ot) {
-        PRINT_FUNCTION("\n           WARNING:");
-        PRINT_FUNCTION("\n  CHANGED ORIGINAL TRAINER!");
+        PRINT_FUNCTION("\n\t\t\tWARNING:");
+        PRINT_FUNCTION("\n      CHANGED ORIGINAL TRAINER!");
     }
 
     set_text_y(Y_LIMIT-1);
@@ -894,44 +907,38 @@ void print_learnable_moves_menu(struct gen3_mon_data_unenc* mon, u16 index) {
     u8 base_x = 0;
     u8 base_y = get_text_y() + 1;
     set_text_y(base_y);
+
     for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
-        set_text_x(base_x);
-        PRINT_FUNCTION("\x11: \x09\x02\n", stat_strings[i], 3, calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
-        if(i == ((GEN2_STATS_TOTAL-1)>>1)) {
-            set_text_y(base_y);
-            base_x += X_LIMIT>>1;
-        }
+        set_text_x(21);
+        PRINT_FUNCTION(stat_strings[i]);
+        PRINT_FUNCTION(":  \t\x16\x02\n\n", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
     }
-    PRINT_FUNCTION("Ability: \x01 (\x03)", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
-    PRINT_FUNCTION("\nHidden Power: \x01 \x03\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    set_text_y(base_y);
+    PRINT_FUNCTION("\tAbility: \x01 (\x03)\n", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
+    PRINT_FUNCTION("\tHidden Power: \x01 \x03\n\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
     base_y = get_text_y();
-    u8 offset_text_y = 0;
-    if(base_y < (((BASE_Y_CURSOR_LEARN_MOVE_MENU)>>3)-(3)))
-        offset_text_y = 1;
-    set_text_y(((BASE_Y_CURSOR_LEARN_MOVE_MENU)>>3)-(3 + offset_text_y));
-    PRINT_FUNCTION("Which move will be forgotten?");
-    set_text_y(((BASE_Y_CURSOR_LEARN_MOVE_MENU)>>3)-2);
-    set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
+    set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+1);
+    PRINT_FUNCTION("Which move will be forgotten?\n\n");
+    set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+1);
     PRINT_FUNCTION("MOVES");
-    set_text_x(X_LIMIT-11+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
+    set_text_x(13+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
     PRINT_FUNCTION("PP UP");
     for(size_t i = 0; i < MOVES_SIZE; i++){
         set_text_y((BASE_Y_CURSOR_LEARN_MOVE_MENU + (BASE_Y_CURSOR_INCREMENT_LEARN_MOVE_MENU*i))>>3);
         set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
         PRINT_FUNCTION("\x01", get_move_name_gen3(&mon->attacks, i));
-        set_text_x((X_LIMIT-11+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2)+2);
+        set_text_x((13+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2)+2);
         PRINT_FUNCTION("\x03", (mon->growth.pp_bonuses >> (2*i)) & 3);
     }
     set_text_y((BASE_Y_CURSOR_LEARN_MOVE_MENU + (BASE_Y_CURSOR_INCREMENT_LEARN_MOVE_MENU*MOVES_SIZE))>>3);
     set_text_x((BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2);
     PRINT_FUNCTION("\x01", get_move_name_raw(move));
-    set_text_x((X_LIMIT-11+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2)+1);
+    set_text_x((13+(BASE_X_CURSOR_LEARN_MOVE_MENU>>3)+2)+1);
     PRINT_FUNCTION("NEW");
 }
 
 void print_evolution_window(struct gen3_mon_data_unenc* mon) {
     u8 useless = 0;
-    reset_screen(BLANK_FILL);
 
     if((!mon->is_valid_gen3) || (mon->is_egg))
         return;
@@ -940,6 +947,7 @@ void print_evolution_window(struct gen3_mon_data_unenc* mon) {
     if(!num_species)
         return;
 
+    reset_screen(BLANK_FILL);
     init_evolution_window(num_species);
     clear_evolution_window(num_species);
 
@@ -950,17 +958,13 @@ void print_evolution_window(struct gen3_mon_data_unenc* mon) {
         u16 new_species = get_own_menu_evolution_species(mon, i, &useless);
         set_text_x(EVOLUTION_WINDOW_X);
         if(is_species_valid(new_species))
-            PRINT_FUNCTION("  \x05\n\n", get_pokemon_name_pure(new_species, 0, SYS_LANGUAGE), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
+            PRINT_FUNCTION("      \x05\n\n", get_pokemon_name_pure(new_species, 0, SYS_LANGUAGE), SYS_LANGUAGE_LIMIT, IS_SYS_LANGUAGE_JAPANESE);
     }
 }
 
 void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen, u8 update) {
     if(!update)
         return;
-
-    u8 old_screen = get_screen_num();
-    set_screen(screen);
-    default_reset_screen();
 
     if((!mon->is_valid_gen3) || (mon->is_egg))
         return;
@@ -972,6 +976,10 @@ void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen,
     u8 old_level = mon->src->level;
     if((!new_species) || (!is_species_valid(new_species)))
         return;
+
+    u8 old_screen = get_screen_num();
+    set_screen(screen);
+    default_reset_screen();
     
     if(needs_levelup)
         mon->src->level += 1;
@@ -984,23 +992,24 @@ void print_evolution_menu(struct gen3_mon_data_unenc* mon, u16 index, u8 screen,
     u8 base_x = 0;
     u8 base_y = get_text_y() + 1;
     set_text_y(base_y);
-    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
-        set_text_x(base_x);
-        PRINT_FUNCTION("\x11: \x09\x02\n", stat_strings[i], 3, calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
-        if(i == ((GEN2_STATS_TOTAL-1)>>1)) {
-            set_text_y(base_y);
-            base_x += X_LIMIT>>1;
-        }
-    }
-    PRINT_FUNCTION("Ability: \x01 (\x03)", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
-    PRINT_FUNCTION("\nHidden Power: \x01 \x03\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
+    PRINT_FUNCTION("\tAbility: \x01 (\x03)\n", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
+    PRINT_FUNCTION("\tHidden Power: \x01 \x03\n", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
     if(needs_levelup)
-        PRINT_FUNCTION("Level: from \x03 to \x03\n", old_level, mon->src->level);
+        PRINT_FUNCTION("\tLevel: from \x03 to \x03\n", old_level, mon->src->level);
     else
         PRINT_FUNCTION("\n");
-    PRINT_FUNCTION("MOVES\n\n");
-    for(size_t i = 0; i < MOVES_SIZE; i++)
+
+    for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
+        PRINT_FUNCTION("\n\t");
+        PRINT_FUNCTION(stat_strings[i]);
+        PRINT_FUNCTION(":\t\x16\x02\n", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
+    }
+
+    set_text_y(base_y);
+    for(size_t i = 0; i < MOVES_SIZE; i++){
+        set_text_x(19);
         PRINT_FUNCTION("\x01\n\n", get_move_name_gen3(&mon->attacks, i));
+    }
 
     set_text_y(Y_LIMIT-1);
     PRINT_FUNCTION("A: Confirm - B: Go Back");
@@ -1056,9 +1065,9 @@ void print_warning_when_clock_changed() {
     PRINT_FUNCTION("one Pok\xE9mon!\n\n");
     PRINT_FUNCTION("Continue Anyway?");
     set_text_y(BASE_Y_CURSOR_CLOCK_WARNING>>3);
-    PRINT_FUNCTION("  Yes");
+    PRINT_FUNCTION("    Yes");
     set_text_x(BASE_X_CURSOR_INCREMENT_CLOCK_WARNING>>3);
-    PRINT_FUNCTION("  No");
+    PRINT_FUNCTION("    No");
 }
 
 void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 page) {
@@ -1071,15 +1080,16 @@ void print_pokemon_base_info(u8 load_sprites, struct gen3_mon_data_unenc* mon, u
     if(is_egg)
         page_total = FIRST_PAGE;
     
-    if(page == FIRST_PAGE)
-        PRINT_FUNCTION(" ");
-    else
+    if(page != FIRST_PAGE)
         PRINT_FUNCTION("<");
-        
+    set_text_x(1);
     PRINT_FUNCTION("\x03 / \x03", page, page_total);
     
     if(page < page_total)
         PRINT_FUNCTION(">");
+
+    set_text_x(13);
+    PRINT_FUNCTION(pokemon_info_page_names[page - 1]);
     
     print_pokemon_base_data(load_sprites, mon, BASE_Y_SPRITE_INFO_PAGE, BASE_X_SPRITE_INFO_PAGE, 1);
 }
@@ -1093,76 +1103,111 @@ void print_pokemon_page1(struct gen3_mon_data_unenc* mon) {
     u8 language = get_valid_language(mon->src->language);
     u8 is_egg = mon->is_egg;
     
+    u32 y_base = get_text_y();
     if(!is_egg) {
-        PRINT_FUNCTION("\nLevel: \x13Nature: \x01\n", to_valid_level_gen3(mon->src), 6, get_nature_name(mon->src->pid));
-        
-        PRINT_FUNCTION("\nLanguage: \x01\n", language_strings[language]);
-        
-        PRINT_FUNCTION("\nOT: \x05 - \x02 - \x0B\n", mon->src->ot_name, GET_LANGUAGE_OT_NAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language), get_trainer_gender_char_raw(mon), (mon->src->ot_id)&0xFFFF, 5);
-        PRINT_FUNCTION("\nItem: \x01\n", get_item_name_raw(mon));
+        PRINT_FUNCTION("\n\n");
+        set_text_x(2);
+        PRINT_FUNCTION("Level: \x13\n\n", to_valid_level_gen3(mon->src), 6);
+        set_text_x(2);
+        PRINT_FUNCTION("Language: \x01\n\n", language_strings[language]);
+        set_text_x(2);
+        PRINT_FUNCTION("OT: \x05 \x02 \x0B\n\n", mon->src->ot_name, GET_LANGUAGE_OT_NAME_LIMIT(language), GET_LANGUAGE_IS_JAPANESE(language), get_trainer_gender_char_raw(mon), (mon->src->ot_id)&0xFFFF, 5);
+        set_text_x(2);
+        PRINT_FUNCTION("Item: \x01\n\n", get_item_name_raw(mon));
         
         u8 met_level = get_met_level_gen3_raw(mon);
         if(met_level > 0) {
-            PRINT_FUNCTION("\nMet in: \x01\n", get_met_location_name_gen3_raw(mon));
-            PRINT_FUNCTION("\nCaught at Level \x03\n\nCaught in \x01 Ball", met_level, get_pokeball_base_name_gen3_raw(mon));
+            set_text_x(2);
+            PRINT_FUNCTION("Met in: \x01\n\n", get_met_location_name_gen3_raw(mon));
+            set_text_x(2);
+            PRINT_FUNCTION("Caught at Level \x03\n\n", met_level);
+            set_text_x(2);
+            PRINT_FUNCTION("Caught in \x01 Ball\n\n", get_pokeball_base_name_gen3_raw(mon));
         }
         else {
-            PRINT_FUNCTION("\nHatched at: \x01\n", get_met_location_name_gen3_raw(mon));
-            PRINT_FUNCTION("\nHatched in \x01 Ball", get_pokeball_base_name_gen3_raw(mon));
+            set_text_x(2);
+            PRINT_FUNCTION("Hatched at: \x01\n\n", get_met_location_name_gen3_raw(mon));
+            set_text_x(2);
+            PRINT_FUNCTION("Hatched in \x01 Ball", get_pokeball_base_name_gen3_raw(mon));
         }
-        if(mon->growth.species == DUNSPARCE_SPECIES)
+        if(mon->growth.species == DUNSPARCE_SPECIES){
+            set_text_x(2);
             PRINT_FUNCTION("\n\n   Dudunsparce Segments: \x03", get_dudunsparce_segments(mon->src->pid));
+        }
+        set_text_y(y_base);
+        PRINT_FUNCTION("\n\n");
+        set_text_x(15);
+        PRINT_FUNCTION("Nature: \x01\n\n", get_nature_name(mon->src->pid));
+        set_text_x(15);
+        PRINT_FUNCTION("Ability: \x01 (\x03)\n\n", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
+        set_text_x(15);
+        PRINT_FUNCTION("Experience: \x03\n\n", get_proper_exp_raw(mon));
+        
+        if(to_valid_level_gen3(mon->src) < MAX_LEVEL_GEN3){
+            set_text_x(15);
+            PRINT_FUNCTION("Lv. \x16 in: \x16 Exp", to_valid_level_gen3(mon->src)+1, 3, get_level_exp_mon_index(get_mon_index_raw(mon), to_valid_level_gen3(mon->src)+1) - get_proper_exp_raw(mon), 5);
+        }
+
     }
-    else
-        PRINT_FUNCTION("\nHatches in : \x03 Egg Cycle\x02\n\nHatches in: \x03 Steps", mon->growth.friendship + 1, mon->growth.friendship ? 's' : ' ', (mon->growth.friendship + 1) * 0x100);
+    else {
+        set_text_x(2);
+        PRINT_FUNCTION("Hatches in : \x03 Egg Cycle\x02\n\nHatches in: \x03 Steps\n\n", mon->growth.friendship + 1, mon->growth.friendship ? 's' : ' ', (mon->growth.friendship + 1) * 0x100);
+    }
 }
 
 void print_pokemon_page2(struct gen3_mon_data_unenc* mon) {
-        
-    PRINT_FUNCTION("\nSTAT    VALUE    EV    IV\n");
+    PRINT_FUNCTION("\n");
+    set_text_x(18);
+    PRINT_FUNCTION("EV");
+    set_text_x(24);
+    PRINT_FUNCTION("IV\n\n");
     for(int i = 0; i < GEN2_STATS_TOTAL; i++) {
-        PRINT_FUNCTION("\n \x11", stat_strings[i], 3);
+        set_text_x(2);
+        PRINT_FUNCTION("\x11", stat_strings[i], 3);
         if(i == HP_STAT_INDEX) {
             u16 hp = calc_stats_gen3_raw(mon, i);
             u16 curr_hp = mon->src->curr_hp;
             if(curr_hp > hp)
                 curr_hp = hp;
-            PRINT_FUNCTION("  \x09/\x13", curr_hp, 4, hp, 4);
+            PRINT_FUNCTION("    \x16 / \x13", curr_hp, 4, hp, 4);
         }
         else
-            PRINT_FUNCTION("    \x09\x02  ", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
-        PRINT_FUNCTION("\x09   \x09\n", get_evs_gen3(&mon->evs, i), 4, get_ivs_gen3(&mon->misc, i), 3);
+            PRINT_FUNCTION("    \x16\x02", calc_stats_gen3_raw(mon,i), 4, get_nature_symbol(mon->src->pid, i));
+        set_text_x(18);
+        PRINT_FUNCTION("\x03", get_evs_gen3(&mon->evs, i));
+        set_text_x(24);
+        PRINT_FUNCTION("\x03", get_ivs_gen3(&mon->misc, i));
+        PRINT_FUNCTION("\n\n");
     }
-    
-    PRINT_FUNCTION("\n   Hidden Power \x01: \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
 }
 
 void print_pokemon_page3(struct gen3_mon_data_unenc* mon) {
 
-    PRINT_FUNCTION("\nMOVES");
-    set_text_x(18);
-    PRINT_FUNCTION("PP UP\n");
+    PRINT_FUNCTION("\n");
+    set_text_x(22);
+    PRINT_FUNCTION("PP UP\n\n");
     for(size_t i = 0; i < (MOVES_SIZE); i++){
-        PRINT_FUNCTION("\n \x11\x03\n", get_move_name_gen3(&mon->attacks, i), 19, (mon->growth.pp_bonuses >> (2*i)) & 3);
+        set_text_x(2);
+        PRINT_FUNCTION("\x11\x03\n\n", get_move_name_gen3(&mon->attacks, i), 21, (mon->growth.pp_bonuses >> (2*i)) & 3);
     }
-    
-    PRINT_FUNCTION("\nAbility: \x01 (\x03)\n", get_ability_name_raw(mon), get_ability_num_gen_4_5(mon->src->pid));
-    
-    PRINT_FUNCTION("\nExperience: \x03\n", get_proper_exp_raw(mon));
-    
-    if(to_valid_level_gen3(mon->src) < MAX_LEVEL_GEN3)
-        PRINT_FUNCTION("\nNext Lv. in: \x09 > Lv. \x09", get_level_exp_mon_index(get_mon_index_raw(mon), to_valid_level_gen3(mon->src)+1) - get_proper_exp_raw(mon), 5, to_valid_level_gen3(mon->src)+1, 3);
+
+    PRINT_FUNCTION("\n");
+    set_text_x(8);
+    PRINT_FUNCTION("Hidden Power \x01: \x03", get_hidden_power_type_name_gen3(&mon->misc), get_hidden_power_power_gen3(&mon->misc));
 }
 
 void print_pokemon_page4(struct gen3_mon_data_unenc* mon) {
-    PRINT_FUNCTION("\nCONTEST STAT     VALUE\n");
+    PRINT_FUNCTION("\n");
+    set_text_x(22);
+    PRINT_FUNCTION("VALUE\n\n");
     for(int i = 0; i < CONTEST_STATS_TOTAL; i++){
-        PRINT_FUNCTION("\n \x11\x09\n", contest_strings[i], 16, mon->evs.contest[i], 4);
+        set_text_x(2);
+        PRINT_FUNCTION("\x11\x16\n\n", contest_strings[i], 20, mon->evs.contest[i], 4);
     }
 }
 
 void print_pokemon_page5(struct gen3_mon_data_unenc* mon) {
-    PRINT_FUNCTION("\nRIBBONS");
+    PRINT_FUNCTION("\n");
     for(int i = 0; i < NUM_LINES; i++){
         set_text_y(6+i);
         PRINT_FUNCTION(" \x01\x01", get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)]));
@@ -1171,6 +1216,7 @@ void print_pokemon_page5(struct gen3_mon_data_unenc* mon) {
             PRINT_FUNCTION(" \x01\x01", get_ribbon_name(&mon->misc, ribbon_print_pos[(i*2)+1]), get_ribbon_rank_name(&mon->misc, ribbon_print_pos[(i*2)+1]));
         }
     }
+    PRINT_FUNCTION("  \n");
 }
 
 void print_pokemon_pages(u8 update, u8 load_sprites, struct gen3_mon_data_unenc* mon, u8 page_num) {
@@ -1192,25 +1238,33 @@ void print_pokemon_pages(u8 update, u8 load_sprites, struct gen3_mon_data_unenc*
 void print_load_warnings(struct game_data_t* game_data, struct game_data_priv_t* game_data_priv) {
     default_reset_screen();
 
-    set_text_x((X_LIMIT-8)>>1);
-    PRINT_FUNCTION("WARNING!\n\n");
+    set_text_x(12);
+    PRINT_FUNCTION("WARNING!\n\n\n\n");
     if(!is_in_pokemon_center(game_data_priv, game_data->game_identifier.game_main_version)){
-        PRINT_FUNCTION("The player did not save\n");
-        PRINT_FUNCTION("in a Pok\xE9mon Center!\n\n");
+        set_text_x(4);
+        PRINT_FUNCTION("The player did not save in a Pok\xE9mon\n");
+        set_text_x(4);
+        PRINT_FUNCTION("Center!\n\n");
     }
     if(can_trade(game_data_priv, game_data->game_identifier.game_main_version) == PARTIAL_TRADE_POSSIBLE) {
-        PRINT_FUNCTION("Normally, the game should not\n");
-        PRINT_FUNCTION("be able to trade to certain\n");
-        PRINT_FUNCTION("other versions!\n\n");
+        set_text_x(4);
+        PRINT_FUNCTION("Normally, the game should not be able\n");
+        set_text_x(4);
+        PRINT_FUNCTION("to trade to certain other versions!\n\n");
     }
     if(get_party_usable_num(game_data) < MIN_ACTIVE_MON_TRADING) {
-        PRINT_FUNCTION("Normally, the game requires\n");
-        PRINT_FUNCTION("having more active Pok\xE9mon in\n");
-        PRINT_FUNCTION("the party in order to trade!\n\n");
+        set_text_x(4);
+        PRINT_FUNCTION("Normally, the game requires having\n");
+        set_text_x(4);
+        PRINT_FUNCTION("more active Pok\xE9mon in the party\n");
+        set_text_x(4);
+        PRINT_FUNCTION("in order to trade!\n\n");
     }
         
     set_text_y(Y_LIMIT-3);
-    PRINT_FUNCTION("  Proceed at your own risk!\n\n");
+    set_text_x(7);
+    PRINT_FUNCTION(" Proceed at your own risk!\n\n");
+    set_text_x(6);
     PRINT_FUNCTION("Press any button to continue!");
 }
 
@@ -1318,10 +1372,10 @@ void print_multiboot_settings(u8 is_normal, u8 update) {
 
 void print_multiboot_mid_process(u8 initial_handshake) {
     default_reset_screen();
-    PRINT_FUNCTION("\nInitiating handshake!\n");
+    PRINT_FUNCTION("\n    Initiating handshake!\n");
     
     if(initial_handshake)
-        PRINT_FUNCTION("\nHandshake successful!\n\nGiving control to SWI 0x25!");
+        PRINT_FUNCTION("\n    Handshake successful!\n\nGiving control to SWI 0x25!");
 }
 
 void print_multiboot(enum MULTIBOOT_RESULTS result) {
@@ -1329,14 +1383,14 @@ void print_multiboot(enum MULTIBOOT_RESULTS result) {
     default_reset_screen();
     
     if(result == MB_SUCCESS)
-        PRINT_FUNCTION("\nMultiboot successful!");
+        PRINT_FUNCTION("\n    Multiboot successful!");
     else if(result == MB_NO_INIT_SYNC)
-        PRINT_FUNCTION("\nCouldn't sync.\n\nTry again!");
+        PRINT_FUNCTION("\n    Couldn't sync.\n\n    Try again!");
     else
-        PRINT_FUNCTION("\nThere was an error.\n\nTry again!");
+        PRINT_FUNCTION("\n    There was an error.\n\n    Try again!");
     
     set_text_y(7);
-    PRINT_FUNCTION("A: To the previous menu\n\n");
-    PRINT_FUNCTION("The cartridge will be\n");
-    PRINT_FUNCTION("read once more.");
+    PRINT_FUNCTION("    A: To the previous menu\n\n");
+    PRINT_FUNCTION("    The cartridge will be\n");
+    PRINT_FUNCTION("    read once more.");
 }
