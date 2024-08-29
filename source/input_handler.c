@@ -715,7 +715,7 @@ u8 handle_input_cheats_menu(u16 keys, u8* cursor_y_pos, u8* update) {
     switch(*cursor_y_pos) {
         case 0:
             if(keys & KEY_UP)
-                *cursor_y_pos = 4;
+                *cursor_y_pos = 5;
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
@@ -749,11 +749,21 @@ u8 handle_input_cheats_menu(u16 keys, u8* cursor_y_pos, u8* update) {
             else if(keys & KEY_DOWN)
                 *cursor_y_pos += 1;
             else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
-                set_fast_hatch_eggs(!get_fast_hatch_eggs());
+                set_event_info_replacement(!get_event_info_replacement());
                 *update = 1;
             }
             break;
         case 4:
+            if(keys & KEY_UP)
+                *cursor_y_pos -= 1;
+            else if(keys & KEY_DOWN)
+                *cursor_y_pos += 1;
+            else if((keys & KEY_RIGHT) || (keys & KEY_A) || (keys & KEY_LEFT)) {
+                set_fast_hatch_eggs(!get_fast_hatch_eggs());
+                *update = 1;
+            }
+            break;
+        case 5:
             if(keys & KEY_A)
                 return 1;
             else if(keys & KEY_UP)

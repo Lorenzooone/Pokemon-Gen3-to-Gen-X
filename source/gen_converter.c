@@ -639,7 +639,7 @@ void alter_nature(struct gen3_mon_data_unenc* data_src, u8 wanted_nature) {
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
         case ROAMER_ENCOUNTER:
-            if(species == CELEBI_SPECIES) {
+            if(get_event_info_replacement() && (species == CELEBI_SPECIES)) {
                 generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, pid_ptr, ivs_ptr, ability_ptr);
                 is_ability_set = 1;
             }
@@ -729,7 +729,7 @@ void set_origin_pid_iv(struct gen3_mon* dst, struct gen3_mon_data_unenc* data_ds
     switch(encounter_type) {
         case STATIC_ENCOUNTER:
             valid_balls = VALID_POKEBALL_NO_EGG;
-            if(species == CELEBI_SPECIES) {
+            if(get_event_info_replacement() && (species == CELEBI_SPECIES)) {
                 valid_balls = VALID_POKEBALL_CELEBI;
                 chosen_version = R_VERSION_ID;
                 generate_generic_genderless_shadow_info_xd(wanted_nature, 0, wanted_ivs, tsv, &dst->pid, &ivs, &ability);
@@ -1045,13 +1045,13 @@ void special_convert_strings_distribution(struct gen3_mon* dst, u16 species) {
     const u8* mon_name = get_pokemon_name_pure(species, 0, dst->language);
     const u8* trainer_name = NULL;
 
-    switch(species) {
-        case CELEBI_SPECIES:
-            trainer_name = get_celebi_trainer_name(dst->language);
-            break;
-        default:
-            break;
-    }
+	switch(species) {
+	    case CELEBI_SPECIES:
+	        trainer_name = get_celebi_trainer_name(dst->language);
+	        break;
+	    default:
+	        break;
+	}
 
     if(mon_name)
         text_gen3_copy(mon_name, dst->nickname, gen3_nickname_cap, gen3_nickname_cap);
@@ -1348,7 +1348,7 @@ void set_language_gen12_to_gen3(struct gen3_mon* dst, u16 species, u8 is_egg, co
     else
         dst->language = int_language;
 
-    if((species == MEW_SPECIES) || (species == CELEBI_SPECIES)) {
+    if(get_event_info_replacement() && ((species == MEW_SPECIES) || (species == CELEBI_SPECIES))) {
         if((!get_allow_undistributed_events()) || is_jp)
             dst->language = JAPANESE_LANGUAGE;
         else
@@ -1367,7 +1367,7 @@ u8 text_handling_gen12_to_gen3(struct gen3_mon* dst, u16 species, u16 swapped_ot
     set_language_gen12_to_gen3(dst, species, is_egg, ot_name, nickname, is_jp);
 
     // Specially handle Celebi's event
-    if((species == CELEBI_SPECIES) && (!is_egg)) {
+    if(get_event_info_replacement() && (species == CELEBI_SPECIES) && (!is_egg)) {
         dst->ot_id = CELEBI_AGATE_OT_ID;
         special_convert_strings_distribution(dst, species);
         return no_restrictions;

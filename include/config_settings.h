@@ -40,6 +40,7 @@ void set_single_colour(u8, u8, u8);
 void set_evolve_without_trade(u8);
 void set_allow_undistributed_events(u8);
 void set_fast_hatch_eggs(u8);
+void set_event_info_replacement(u8);
 void increase_egg_met_location(void);
 void decrease_egg_met_location(void);
 u8 set_applied_ball(u16);
@@ -58,6 +59,7 @@ u8 get_allow_undistributed_events(void);
 u8 get_fast_hatch_eggs(void);
 u8 get_egg_met_location(void);
 u16 get_applied_ball(void);
+u8 get_event_info_replacement(void);
 const struct version_t* get_version(void);
 
 #endif

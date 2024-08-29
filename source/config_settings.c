@@ -22,6 +22,7 @@
 #define DEFAULT_ALLOW_UNDISTRIBUTED_EVENTS 0
 #define DEFAULT_FAST_HATCH_EGGS 0
 #define DEFAULT_BALL POKEBALL_ID
+#define DEFAULT_EVENT_INFO_REPLACEMENT 1
 
 void sanitize_egg_met_location(void);
 const u8* get_valid_egg_met_locs(void);
@@ -40,8 +41,9 @@ static u8 fast_hatch_eggs;
 static u16 applied_ball;
 static u8 egg_met_location;
 static u8 first_set_egg_met_location;
+static u8 event_info_replacement;
 
-const struct version_t version = { .main_version = 1, .sub_version = 1, .revision_version = 13, .revision_letter = CONSOLE_LETTER};
+const struct version_t version = { .main_version = 1, .sub_version = 1, .revision_version = 14, .revision_letter = CONSOLE_LETTER};
 const u8* egg_valid_met_locations[NUMBER_OF_GAMES+FIRST_VERSION_ID] = {valid_egg_locations_rs_bin, valid_egg_locations_rs_bin, valid_egg_locations_rs_bin, valid_egg_locations_e_bin, valid_egg_locations_frlg_bin, valid_egg_locations_frlg_bin};
 
 void set_default_settings() {
@@ -60,6 +62,7 @@ void set_default_settings() {
     set_allow_undistributed_events(DEFAULT_ALLOW_UNDISTRIBUTED_EVENTS);
     set_fast_hatch_eggs(DEFAULT_FAST_HATCH_EGGS);
     set_applied_ball(DEFAULT_BALL);
+    set_event_info_replacement(DEFAULT_EVENT_INFO_REPLACEMENT);
 }
 
 const u8* get_valid_egg_met_locs() {
@@ -137,6 +140,10 @@ void set_allow_undistributed_events(u8 new_val) {
 
 void set_fast_hatch_eggs(u8 new_val) {
     fast_hatch_eggs = new_val;
+}
+
+void set_event_info_replacement(u8 new_val) {
+    event_info_replacement = new_val;
 }
 
 void increase_egg_met_location() {
@@ -257,6 +264,10 @@ u8 get_egg_met_location() {
 
 u16 get_applied_ball() {
     return applied_ball;
+}
+
+u8 get_event_info_replacement() {
+    return event_info_replacement;
 }
 
 const struct version_t* get_version() {

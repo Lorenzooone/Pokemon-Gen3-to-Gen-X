@@ -609,6 +609,11 @@ void print_cheats_menu(u8 update) {
         PRINT_FUNCTION(" <Enabled>\n\n");
     else
         PRINT_FUNCTION(" <Disabled>\n\n");
+    PRINT_FUNCTION("  Event Pok\xE9mon:");
+    if(get_event_info_replacement())
+        PRINT_FUNCTION(" <Legit Data>\n\n");
+    else
+        PRINT_FUNCTION(" <Keep Data>\n\n");
     PRINT_FUNCTION("  Fast Hatch Eggs:");
     if(get_fast_hatch_eggs())
         PRINT_FUNCTION(" <Enabled>\n\n");
