@@ -48,10 +48,24 @@ swi_LZ77UnCompWrite8bit:
     @ bit0-3:  reserved
     @ bit4-7:  compressed type (1 for LZ77)
     @ bit8-31: size of compressed data
-    ldr r2, [r0], #4
-    lsrs r2, r2, #8
+    ldrb r2, [r0, #0]
+    lsr r2, r2, #4
+    @ Stop if this isn't LZ77
+    cmp r2, #1
+    bne .lz77_16bit_end
+
+    @ Don't make any assumption about initial alignment to
+    @ read the size of the data
+    ldrb r2, [r0, #1]
+    ldrb r3, [r0, #2]
+    lsl r3, r3, #8
+    orr r2, r2, r3
+    ldrb r3, [r0, #3]
+    add r0, r0, #4
+    lsl r3, r3, #16
+    orrs r2, r2, r3
     @ ignore zero-length decompression requests
-    beq .lz77_16bit_done
+    beq .lz77_16bit_end
 
     @ Cover un-aligned destination
     tst r1, #1
@@ -234,5 +248,6 @@ swi_LZ77UnCompWrite8bit:
     orrne r7, r6, lsl #8
     strneh r7, [r1, #-1]
 
+.lz77_16bit_end:
     ldmfd sp!, {r3 - r8}
     bx lr
