@@ -188,6 +188,13 @@ void init_text_system() {
     #if defined (__NDS__) && (SAME_ON_BOTH_SCREENS)
     REG_DISPCNT_SUB = 0 | TILE_1D_MAP | ACTIVATE_SCREEN_HW;
     #endif
+
+    #ifdef __NDS__
+    vramSetBankA(VRAM_A_MAIN_BG);
+    vramSetBankB(VRAM_B_MAIN_SPRITE);
+    vramSetBankC(VRAM_C_SUB_BG);
+    vramSetBankD(VRAM_D_SUB_SPRITE);
+    #endif
     screens_flush = 0;
     for(int i = 0; i < TOTAL_BG; i++) {
         enabled_screen[i] = 0;

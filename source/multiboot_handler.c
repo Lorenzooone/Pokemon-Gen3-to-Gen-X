@@ -12,6 +12,9 @@
 
 void multiboot_send(int, int, u16*);
 
+#ifndef HAS_SIO
+void multiboot_send(int UNUSED(data), int UNUSED(is_normal), u16* UNUSED(out_buffer)) {
+#else
 void multiboot_send(int data, int is_normal, u16* out_buffer) {
     // Only this part of REG_SIODATA32 is used during setup.
     // The rest is handled by SWI $25
@@ -21,14 +24,13 @@ void multiboot_send(int data, int is_normal, u16* out_buffer) {
         out_buffer[0] = timed_sio_normal_master(data, SIO_32, MULTIBOOT_VCOUNTWAIT) >> 0x10;
     else
         timed_sio_multi_master(data, MULTIBOOT_VCOUNTWAIT, out_buffer);
+#endif
 }
 
-#ifdef HAS_SIO
-enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end, int is_normal) {
-#else
+#ifndef HAS_SIO
 enum MULTIBOOT_RESULTS multiboot_normal (u16* UNUSED(data), u16* UNUSED(end), int UNUSED(is_normal)) {
-#endif
-    #ifdef HAS_SIO
+#else
+enum MULTIBOOT_RESULTS multiboot_normal (u16* data, u16* end, int is_normal) {
     u16 response[MAX_NUM_SLAVES];
     u8 clientMask = 0;
     u8 client_bit;

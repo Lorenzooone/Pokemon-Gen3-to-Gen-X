@@ -28,7 +28,9 @@ void convert_3bpp_forward_even(const u8*, u32*, size_t);
 
 MAX_OPTIMIZE void load_pokemon_sprite_gfx(const u32* src, u32* dst, u8 is_3bpp, u8 zero_fill, u8 index, u8* colors){
     
+    u32 zero = 0;
     u32 buffer[BUFFER_SIZE];
+    CpuFastSet(&zero, buffer, BUFFER_SIZE|CPUFASTSET_FILL);
     LZ77UnCompWram(src, buffer);
     size_t processed_size = TOTAL_POKEMON_SPRITE_SIZE;
     

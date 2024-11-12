@@ -714,6 +714,9 @@ void prepare_crash_screen(enum CRASH_REASONS reason) {
     print_crash(reason);
     enable_screen(CRASH_WINDOW_SCREEN);
     prepare_flush();
+    #if defined(__NDS__) && (!defined(__BLOCKSDS__))
+    pmMainLoop();
+    #endif
 }
 
 void crash_on_cartridge_removed() {
@@ -780,6 +783,10 @@ int main(void)
     #ifdef __GBA__
     RegisterRamReset(RESET_SIO|RESET_SOUND|RESET_OTHER);
     disable_all_irqs();
+    #else
+    #ifndef __BLOCKSDS__
+    gbacartOpen();
+    #endif
     #endif
     curr_state = MAIN_MENU;
     counter = 0;
@@ -847,10 +854,13 @@ int main(void)
     //PRINT_FUNCTION("\n\n0x\x0D: 0x\x0D\n", REG_MEMORY_CONTROLLER_ADDR, 8, REG_MEMORY_CONTROLLER, 8);
     scanKeys();
     keys = keysDown();
-    
+
     while(1) {
         
         do {
+            #if defined(__NDS__) && (!defined(__BLOCKSDS__))
+            pmMainLoop();
+            #endif
             prepare_flush();
             VBlankIntrWait();
             scanKeys();

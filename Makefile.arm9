@@ -101,7 +101,7 @@ SOURCES_CPP	:= $(shell find -L $(SOURCEDIRS) -name "*.cpp")
 # Compiler and linker flags
 # -------------------------
 
-DEFINES		+= -D__NDS__ -DARM9
+DEFINES		+= -D__NDS__ -DARM9 -D__BLOCKSDS__
 
 ARCH		:= -march=armv5te -mtune=arm946e-s
 

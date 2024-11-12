@@ -1045,13 +1045,13 @@ void special_convert_strings_distribution(struct gen3_mon* dst, u16 species) {
     const u8* mon_name = get_pokemon_name_pure(species, 0, dst->language);
     const u8* trainer_name = NULL;
 
-	switch(species) {
-	    case CELEBI_SPECIES:
-	        trainer_name = get_celebi_trainer_name(dst->language);
-	        break;
-	    default:
-	        break;
-	}
+    switch(species) {
+        case CELEBI_SPECIES:
+            trainer_name = get_celebi_trainer_name(dst->language);
+            break;
+        default:
+            break;
+    }
 
     if(mon_name)
         text_gen3_copy(mon_name, dst->nickname, gen3_nickname_cap, gen3_nickname_cap);

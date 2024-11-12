@@ -825,13 +825,17 @@ IWRAM_CODE u8 has_cartridge_been_removed(){
 
 ALWAYS_INLINE void start_gen3_save_data_transfer() {
     #ifdef __NDS__
+    #ifdef __BLOCKSDS__
     disableSleep();
+    #endif
     #endif
 }
 
 ALWAYS_INLINE void end_gen3_save_data_transfer() {
     #ifdef __NDS__
+    #ifdef __BLOCKSDS__
     enableSleep();
+    #endif
     #endif
 }
 

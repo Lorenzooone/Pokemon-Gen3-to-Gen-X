@@ -86,9 +86,28 @@ typedef struct {
 #define DivMod(x, y) swiRemainder(x, y)
 #define Sqrt(x) swiSqrt(x)
 #define LZ77UnCompWram(x, y) swi_LZ77UnCompWrite8bit(x, y)
+#ifdef __BLOCKSDS__
 #define CpuFastSet(x, y, z) swiFastCopy(x, y, z)
-#define VBlankIntrWait() swiWaitForVBlank()
 #define Halt() CP15_WaitForInterrupt()
+#else
+static void CpuFastSet(volatile const void*, volatile void*, volatile int);
+static void Halt(void);
+
+ALWAYS_INLINE MAX_OPTIMIZE void CpuFastSet(volatile const void* source, volatile void* dest, volatile int flags)
+{
+    register uint32_t src asm("r0") = (uint32_t)source;
+    register uint32_t dst asm("r1") = (uint32_t)dest;
+    register uint32_t flg asm("r2") = (uint32_t)flags;
+    register uint32_t after_destroyed asm("r3");
+
+    asm volatile(
+        "swi 0xC;" : "=r"(src), "=r"(dst), "=r"(flg) :
+        "r"(src), "r"(dst), "r"(flg), "r"(after_destroyed) :
+    );
+}
+ALWAYS_INLINE void Halt() {__asm__("swi 0x6");}
+#endif
+#define VBlankIntrWait() swiWaitForVBlank()
 #define DIV_SWI_VAL "0x09"
 
 #endif
